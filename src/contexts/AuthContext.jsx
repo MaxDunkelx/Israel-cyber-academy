@@ -361,6 +361,29 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Set guest mode function
+  const setGuestMode = (role) => {
+    localStorage.setItem('isGuest', 'true');
+    localStorage.setItem('guestRole', role);
+    
+    // Generate a random email for guest
+    const randomId = Math.random().toString(36).substring(2, 8);
+    const guestEmail = `guest_${role}_${randomId}@demo.com`;
+    
+    setCurrentUser({ uid: 'guest', isGuest: true });
+    setUserProfile({
+      uid: 'guest',
+      displayName: role === 'teacher' ? 'מורה אורח' : 'תלמיד אורח',
+      role: role,
+      email: guestEmail,
+      password: 'none',
+      progress: {},
+      completedLessons: [],
+      currentLesson: 1,
+      isGuest: true
+    });
+  };
+
   useEffect(() => {
     // Guest mode support
     if (localStorage.getItem('isGuest')) {
@@ -416,7 +439,8 @@ export const AuthProvider = ({ children }) => {
     setLastLessonSlide,
     loading,
     removeTemporaryProgress,
-    trackSlideEngagement
+    trackSlideEngagement,
+    setGuestMode
   };
 
   return (

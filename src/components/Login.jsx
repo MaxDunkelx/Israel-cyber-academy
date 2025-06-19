@@ -11,7 +11,7 @@ import cyberLogo from '../assets/cyber-logo.png';
  * Features stunning animations, proper branding, and comprehensive information
  */
 const Login = () => {
-  const { login, signup } = useAuth();
+  const { login, signup, setGuestMode } = useAuth();
   const [showLoginForm, setShowLoginForm] = useState(false);
   const [selectedRole, setSelectedRole] = useState(null);
   const [isLogin, setIsLogin] = useState(true);
@@ -95,8 +95,7 @@ const Login = () => {
   const handleGuestLogin = () => {
     if (!guestWarningAccepted) return;
     
-    localStorage.setItem('isGuest', 'true');
-    localStorage.setItem('guestRole', guestRole);
+    setGuestMode(guestRole);
     setShowGuestWarning(false);
     toast.success(`ברוך הבא למצב ${guestRole === 'student' ? 'תלמיד' : 'מורה'} אורח!`);
   };
