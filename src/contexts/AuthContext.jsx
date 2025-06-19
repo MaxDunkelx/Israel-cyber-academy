@@ -308,18 +308,29 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     // Handle guest mode logout
     if (currentUser?.isGuest || userProfile?.isGuest) {
+      // Clear all guest-related data
       localStorage.removeItem('isGuest');
       localStorage.removeItem('guestRole');
       localStorage.removeItem('guestProgress');
+      
+      // Clear state
       setCurrentUser(null);
       setUserProfile(null);
+      
+      // Force redirect to login page
+      window.location.href = '/';
       return;
     }
     
     // Handle regular user logout
     localStorage.removeItem('isGuest');
     await removeTemporaryProgress();
-    return signOut(auth);
+    
+    // Sign out from Firebase
+    await signOut(auth);
+    
+    // Force redirect to login page
+    window.location.href = '/';
   };
 
   // Add setLastLessonSlide to context

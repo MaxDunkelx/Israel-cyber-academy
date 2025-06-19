@@ -51,19 +51,10 @@ const Navigation = () => {
     try {
       await logout();
       toast.success('התנתקת בהצלחה');
-      navigate('/');
     } catch (error) {
       console.error('Logout error:', error);
       toast.error('אירעה שגיאה בהתנתקות');
     }
-  };
-
-  // Handle guest logout
-  const handleGuestLogout = () => {
-    localStorage.removeItem('isGuest');
-    localStorage.removeItem('guestRole');
-    toast.success('יצאת ממצב אורח');
-    navigate('/');
   };
 
   // Navigation items based on user role
@@ -176,16 +167,12 @@ const Navigation = () => {
                   <button
                     onClick={() => {
                       setIsUserMenuOpen(false);
-                      if (isGuest) {
-                        handleGuestLogout();
-                      } else {
-                        handleLogout();
-                      }
+                      handleLogout();
                     }}
                     className="flex items-center space-x-2 px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-colors w-full text-right"
                   >
                     <LogOut className="w-4 h-4" />
-                    <span>{isGuest ? 'יציאה ממצב אורח' : 'התנתק'}</span>
+                    <span>{isGuest ? 'התנתק' : 'התנתק'}</span>
                   </button>
                 </motion.div>
               )}
@@ -230,16 +217,12 @@ const Navigation = () => {
               <button
                 onClick={() => {
                   setIsMenuOpen(false);
-                  if (isGuest) {
-                    handleGuestLogout();
-                  } else {
-                    handleLogout();
-                  }
+                  handleLogout();
                 }}
                 className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-colors w-full text-right"
               >
                 <LogOut className="w-4 h-4" />
-                <span>{isGuest ? 'יציאה ממצב אורח' : 'התנתק'}</span>
+                <span>{isGuest ? 'התנתק' : 'התנתק'}</span>
               </button>
             </div>
           </motion.div>
