@@ -19,7 +19,7 @@ const InteractiveLesson = () => {
   const { lessonId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { userProfile, updateUserProgress, setLastLessonSlide } = useAuth();
+  const { userProfile, updateUserProgress, setLastLessonSlide, trackSlideEngagement } = useAuth();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [lesson, setLesson] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -42,7 +42,8 @@ const InteractiveLesson = () => {
         setTimeLeft(prev => prev - 1);
       }, 1000);
     } else if (timeLeft === 0 && isPlaying) {
-      handleNextSlide();
+      // Remove auto-advance - let user control navigation
+      setIsPlaying(false);
     }
     return () => clearTimeout(timerRef.current);
   }, [timeLeft, isPlaying]);
@@ -55,6 +56,17 @@ const InteractiveLesson = () => {
       setCurrentSlide(slideParam);
     }
   }, [location.search]);
+
+  // Track slide engagement when slide changes
+  useEffect(() => {
+    if (lesson && userProfile) {
+      const currentSlideData = lesson.content.slides[currentSlide];
+      if (currentSlideData && currentSlideData.id) {
+        // Track this slide as engaged
+        trackSlideEngagement(lesson.id, currentSlideData.id);
+      }
+    }
+  }, [currentSlide, lesson, userProfile, trackSlideEngagement]);
 
   // On slide change, persist last slide for resume
   useEffect(() => {
@@ -90,10 +102,12 @@ const InteractiveLesson = () => {
 
   const handleNextSlide = () => {
     if (currentSlide < lesson.content.slides.length - 1) {
+      const currentSlideData = lesson.content.slides[currentSlide];
+      
       setCurrentSlide(prev => prev + 1);
       const nextSlide = lesson.content.slides[currentSlide + 1];
       setTimeLeft(nextSlide?.content?.duration || 30);
-      setIsPlaying(true);
+      setIsPlaying(false); // Don't auto-play
     }
   };
 
@@ -102,7 +116,7 @@ const InteractiveLesson = () => {
       setCurrentSlide(prev => prev - 1);
       const prevSlide = lesson.content.slides[currentSlide - 1];
       setTimeLeft(prevSlide?.content?.duration || 30);
-      setIsPlaying(true);
+      setIsPlaying(false); // Don't auto-play
     }
   };
 
@@ -268,16 +282,14 @@ const InteractiveLesson = () => {
         >
           <ChevronLeft className="h-6 w-6" />
         </button>
-        <button
-          onClick={() => setIsPlaying(!isPlaying)}
-          className="p-3 bg-cyber-green rounded-full hover:bg-cyber-green/80 flex items-center justify-center"
-          style={{ width: 56, height: 56 }}
-        >
-          {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
-        </button>
+        
         <button
           onClick={handleNextSlide}
-          disabled={currentSlide === lesson.content.slides.length - 1}
+          disabled={
+            currentSlide === lesson.content.slides.length - 1 || 
+            (lesson?.content?.slides[currentSlide]?.type === 'interactive' && 
+             (!completedSlides[lesson.content.slides[currentSlide].id]))
+          }
           className="p-3 bg-cyber-blue rounded-full hover:bg-cyber-blue/80 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           style={{ width: 56, height: 56 }}
         >

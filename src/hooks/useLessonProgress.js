@@ -3,18 +3,17 @@ import { useAuth } from './useAuth';
 import { useLocalStorage } from './useLocalStorage';
 
 /**
- * Custom hook for managing lesson progress
- * Handles both local storage and Firebase synchronization
+ * Custom hook for managing lesson progress and page engagement
+ * Provides utilities for tracking slide visits and calculating engagement metrics
  * 
- * @param {string|number} lessonId - The lesson ID to track progress for
- * @returns {Object} Lesson progress state and methods
+ * @returns {Object} Progress management functions and data
  * 
  * @example
- * const { progress, updateProgress, isCompleted, currentSlide } = useLessonProgress(1);
+ * const { trackSlideVisit, getPagesEngaged, getLessonProgress } = useLessonProgress();
  */
-export const useLessonProgress = (lessonId) => {
-  const { currentUser, updateUserProgress, setLastLessonSlide } = useAuth();
-  const [localProgress, setLocalProgress] = useLocalStorage(`lesson_${lessonId}_progress`, {});
+export const useLessonProgress = () => {
+  const { userProfile, trackSlideEngagement, updateUserProgress, setLastLessonSlide } = useAuth();
+  const [localProgress, setLocalProgress] = useLocalStorage(`lesson_${userProfile?.currentLesson}_progress`, {});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -27,6 +26,23 @@ export const useLessonProgress = (lessonId) => {
     lastActivity: null,
     ...localProgress
   });
+
+  // Load guest progress from localStorage on mount
+  useEffect(() => {
+    if (userProfile?.isGuest) {
+      const guestProgress = localStorage.getItem('guestProgress');
+      if (guestProgress) {
+        try {
+          const parsed = JSON.parse(guestProgress);
+          if (parsed && typeof parsed === 'object') {
+            setLocalProgress(parsed);
+          }
+        } catch (error) {
+          console.error('Error parsing guest progress:', error);
+        }
+      }
+    }
+  }, [userProfile?.isGuest]);
 
   // Update local progress
   const updateLocalProgress = useCallback((updates) => {
@@ -45,11 +61,11 @@ export const useLessonProgress = (lessonId) => {
       updateLocalProgress(updates);
 
       // Sync to Firebase if user is authenticated and not guest
-      if (syncToFirebase && currentUser && !currentUser.isGuest) {
+      if (syncToFirebase && userProfile && !userProfile.isGuest) {
         const newProgress = { ...progress, ...updates };
         
         await updateUserProgress(
-          lessonId,
+          userProfile.currentLesson,
           newProgress.completed,
           newProgress.score,
           !newProgress.completed, // temporary if not completed
@@ -62,17 +78,17 @@ export const useLessonProgress = (lessonId) => {
     } finally {
       setIsLoading(false);
     }
-  }, [progress, currentUser, lessonId, updateUserProgress, updateLocalProgress]);
+  }, [progress, userProfile, updateUserProgress, updateLocalProgress]);
 
   // Update current slide
   const updateCurrentSlide = useCallback(async (slideIndex) => {
     await updateProgress({ currentSlide: slideIndex });
     
     // Update last slide in Firebase
-    if (currentUser && !currentUser.isGuest) {
-      await setLastLessonSlide(lessonId, slideIndex);
+    if (userProfile && !userProfile.isGuest) {
+      await setLastLessonSlide(userProfile.currentLesson, slideIndex);
     }
-  }, [updateProgress, currentUser, lessonId, setLastLessonSlide]);
+  }, [updateProgress, userProfile, setLastLessonSlide]);
 
   // Mark lesson as completed
   const markCompleted = useCallback(async (score = 100) => {
@@ -117,13 +133,13 @@ export const useLessonProgress = (lessonId) => {
     if (!requiredPreviousLesson) return true;
     
     // For guest users, allow access to first few lessons
-    if (currentUser?.isGuest) {
-      return lessonId <= 3; // Allow first 3 lessons for guests
+    if (userProfile?.isGuest) {
+      return userProfile.currentLesson <= 3; // Allow first 3 lessons for guests
     }
     
     // For authenticated users, check previous lesson completion
     return true; // This would be enhanced with actual lesson dependency logic
-  }, [currentUser, lessonId]);
+  }, [userProfile, userProfile.currentLesson]);
 
   // Get progress statistics
   const getProgressStats = useCallback(() => {
@@ -136,6 +152,84 @@ export const useLessonProgress = (lessonId) => {
       completionDate: progress.completedAt
     };
   }, [progress]);
+
+  // Track when a slide is visited
+  const trackSlideVisit = async (lessonId, slideId) => {
+    if (!lessonId || !slideId) return;
+    
+    try {
+      await trackSlideEngagement(lessonId, slideId);
+      
+      // Update local state for immediate UI updates
+      setLocalProgress(prev => {
+        const newProgress = { ...prev };
+        if (!newProgress[lessonId]) {
+          newProgress[lessonId] = {
+            completed: false,
+            score: 0,
+            completedAt: null,
+            temporary: false,
+            lastSlide: 0,
+            pagesEngaged: [],
+            lastActivity: new Date()
+          };
+        }
+        
+        if (!newProgress[lessonId].pagesEngaged) {
+          newProgress[lessonId].pagesEngaged = [];
+        }
+        
+        if (!newProgress[lessonId].pagesEngaged.includes(slideId)) {
+          newProgress[lessonId].pagesEngaged = [...newProgress[lessonId].pagesEngaged, slideId];
+          newProgress[lessonId].lastActivity = new Date();
+        }
+        
+        return newProgress;
+      });
+    } catch (error) {
+      console.error('Error tracking slide visit:', error);
+    }
+  };
+
+  // Get total pages engaged across all lessons
+  const getPagesEngaged = () => {
+    const progress = userProfile?.progress || localProgress;
+    if (!progress) return 0;
+    
+    let uniquePages = new Set();
+    Object.values(progress).forEach(lessonProgress => {
+      if (lessonProgress.pagesEngaged && Array.isArray(lessonProgress.pagesEngaged)) {
+        lessonProgress.pagesEngaged.forEach(page => uniquePages.add(page));
+      }
+    });
+    return uniquePages.size;
+  };
+
+  // Get progress for a specific lesson
+  const getLessonProgress = (lessonId) => {
+    const progress = userProfile?.progress || localProgress;
+    return progress?.[lessonId] || {
+      completed: false,
+      score: 0,
+      completedAt: null,
+      temporary: false,
+      lastSlide: 0,
+      pagesEngaged: [],
+      lastActivity: null
+    };
+  };
+
+  // Get pages engaged for a specific lesson
+  const getLessonPagesEngaged = (lessonId) => {
+    const lessonProgress = getLessonProgress(lessonId);
+    return lessonProgress.pagesEngaged?.length || 0;
+  };
+
+  // Check if a specific slide has been visited
+  const hasVisitedSlide = (lessonId, slideId) => {
+    const lessonProgress = getLessonProgress(lessonId);
+    return lessonProgress.pagesEngaged?.includes(slideId) || false;
+  };
 
   return {
     // State
@@ -152,6 +246,11 @@ export const useLessonProgress = (lessonId) => {
     updateTimeSpent,
     completionPercentage,
     canAccess,
-    getProgressStats
+    getProgressStats,
+    trackSlideVisit,
+    getPagesEngaged,
+    getLessonProgress,
+    getLessonPagesEngaged,
+    hasVisitedSlide
   };
 }; 

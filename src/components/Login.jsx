@@ -160,11 +160,11 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/20 to-purple-900/20 relative overflow-x-hidden">
       {/* Large Background Logo */}
-      <div className="fixed inset-0 flex items-center justify-center opacity-5 pointer-events-none">
+      <div className="fixed inset-0 flex items-center justify-center opacity-15 pointer-events-none">
         <img 
           src={cyberLogo} 
           alt="Israel Cyber Campus Background Logo" 
-          className="w-[1000px] h-[1000px] object-contain"
+          className="w-[1500px] h-[1500px] object-contain"
         />
       </div>
 

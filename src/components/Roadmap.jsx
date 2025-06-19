@@ -13,10 +13,12 @@ import {
   Star,
   BookOpen,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Timer
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import cyberLogo from '../assets/cyber-logo.png';
 
 /**
  * Roadmap Component - Main learning dashboard with lesson overview and progress tracking
@@ -115,9 +117,60 @@ const Roadmap = () => {
     return userProfile?.progress?.[lessonId]?.lastSlide ?? 0;
   };
 
+  // For guests: load/save progress from localStorage
+  useEffect(() => {
+    if (isGuest) {
+      const guestProgress = localStorage.getItem('guestProgress');
+      if (guestProgress) {
+        try {
+          const parsed = JSON.parse(guestProgress);
+          if (parsed && typeof parsed === 'object') {
+            // Update the userProfile with guest progress
+            if (userProfile) {
+              userProfile.progress = parsed;
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing guest progress:', error);
+        }
+      }
+    }
+  }, [isGuest]);
+
+  useEffect(() => {
+    if (isGuest && userProfile?.progress) {
+      localStorage.setItem('guestProgress', JSON.stringify(userProfile.progress));
+    }
+  }, [isGuest, userProfile?.progress]);
+
+  // Add helper to count unique pages engaged
+  const getPagesEngaged = () => {
+    if (!userProfile?.progress) return 0;
+    let uniquePages = new Set();
+    Object.values(userProfile.progress).forEach(progress => {
+      if (progress.pagesEngaged && Array.isArray(progress.pagesEngaged)) {
+        progress.pagesEngaged.forEach(page => uniquePages.add(page));
+      }
+    });
+    return uniquePages.size;
+  };
+
+  // Calculate total time spent (estimated based on pages engaged)
+  const getTotalTimeSpent = () => {
+    if (!userProfile?.progress) return 0;
+    let totalMinutes = 0;
+    Object.values(userProfile.progress).forEach(progress => {
+      if (progress.pagesEngaged && Array.isArray(progress.pagesEngaged)) {
+        // Estimate 3 minutes per page/slide
+        totalMinutes += progress.pagesEngaged.length * 3;
+      }
+    });
+    return totalMinutes;
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black p-4">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black p-4 flex flex-col">
+      <div className="max-w-7xl mx-auto flex-1">
         {/* Header */}
         <div className="text-center mb-8">
           <motion.h1 
@@ -166,19 +219,49 @@ const Roadmap = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
           >
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-6">
-                <div className="flex items-center">
-                  <Trophy className="h-6 w-6 text-yellow-500 mr-2" />
-                  <span className="text-lg font-semibold text-white">
-                    {userProfile?.completedLessons?.length || 0} / {lessons.length} שיעורים הושלמו
-                  </span>
+            {/* Statistics Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+              {/* Completed Lessons */}
+              <div className="flex flex-col items-center text-center p-4 bg-gray-700/30 rounded-xl border border-gray-600">
+                <Trophy className="h-8 w-8 text-yellow-500 mb-2" />
+                <div className="text-2xl font-bold text-white mb-1">
+                  {userProfile?.completedLessons?.length || 0}
                 </div>
-                <div className="flex items-center">
-                  <Star className="h-6 w-6 text-purple-400 mr-2" />
-                  <span className="text-lg font-semibold text-white">
-                    {getProgressPercentage()}% התקדמות
-                  </span>
+                <div className="text-sm text-gray-300">
+                  שיעורים הושלמו
+                </div>
+              </div>
+
+              {/* Progress Percentage */}
+              <div className="flex flex-col items-center text-center p-4 bg-gray-700/30 rounded-xl border border-gray-600">
+                <Star className="h-8 w-8 text-purple-400 mb-2" />
+                <div className="text-2xl font-bold text-white mb-1">
+                  {getProgressPercentage()}%
+                </div>
+                <div className="text-sm text-gray-300">
+                  התקדמות
+                </div>
+              </div>
+
+              {/* Pages Engaged */}
+              <div className="flex flex-col items-center text-center p-4 bg-gray-700/30 rounded-xl border border-gray-600">
+                <BookOpen className="h-8 w-8 text-blue-400 mb-2" />
+                <div className="text-2xl font-bold text-white mb-1">
+                  {getPagesEngaged()}
+                </div>
+                <div className="text-sm text-gray-300">
+                  עמודים נצפו
+                </div>
+              </div>
+
+              {/* Total Time Spent */}
+              <div className="flex flex-col items-center text-center p-4 bg-gray-700/30 rounded-xl border border-gray-600">
+                <Timer className="h-8 w-8 text-green-400 mb-2" />
+                <div className="text-2xl font-bold text-white mb-1">
+                  {getTotalTimeSpent()}
+                </div>
+                <div className="text-sm text-gray-300">
+                  דקות למידה
                 </div>
               </div>
             </div>
@@ -285,6 +368,11 @@ const Roadmap = () => {
           })}
         </div>
       </div>
+      {/* Footer */}
+      <footer className="bg-gray-900 border-t border-gray-800 py-8 mt-12 flex flex-col items-center">
+        <img src={cyberLogo} alt="Cyber Logo" className="w-32 h-32 mb-4 opacity-80 hover:opacity-100 transition-opacity" />
+        <p className="text-gray-400 text-sm">© 2024 Israel Cyber Campus. כל הזכויות שמורות.</p>
+      </footer>
     </div>
   );
 };

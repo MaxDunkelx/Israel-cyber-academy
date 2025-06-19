@@ -66,10 +66,56 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const updateUserProgress = async (lessonId, completed, score = 0, temporary = false, lastSlide = null) => {
-    if (!currentUser || localStorage.getItem('isGuest')) return;
+  const updateUserProgress = async (lessonId, completed, score = 0, temporary = false, lastSlide = null, slideId = null) => {
+    if (!currentUser) return;
     
     try {
+      // Handle guest mode with localStorage
+      if (currentUser.isGuest) {
+        const guestProgress = JSON.parse(localStorage.getItem('guestProgress') || '{}');
+        
+        // Initialize lesson progress if it doesn't exist
+        if (!guestProgress[lessonId]) {
+          guestProgress[lessonId] = {
+            completed: false,
+            score: 0,
+            completedAt: null,
+            temporary: false,
+            lastSlide: 0,
+            pagesEngaged: [],
+            lastActivity: new Date()
+          };
+        }
+        
+        // Update lesson progress
+        guestProgress[lessonId] = {
+          ...guestProgress[lessonId],
+          completed,
+          score,
+          completedAt: completed ? new Date() : guestProgress[lessonId].completedAt,
+          temporary: temporary && !completed ? true : false,
+          lastActivity: new Date(),
+          ...(lastSlide !== null ? { lastSlide } : {})
+        };
+        
+        // Track page engagement if slideId is provided
+        if (slideId && guestProgress[lessonId].pagesEngaged) {
+          if (!guestProgress[lessonId].pagesEngaged.includes(slideId)) {
+            guestProgress[lessonId].pagesEngaged = [...guestProgress[lessonId].pagesEngaged, slideId];
+          }
+        }
+        
+        localStorage.setItem('guestProgress', JSON.stringify(guestProgress));
+        
+        // Update local state
+        setUserProfile(prev => ({
+          ...prev,
+          progress: guestProgress
+        }));
+        
+        return;
+      }
+      
       const userRef = doc(db, 'users', currentUser.uid);
       const userDoc = await getDoc(userRef);
       
@@ -77,13 +123,36 @@ export const AuthProvider = ({ children }) => {
         const userData = userDoc.data();
         const progress = userData.progress || {};
         
+        // Initialize lesson progress if it doesn't exist
+        if (!progress[lessonId]) {
+          progress[lessonId] = {
+            completed: false,
+            score: 0,
+            completedAt: null,
+            temporary: false,
+            lastSlide: 0,
+            pagesEngaged: [],
+            lastActivity: new Date()
+          };
+        }
+        
+        // Update lesson progress
         progress[lessonId] = {
+          ...progress[lessonId],
           completed,
           score,
-          completedAt: completed ? new Date() : null,
+          completedAt: completed ? new Date() : progress[lessonId].completedAt,
           temporary: temporary && !completed ? true : false,
+          lastActivity: new Date(),
           ...(lastSlide !== null ? { lastSlide } : {})
         };
+        
+        // Track page engagement if slideId is provided
+        if (slideId && progress[lessonId].pagesEngaged) {
+          if (!progress[lessonId].pagesEngaged.includes(slideId)) {
+            progress[lessonId].pagesEngaged = [...progress[lessonId].pagesEngaged, slideId];
+          }
+        }
         
         const completedLessons = completed 
           ? [...new Set([...userData.completedLessons || [], lessonId])]
@@ -105,6 +174,107 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Error updating progress:', error);
+    }
+  };
+
+  // Track individual slide engagement
+  const trackSlideEngagement = async (lessonId, slideId) => {
+    if (!currentUser) return;
+    
+    try {
+      // Handle guest mode with localStorage
+      if (currentUser.isGuest) {
+        const guestProgress = JSON.parse(localStorage.getItem('guestProgress') || '{}');
+        
+        // Initialize lesson progress if it doesn't exist
+        if (!guestProgress[lessonId]) {
+          guestProgress[lessonId] = {
+            completed: false,
+            score: 0,
+            completedAt: null,
+            temporary: false,
+            lastSlide: 0,
+            pagesEngaged: [],
+            lastActivity: new Date()
+          };
+        }
+        
+        // Initialize pagesEngaged array if it doesn't exist
+        if (!guestProgress[lessonId].pagesEngaged) {
+          guestProgress[lessonId].pagesEngaged = [];
+        }
+        
+        // Add slide to pagesEngaged if not already present (ensures uniqueness)
+        if (!guestProgress[lessonId].pagesEngaged.includes(slideId)) {
+          guestProgress[lessonId].pagesEngaged = [...guestProgress[lessonId].pagesEngaged, slideId];
+          guestProgress[lessonId].lastActivity = new Date();
+          
+          localStorage.setItem('guestProgress', JSON.stringify(guestProgress));
+          
+          // Update local state
+          setUserProfile(prev => ({
+            ...prev,
+            progress: {
+              ...prev.progress,
+              [lessonId]: {
+                ...prev.progress?.[lessonId],
+                pagesEngaged: guestProgress[lessonId].pagesEngaged,
+                lastActivity: guestProgress[lessonId].lastActivity
+              }
+            }
+          }));
+        }
+        return;
+      }
+      
+      const userRef = doc(db, 'users', currentUser.uid);
+      const userDoc = await getDoc(userRef);
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const progress = userData.progress || {};
+        
+        // Initialize lesson progress if it doesn't exist
+        if (!progress[lessonId]) {
+          progress[lessonId] = {
+            completed: false,
+            score: 0,
+            completedAt: null,
+            temporary: false,
+            lastSlide: 0,
+            pagesEngaged: [],
+            lastActivity: new Date()
+          };
+        }
+        
+        // Initialize pagesEngaged array if it doesn't exist
+        if (!progress[lessonId].pagesEngaged) {
+          progress[lessonId].pagesEngaged = [];
+        }
+        
+        // Add slide to pagesEngaged if not already present (ensures uniqueness)
+        if (!progress[lessonId].pagesEngaged.includes(slideId)) {
+          progress[lessonId].pagesEngaged = [...progress[lessonId].pagesEngaged, slideId];
+          progress[lessonId].lastActivity = new Date();
+          
+          await setDoc(userRef, { progress }, { merge: true });
+          
+          // Update local state
+          setUserProfile(prev => ({
+            ...prev,
+            progress: {
+              ...prev.progress,
+              [lessonId]: {
+                ...prev.progress?.[lessonId],
+                pagesEngaged: progress[lessonId].pagesEngaged,
+                lastActivity: progress[lessonId].lastActivity
+              }
+            }
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error tracking slide engagement:', error);
     }
   };
 
@@ -223,7 +393,8 @@ export const AuthProvider = ({ children }) => {
     updateUserProgress,
     setLastLessonSlide,
     loading,
-    removeTemporaryProgress
+    removeTemporaryProgress,
+    trackSlideEngagement
   };
 
   return (
