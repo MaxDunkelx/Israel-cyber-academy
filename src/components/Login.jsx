@@ -19,6 +19,9 @@ const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showGuestWarning, setShowGuestWarning] = useState(false);
+  const [guestRole, setGuestRole] = useState(null);
+  const [guestWarningAccepted, setGuestWarningAccepted] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -85,11 +88,21 @@ const Login = () => {
     }
   };
 
-  // Handle guest mode
+  // Handle guest mode - show warning first
   const handleGuestMode = (role) => {
+    setGuestRole(role);
+    setShowGuestWarning(true);
+    setGuestWarningAccepted(false);
+  };
+
+  // Handle actual guest login after warning acceptance
+  const handleGuestLogin = () => {
+    if (!guestWarningAccepted) return;
+    
     localStorage.setItem('isGuest', 'true');
-    localStorage.setItem('guestRole', role);
-    toast.success(`ברוך הבא למצב ${role === 'student' ? 'תלמיד' : 'מורה'} אורח!`);
+    localStorage.setItem('guestRole', guestRole);
+    setShowGuestWarning(false);
+    toast.success(`ברוך הבא למצב ${guestRole === 'student' ? 'תלמיד' : 'מורה'} אורח!`);
     navigate('/roadmap');
   };
 
@@ -587,6 +600,67 @@ const Login = () => {
           </div>
         </footer>
       </motion.div>
+
+      {/* Guest Warning Modal */}
+      {showGuestWarning && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.8, opacity: 0 }}
+            className="bg-gray-800/95 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-gray-700 max-w-md w-full"
+          >
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Sparkles className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-3">
+                אזהרה - מצב אורח
+              </h3>
+              <p className="text-gray-300 text-lg leading-relaxed">
+                אתה עומד להיכנס למצב אורח כ-{guestRole === 'student' ? 'תלמיד' : 'מורה'}.
+                <br /><br />
+                <span className="text-yellow-400 font-semibold">שים לב:</span> הנתונים שלך לא יישמרו באופן קבוע ויימחקו בעת יציאה מהמערכת.
+              </p>
+            </div>
+
+            <div className="mb-6">
+              <label className="flex items-center space-x-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={guestWarningAccepted}
+                  onChange={(e) => setGuestWarningAccepted(e.target.checked)}
+                  className="w-5 h-5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                />
+                <span className="text-gray-300 text-lg">
+                  אני מבין שהנתונים שלי לא יישמרו באופן קבוע
+                </span>
+              </label>
+            </div>
+
+            <div className="flex space-x-4 space-x-reverse">
+              <button
+                onClick={() => setShowGuestWarning(false)}
+                className="flex-1 py-3 px-6 bg-gray-700 text-gray-300 rounded-xl font-medium hover:bg-gray-600 transition-all duration-300 border border-gray-600"
+              >
+                ביטול
+              </button>
+              <button
+                onClick={handleGuestLogin}
+                disabled={!guestWarningAccepted}
+                className="flex-1 py-3 px-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                המשך למצב אורח
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 };
