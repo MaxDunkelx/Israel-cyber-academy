@@ -43,7 +43,7 @@ const AppLayout = () => {
   const isGuest = currentUser?.isGuest || userProfile?.isGuest;
 
   // If no user and not guest, show login
-  if (!currentUser && !isGuest) {
+  if (!currentUser && !userProfile) {
     return <Login />;
   }
 

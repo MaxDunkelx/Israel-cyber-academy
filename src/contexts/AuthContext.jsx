@@ -306,6 +306,17 @@ export const AuthProvider = ({ children }) => {
 
   // Remove temporary progress on logout
   const logout = async () => {
+    // Handle guest mode logout
+    if (currentUser?.isGuest || userProfile?.isGuest) {
+      localStorage.removeItem('isGuest');
+      localStorage.removeItem('guestRole');
+      localStorage.removeItem('guestProgress');
+      setCurrentUser(null);
+      setUserProfile(null);
+      return;
+    }
+    
+    // Handle regular user logout
     localStorage.removeItem('isGuest');
     await removeTemporaryProgress();
     return signOut(auth);
