@@ -39,13 +39,15 @@ const ProtectedRoute = ({ children, allowedRoles = ['student', 'teacher'] }) => 
 const AppLayout = () => {
   const { currentUser, userProfile } = useAuth();
 
-  if (!currentUser) {
+  // Check if user is guest (either from currentUser or userProfile)
+  const isGuest = currentUser?.isGuest || userProfile?.isGuest;
+
+  // If no user and not guest, show login
+  if (!currentUser && !isGuest) {
     return <Login />;
   }
 
   // Guest mode: block profile and teacher dashboard
-  const isGuest = currentUser?.isGuest || userProfile?.isGuest;
-
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navigation />
@@ -93,7 +95,6 @@ function App() {
       <Router>
         <AuthProvider>
           <Routes>
-            <Route path="/" element={<Login />} />
             <Route path="/*" element={<AppLayout />} />
           </Routes>
           <Toaster 
