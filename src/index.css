@@ -5,13 +5,13 @@
 @layer base {
   html {
     direction: rtl;
-  }
-  
-  body {
+}
+
+body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-  }
+  min-height: 100vh;
+}
 }
 
 @layer components {
@@ -21,16 +21,16 @@
   
   .btn-secondary {
     @apply bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200;
-  }
+}
   
   .card {
     @apply bg-white rounded-xl shadow-lg p-6 border border-gray-200;
-  }
+}
   
   .lesson-card {
     @apply bg-white rounded-lg shadow-md p-4 border-l-4 transition-all duration-300 hover:shadow-lg;
-  }
-  
+}
+
   .lesson-locked {
     @apply border-l-red-500 bg-gray-50;
   }
@@ -41,5 +41,213 @@
   
   .lesson-completed {
     @apply border-l-green-500 bg-green-50;
+  }
+
+  /* Interactive Exercise Styles */
+  .exercise-container {
+    @apply max-w-6xl mx-auto p-6;
+  }
+
+  .exercise-header {
+    @apply text-center mb-8;
+  }
+
+  .exercise-title {
+    @apply text-3xl font-bold text-cyber-blue mb-4;
+  }
+
+  .exercise-instructions {
+    @apply text-xl text-cyber-blue leading-relaxed;
+  }
+
+  .exercise-grid {
+    @apply grid grid-cols-1 lg:grid-cols-2 gap-8;
+  }
+
+  .exercise-section {
+    @apply space-y-4;
+  }
+
+  .exercise-section-title {
+    @apply text-2xl font-bold text-center mb-4;
+  }
+
+  .exercise-item {
+    @apply p-4 rounded-xl border-2 cursor-pointer transition-all duration-200;
+  }
+
+  .exercise-item:hover {
+    @apply transform scale-105 shadow-lg;
+  }
+
+  .exercise-item-selected {
+    @apply border-cyber-blue bg-cyber-blue/10 shadow-lg scale-105;
+  }
+
+  .exercise-item-correct {
+    @apply border-cyber-green bg-cyber-green/10;
+  }
+
+  .exercise-item-incorrect {
+    @apply border-cyber-red bg-cyber-red/10;
+  }
+
+  .exercise-item-disabled {
+    @apply border-gray-400 bg-gray-100 opacity-60 cursor-not-allowed;
+  }
+
+  .exercise-feedback {
+    @apply text-center p-6 rounded-xl border-2;
+  }
+
+  .exercise-feedback-success {
+    @apply bg-cyber-green/10 text-cyber-green border-cyber-green;
+  }
+
+  .exercise-feedback-error {
+    @apply bg-cyber-red/10 text-cyber-red border-cyber-red;
+  }
+
+  .exercise-progress {
+    @apply text-center;
+  }
+
+  .exercise-progress-bar {
+    @apply w-full bg-gray-200 rounded-full h-2 mt-2;
+  }
+
+  .exercise-progress-fill {
+    @apply bg-cyber-blue h-2 rounded-full transition-all duration-500;
+  }
+
+  /* Animation Classes */
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite alternate;
+  }
+
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .animate-bounce-slow {
+    animation: bounce 2s infinite;
+  }
+
+  /* Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+  }
+
+  /* Video Container */
+  .video-container {
+    @apply relative w-full rounded-lg overflow-hidden shadow-lg;
+  }
+
+  .video-container iframe {
+    @apply w-full h-96;
+  }
+
+  /* Presentation Slide Styles */
+  .presentation-slide {
+    @apply min-h-screen flex items-center justify-center p-8;
+  }
+
+  .presentation-content {
+    @apply max-w-4xl mx-auto text-center;
+  }
+
+  .presentation-title {
+    @apply text-4xl font-bold mb-6;
+  }
+
+  .presentation-subtitle {
+    @apply text-xl mb-8 opacity-90;
+  }
+
+  .presentation-list {
+    @apply space-y-4 text-lg leading-relaxed;
+  }
+
+  /* Poll Styles */
+  .poll-option {
+    @apply w-full p-4 rounded-lg border-2 transition-all duration-200 cursor-pointer;
+  }
+
+  .poll-option:hover {
+    @apply border-cyber-blue bg-cyber-blue/10;
+  }
+
+  .poll-option-selected {
+    @apply border-cyber-blue bg-cyber-blue/20;
+  }
+
+  .poll-results {
+    @apply mt-8 p-4 bg-gray-800 rounded-lg;
+  }
+
+  /* Break Slide Styles */
+  .break-slide {
+    @apply max-w-2xl mx-auto text-center;
+  }
+
+  .break-icon {
+    @apply text-6xl mb-6;
+  }
+
+  .break-message {
+    @apply text-xl mb-8;
+  }
+
+  .break-activity {
+    @apply bg-gray-800 p-6 rounded-lg;
+  }
+
+  /* Reflection Slide Styles */
+  .reflection-question {
+    @apply bg-gray-800 p-6 rounded-lg mb-6;
+  }
+
+  .reflection-textarea {
+    @apply w-full p-3 bg-gray-700 rounded-lg border border-gray-600 focus:border-cyber-blue;
+  }
+
+  /* Text Visibility Fixes */
+  .text-gray-800 {
+    color: #1f2937 !important;
+  }
+
+  .text-gray-600 {
+    color: #4b5563 !important;
+  }
+
+  .text-gray-700 {
+    color: #374151 !important;
+  }
+
+  /* Ensure text remains visible on hover */
+  .hover\:text-gray-800:hover {
+    color: #1f2937 !important;
+  }
+
+  .hover\:text-gray-600:hover {
+    color: #4b5563 !important;
+  }
+
+  .hover\:text-gray-700:hover {
+    color: #374151 !important;
   }
 }

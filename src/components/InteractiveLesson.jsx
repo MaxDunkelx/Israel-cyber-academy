@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import DragDropExercise from './exercises/DragDropExercise';
 import MatchingExercise from './exercises/MatchingExercise';
+import MultipleChoiceExercise from './exercises/MultipleChoiceExercise';
 
 const InteractiveLesson = () => {
   const { lessonId } = useParams();
@@ -469,10 +470,11 @@ const VideoSlide = ({ slide, onAnswer, answers }) => {
 const InteractiveSlide = ({ slide, onAnswer, answers }) => {
   if (slide.content.type === 'drag-drop') {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <DragDropExercise
           exercise={{
             title: slide.title,
+            instructions: slide.content.instructions,
             items: slide.content.items,
             categories: slide.content.categories
           }}
@@ -481,19 +483,44 @@ const InteractiveSlide = ({ slide, onAnswer, answers }) => {
       </div>
     );
   }
+  
   if (slide.content.type === 'matching') {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <MatchingExercise
           exercise={{
             title: slide.title,
-            pairs: slide.content.pairs
+            instructions: slide.content.instructions,
+            pairs: slide.content.pairs.map((pair, index) => ({
+              ...pair,
+              correctMatch: index // Each pair matches with its corresponding index
+            }))
           }}
           onComplete={(isCorrect) => onAnswer(slide.id, { isCorrect })}
         />
       </div>
     );
   }
+
+  if (slide.content.type === 'multiple-choice') {
+    return (
+      <div className="max-w-6xl mx-auto">
+        <MultipleChoiceExercise
+          exercise={{
+            title: slide.title,
+            question: slide.content.question,
+            content: slide.content.content,
+            options: slide.content.options,
+            correctAnswer: slide.content.correctAnswer,
+            explanation: slide.content.explanation,
+            hint: slide.content.hint
+          }}
+          onComplete={(isCorrect) => onAnswer(slide.id, { isCorrect })}
+        />
+      </div>
+    );
+  }
+  
   // Default placeholder for other types
   return (
     <div className="max-w-4xl mx-auto text-center">

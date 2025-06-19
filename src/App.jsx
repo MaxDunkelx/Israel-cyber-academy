@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Toaster } from 'react-hot-toast';
+import ErrorBoundary from './components/common/ErrorBoundary';
+import LoadingSpinner from './components/common/LoadingSpinner';
 import Login from './components/Login';
 import Roadmap from './components/Roadmap';
 import Lesson from './components/Lesson';
@@ -14,14 +16,7 @@ const ProtectedRoute = ({ children, allowedRoles = ['student', 'teacher'] }) => 
   const { currentUser, userProfile, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-cyber-blue to-cyber-purple">
-        <div className="text-center text-white">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p>טוען...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner fullScreen text="טוען..." />;
   }
 
   // Guest users can access only roadmap and lessons
@@ -30,11 +25,11 @@ const ProtectedRoute = ({ children, allowedRoles = ['student', 'teacher'] }) => 
   }
 
   if (!currentUser) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   if (userProfile && !allowedRoles.includes(userProfile.role)) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return children;
@@ -94,36 +89,43 @@ const AppLayout = () => {
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <AppLayout />
-        <Toaster 
-          position="top-center"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: '#363636',
-              color: '#fff',
-              direction: 'rtl',
-            },
-            success: {
-              duration: 3000,
-              iconTheme: {
-                primary: '#10b981',
-                secondary: '#fff',
-              },
-            },
-            error: {
+    <ErrorBoundary>
+      <Router>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<Login />} />
+            <Route path="/*" element={<AppLayout />} />
+          </Routes>
+          <Toaster 
+            position="top-center"
+            toastOptions={{
               duration: 4000,
-              iconTheme: {
-                primary: '#ef4444',
-                secondary: '#fff',
+              style: {
+                background: '#1f2937',
+                color: '#fff',
+                direction: 'rtl',
+                borderRadius: '12px',
+                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)',
               },
-            },
-          }}
-        />
-      </AuthProvider>
-    </Router>
+              success: {
+                duration: 3000,
+                iconTheme: {
+                  primary: '#10b981',
+                  secondary: '#fff',
+                },
+              },
+              error: {
+                duration: 4000,
+                iconTheme: {
+                  primary: '#ef4444',
+                  secondary: '#fff',
+                },
+              },
+            }}
+          />
+        </AuthProvider>
+      </Router>
+    </ErrorBoundary>
   );
 }
 

@@ -35,7 +35,7 @@ export const lessons = [
               },
               {
                 type: "timer",
-                duration: 30,
+                duration: 45,
                 text: "זמן קריאה"
               }
             ]
@@ -92,11 +92,21 @@ export const lessons = [
         },
         {
           id: "slide-4",
+          type: "video",
+          title: "סוגי האקרים - הסבר וידאו 🎥",
+          content: {
+            description: "צפה בסרטון קצר המסביר על סוגי האקרים השונים",
+            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            duration: 180
+          }
+        },
+        {
+          id: "slide-5",
           type: "interactive",
           title: "סוגי האקרים - משחק התאמה 🎯",
           content: {
             type: "drag-drop",
-            instructions: "גרור כל האקר לקטגוריה הנכונה",
+            instructions: "לחץ על האקר ואז על הקטגוריה המתאימה לו",
             categories: [
               { id: "white", name: "כובע לבן", color: "#4CAF50", description: "מגן על מערכות" },
               { id: "gray", name: "כובע אפור", color: "#9E9E9E", description: "בדרך כלל טוב אך ייתכן שינצל הזדמנויות" },
@@ -126,13 +136,25 @@ export const lessons = [
                 text: "אדם שעובד בחברת אבטחה",
                 image: "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=150",
                 correctCategory: "white"
+              },
+              {
+                id: 5,
+                text: "אדם שפורץ לחשבונות של אחרים",
+                image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150",
+                correctCategory: "black"
+              },
+              {
+                id: 6,
+                text: "אדם שמוצא באג אבל מבקש כסף תמורת המידע",
+                image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
+                correctCategory: "gray"
               }
             ],
             duration: 300
           }
         },
         {
-          id: "slide-5",
+          id: "slide-6",
           type: "presentation",
           title: "מה זה אבטחת מידע? 🔒",
           content: {
@@ -178,23 +200,25 @@ export const lessons = [
           }
         },
         {
-          id: "slide-6",
+          id: "slide-7",
           type: "interactive",
           title: "כלים בסיסיים לאבטחה 🛠️",
           content: {
             type: "matching",
-            instructions: "התאם כל כלי לתיאור שלו",
+            instructions: "לחץ על כלי ואז על התיאור המתאים לו",
             pairs: [
               { tool: "אנטי וירוס", description: "מחפש תוכנות זדוניות במחשב", icon: "🦠" },
               { tool: "פיירוול", description: "בודק תעבורה נכנסת ויוצאת", icon: "🔥" },
               { tool: "סיסמה חזקה", description: "מגנה על החשבון שלך", icon: "🔐" },
-              { tool: "גיבוי", description: "שומר על הקבצים שלך", icon: "💾" }
+              { tool: "גיבוי", description: "שומר על הקבצים שלך", icon: "💾" },
+              { tool: "הצפנה", description: "מסתיר מידע חשוב", icon: "🔒" },
+              { tool: "אימות דו-שלבי", description: "מוסיף שכבת הגנה נוספת", icon: "📱" }
             ],
             duration: 300
           }
         },
         {
-          id: "slide-7",
+          id: "slide-8",
           type: "presentation",
           title: "שלושת תנאי הסייבר 📊",
           content: {
@@ -206,443 +230,256 @@ export const lessons = [
                 style: { fontSize: "2.5rem", color: "#333", textAlign: "center", marginBottom: "2rem" }
               },
               {
-                type: "cards",
+                type: "list",
                 items: [
-                  {
-                    title: "🌐 רשת",
-                    description: "חיבור בין מחשבים",
-                    color: "#4facfe"
-                  },
-                  {
-                    title: "📄 מידע",
-                    description: "משהו ששווה לגנוב",
-                    color: "#43e97b"
-                  },
-                  {
-                    title: "👤 גורם אנושי",
-                    description: "תמים או פגיע",
-                    color: "#fa709a"
-                  }
-                ]
+                  "🔐 סודיות (Confidentiality) - רק אנשים מורשים יכולים לגשת למידע",
+                  "✅ שלמות (Integrity) - המידע נשאר מדויק ולא משתנה",
+                  "🔄 זמינות (Availability) - המידע זמין כשצריך אותו"
+                ],
+                style: { fontSize: "1.3rem", color: "#333", textAlign: "right", lineHeight: "2.5" }
+              },
+              {
+                type: "image",
+                src: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=400",
+                alt: "Security Triangle",
+                style: { width: "250px", borderRadius: "15px", margin: "2rem auto" }
               }
             ],
-            duration: 180
-          }
-        },
-        {
-          id: "slide-8",
-          type: "interactive",
-          title: "המשולש הקדוש: CIA 🏛️",
-          content: {
-            type: "triangle-game",
-            instructions: "לחץ על כל צד של המשולש כדי ללמוד עליו",
-            triangle: {
-              confidentiality: {
-                title: "Confidentiality - סודיות",
-                description: "המידע נשאר סודי ורק אנשים מורשים יכולים לגשת אליו",
-                icon: "🤐",
-                color: "#4CAF50"
-              },
-              integrity: {
-                title: "Integrity - מהימנות",
-                description: "המידע נשאר מדויק ולא השתנה",
-                icon: "✅",
-                color: "#2196F3"
-              },
-              availability: {
-                title: "Availability - זמינות",
-                description: "המידע זמין כשצריכים אותו",
-                icon: "🕐",
-                color: "#FF9800"
-              }
-            },
-            duration: 300
+            duration: 200
           }
         },
         {
           id: "slide-9",
-          type: "video",
-          title: "ניתוח סרטון על פגיעות באזרחים 🎬",
+          type: "interactive",
+          title: "מבחן ידע - תנאי הסייבר 🧠",
           content: {
-            videoUrl: "https://www.youtube.com/embed/aAj8zHOEfiI",
-            description: "סרטון שמראה איך תקיפות סייבר יכולות לפגוע באזרחים רגילים",
-            duration: 240,
-            questions: [
-              {
-                question: "איך תקיפת סייבר יכולה לפגוע באזרחים רגילים?",
-                type: "text",
-                required: true
-              },
-              {
-                question: "מה אתה חושב על זה שאנשים רגילים יכולים להיות קורבנות?",
-                type: "text",
-                required: true
-              }
-            ]
+            type: "multiple-choice",
+            question: "איזה מהתנאים הבאים מתייחס לכך שהמידע נשאר מדויק ולא משתנה?",
+            options: [
+              { id: "a", text: "סודיות", icon: "🔐" },
+              { id: "b", text: "שלמות", icon: "✅" },
+              { id: "c", text: "זמינות", icon: "🔄" },
+              { id: "d", text: "אבטחה", icon: "🛡️" }
+            ],
+            correctAnswer: "b",
+            explanation: "שלמות (Integrity) מתייחסת לכך שהמידע נשאר מדויק, שלם ולא משתנה ללא הרשאה.",
+            hint: "חשב על המילה 'שלם' - מה זה אומר?"
           }
         },
         {
           id: "slide-10",
-          type: "interactive",
-          title: "מפת תקיפות סייבר בזמן אמת 🗺️",
+          type: "break",
+          title: "הפסקה קצרה ☕",
           content: {
-            type: "live-map",
-            instructions: "צפה במפת התקיפות בזמן אמת",
-            mapUrl: "https://threatmap.checkpoint.com",
-            description: "זוהי מפה שמראה תקיפות סייבר שקורות ברגע זה בכל העולם",
-            observations: [
-              "איזה מדינות מופיעות הכי הרבה?",
-              "איזה סוגי תקיפות אתה רואה?",
-              "מה אתה חושב על הכמות של התקיפות?"
-            ],
-            duration: 300
+            message: "בואו ננוח רגע לפני שנמשיך לחלק הבא!",
+            duration: 120,
+            activity: {
+              title: "חידון מהיר",
+              question: "מה זה VPN?",
+              hint: "זה קשור לרשת פרטית..."
+            }
           }
         },
         {
           id: "slide-11",
           type: "presentation",
-          title: "אמצעי הלחימה בסייבר ⚔️",
+          title: "איומים דיגיטליים נפוצים ⚠️",
           content: {
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            background: "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)",
             elements: [
               {
                 type: "title",
-                text: "אמצעי הלחימה בסייבר",
-                style: { fontSize: "2.5rem", color: "white", textAlign: "center", marginBottom: "2rem" }
+                text: "איומים דיגיטליים נפוצים",
+                style: { fontSize: "2.5rem", color: "#333", textAlign: "center", marginBottom: "2rem" }
               },
               {
                 type: "list",
                 items: [
-                  "🤫 שקטים – קשה לזיהוי",
-                  "🦠 ויראליים – התפשטות רחבה",
-                  "👻 אנונימיים – קשה לדעת מי תוקף"
+                  "🦠 וירוסים - תוכנות זדוניות שמתפשטות",
+                  "🎣 פישינג - הונאות דרך אימייל או הודעות",
+                  "🔓 סוס טרויאני - תוכנה שמסתירה קוד זדוני",
+                  "💰 כופר - תוכנה שחוסמת גישה לקבצים",
+                  "👥 הנדסה חברתית - מניפולציה פסיכולוגית",
+                  "🌐 התקפות DDoS - הצפת שרתים"
                 ],
-                style: { fontSize: "1.4rem", color: "white", textAlign: "right", lineHeight: "2.5" }
-              },
-              {
-                type: "warning",
-                text: "⚠️ זהירות: גם פרטיים יכולים להחזיק כלי נשק דיגיטליים!",
-                style: { fontSize: "1.2rem", color: "#ffeb3b", textAlign: "center", marginTop: "2rem" }
+                style: { fontSize: "1.2rem", color: "#333", textAlign: "right", lineHeight: "2" }
               }
             ],
-            duration: 180
+            duration: 300
           }
         },
         {
           id: "slide-12",
-          type: "presentation",
-          title: "דוגמה: Stuxnet 🦠",
+          type: "interactive",
+          title: "זיהוי איומים דיגיטליים 🔍",
           content: {
-            background: "linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)",
+            type: "multiple-choice",
+            question: "אימייל שמבקש ממך ללחוץ על קישור ולזין פרטי בנק הוא דוגמה ל:",
+            content: {
+              image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400",
+              text: "תמונה של אימייל חשוד"
+            },
+            options: [
+              { id: "a", text: "וירוס", icon: "🦠" },
+              { id: "b", text: "פישינג", icon: "🎣" },
+              { id: "c", text: "סוס טרויאני", icon: "🔓" },
+              { id: "d", text: "כופר", icon: "💰" }
+            ],
+            correctAnswer: "b",
+            explanation: "זהו פישינג - ניסיון להונות אותך לתת פרטים אישיים דרך אימייל מזויף.",
+            hint: "חשב על דיג - מה הדייג מנסה לתפוס?"
+          }
+        },
+        {
+          id: "slide-13",
+          type: "presentation",
+          title: "איך להישאר בטוחים באינטרנט? 🛡️",
+          content: {
+            background: "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
             elements: [
               {
                 type: "title",
-                text: "Stuxnet - הנשק האלקטרוני הראשון",
-                style: { fontSize: "2.5rem", color: "white", textAlign: "center", marginBottom: "2rem" }
+                text: "טיפים לאבטחה אישית",
+                style: { fontSize: "2.5rem", color: "#333", textAlign: "center", marginBottom: "2rem" }
               },
               {
                 type: "list",
                 items: [
-                  "🦠 תולעת מחשב שפגעה פיזית בתשתית גרעינית",
-                  "🎯 נחשבת לנשק האלקטרוני הראשון",
-                  "⚠️ מראה את הסכנה – גם פרטיים יכולים להחזיק כלי נשק דיגיטליים",
-                  "🌍 השפיעה על תשתיות באיראן"
+                  "🔐 השתמש בסיסמאות חזקות וייחודיות",
+                  "📱 הפעל אימות דו-שלבי",
+                  "🔄 עדכן תוכנות באופן קבוע",
+                  "🔍 בדוק כתובות אתרים לפני לחיצה",
+                  "💾 גבה קבצים חשובים",
+                  "🚫 אל תפתח קבצים מכתובות לא מוכרות",
+                  "👥 אל תשתף מידע אישי ברשתות חברתיות",
+                  "🔒 השתמש ברשתות WiFi מאובטחות"
                 ],
-                style: { fontSize: "1.3rem", color: "white", textAlign: "right", lineHeight: "2" }
-              },
-              {
-                type: "animation",
-                type: "pulse",
-                element: "💥",
-                style: { fontSize: "4rem", textAlign: "center", margin: "2rem" }
+                style: { fontSize: "1.1rem", color: "#333", textAlign: "right", lineHeight: "2" }
               }
             ],
             duration: 240
           }
         },
         {
-          id: "slide-13",
+          id: "slide-14",
           type: "interactive",
-          title: "סוגי תוקפים - משחק זיהוי 🎮",
+          title: "בניית סיסמה חזקה 🔐",
           content: {
-            type: "attacker-identification",
-            instructions: "זהה איזה סוג תוקף כל אחד",
-            attackers: [
+            type: "drag-drop",
+            instructions: "בנה סיסמה חזקה על ידי בחירת האלמנטים הנכונים",
+            categories: [
+              { id: "strong", name: "סיסמה חזקה", color: "#4CAF50", description: "מכילה את כל האלמנטים הנדרשים" },
+              { id: "weak", name: "סיסמה חלשה", color: "#f44336", description: "חסרים אלמנטים חשובים" }
+            ],
+            items: [
               {
                 id: 1,
-                name: "אקטיביסט",
-                description: "פועל בשם צדק חברתי",
-                image: "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=150",
-                type: "activist",
-                explanation: "מאמין שהוא עושה טוב לחברה"
+                text: "123456",
+                correctCategory: "weak"
               },
               {
                 id: 2,
-                name: "האקר עצמי",
-                description: "מנצל חולשות לרווח אישי",
-                image: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=150",
-                type: "selfish",
-                explanation: "רוצה כסף או מידע אישי"
+                text: "password",
+                correctCategory: "weak"
               },
               {
                 id: 3,
-                name: "סקיד",
-                description: "משתמש בכלים קיימים בלי הבנה מעמיקה",
-                image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
-                type: "script-kiddie",
-                explanation: "לא מבין מה הוא עושה, רק משתמש בכלים"
+                text: "MyP@ssw0rd2024!",
+                correctCategory: "strong"
+              },
+              {
+                id: 4,
+                text: "abc123",
+                correctCategory: "weak"
+              },
+              {
+                id: 5,
+                text: "Tr0ub4dor&3",
+                correctCategory: "strong"
+              },
+              {
+                id: 6,
+                text: "qwerty",
+                correctCategory: "weak"
               }
             ],
             duration: 300
           }
         },
         {
-          id: "slide-14",
-          type: "break",
-          title: "הפסקה קצרה! ☕",
-          content: {
-            duration: 900, // 15 minutes
-            message: "זמן הפסקה! חזור בעוד 15 דקות",
-            activity: {
-              type: "puzzle",
-              title: "חידת סייבר",
-              question: "מה המשותף בין מחשב לבין בית?",
-              answer: "שניהם צריכים דלתות נעולות (סיסמאות) כדי להישאר בטוחים!",
-              hint: "חשב על אבטחה..."
-            }
-          }
-        },
-        {
           id: "slide-15",
-          type: "presentation",
-          title: "איום הסייבר כיום 📈",
+          type: "video",
+          title: "סרטון על אבטחת סיסמאות 🎬",
           content: {
-            background: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
-            elements: [
-              {
-                type: "title",
-                text: "איום הסייבר כיום",
-                style: { fontSize: "2.5rem", color: "white", textAlign: "center", marginBottom: "2rem" }
-              },
-              {
-                type: "statistics",
-                items: [
-                  {
-                    number: "3+ מיליון",
-                    label: "משרות סייבר פתוחות בעולם",
-                    icon: "💼"
-                  },
-                  {
-                    number: "גבוה מאוד",
-                    label: "משכורות בתחום הסייבר",
-                    icon: "💰"
-                  },
-                  {
-                    number: "עולה כל שנה",
-                    label: "הביקוש לאנשי סייבר",
-                    icon: "📈"
-                  }
-                ]
-              }
-            ],
+            description: "צפה בסרטון המסביר איך ליצור ולשמור סיסמאות חזקות",
+            videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
             duration: 180
           }
         },
         {
           id: "slide-16",
           type: "interactive",
-          title: "על מה מגנים? 🛡️",
+          title: "מבחן סופי - מה למדנו? 🎓",
           content: {
-            type: "protection-targets",
-            instructions: "לחץ על כל מטרה כדי ללמוד עליה",
-            targets: [
-              {
-                id: "personal",
-                name: "מידע אישי",
-                description: "סיסמאות, פרטי בנק, תמונות פרטיות",
-                icon: "👤",
-                color: "#4CAF50"
-              },
-              {
-                id: "business",
-                name: "מידע עסקי",
-                description: "נתונים של חברות, רשימות לקוחות",
-                icon: "🏢",
-                color: "#2196F3"
-              },
-              {
-                id: "government",
-                name: "מידע ממשלתי",
-                description: "נתונים של מדינות, צבא, משטרה",
-                icon: "🏛️",
-                color: "#FF9800"
-              },
-              {
-                id: "devices",
-                name: "מכשירים",
-                description: "מחשבים, סלולרים, אתרים, שרתים",
-                icon: "💻",
-                color: "#9C27B0"
-              }
+            type: "multiple-choice",
+            question: "איזה מהבאים הוא האקר כובע לבן?",
+            options: [
+              { id: "a", text: "אדם שפורץ לבנק לגניבת כסף", icon: "😈" },
+              { id: "b", text: "אדם שמוצא באגים ומדווח עליהם", icon: "🛡️" },
+              { id: "c", text: "אדם שפורץ לחשבונות של אחרים", icon: "🔓" },
+              { id: "d", text: "אדם שדורש כסף תמורת מידע", icon: "💰" }
             ],
-            duration: 300
+            correctAnswer: "b",
+            explanation: "האקר כובע לבן הוא אדם שמשתמש בידע שלו כדי לעזור ולהגן על מערכות.",
+            hint: "חשב על צבע לבן - מה הוא מסמל?"
           }
         },
         {
           id: "slide-17",
-          type: "presentation",
-          title: "האם ניתן להגן ב-100%? ❓",
+          type: "reflection",
+          title: "הרהור על מה שלמדנו 🤔",
           content: {
-            background: "linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)",
-            elements: [
-              {
-                type: "title",
-                text: "האם ניתן להגן ב-100%?",
-                style: { fontSize: "2.5rem", color: "white", textAlign: "center", marginBottom: "2rem" }
-              },
-              {
-                type: "answer",
-                text: "לא!",
-                style: { fontSize: "3rem", color: "#ffeb3b", textAlign: "center", marginBottom: "2rem" }
-              },
-              {
-                type: "subtitle",
-                text: "שלושה גורמים עיקריים שמונעים זאת:",
-                style: { fontSize: "1.5rem", color: "white", textAlign: "center", marginBottom: "1rem" }
-              },
-              {
-                type: "list",
-                items: [
-                  "👤 הגורם האנושי – אנשים עושים טעויות",
-                  "😴 עצלנות – לא מעדכנים תוכנות",
-                  "💰 חסכנות – לא רוצים לשלם על אבטחה"
-                ],
-                style: { fontSize: "1.3rem", color: "white", textAlign: "right", lineHeight: "2" }
-              }
+            questions: [
+              "מה הדבר הכי מעניין שלמדת היום?",
+              "איך תשנה את ההתנהגות שלך באינטרנט אחרי השיעור?",
+              "מה היית רוצה ללמוד עוד על אבטחת סייבר?"
             ],
-            duration: 240
+            duration: 300
           }
         },
         {
           id: "slide-18",
-          type: "interactive",
-          title: "משחק סייבר אינטראקטיבי 🎮",
-          content: {
-            type: "cyber-game",
-            instructions: "שחק במשחק סייבר אינטראקטיבי",
-            gameUrl: "https://www.pbs.org/wgbh/nova/labs/lab/cyber/#",
-            description: "משחק שמלמד על אבטחת סייבר בדרך מהנה",
-            objectives: [
-              "למד על סוגי תקיפות",
-              "הגן על מערכות",
-              "זהה חולשות"
-            ],
-            duration: 600
-          }
-        },
-        {
-          id: "slide-19",
-          type: "interactive",
-          title: "תרגיל לסיכום: DoS ו-DDoS 📝",
-          content: {
-            type: "quiz",
-            instructions: "ענה על השאלות ובדוק כמה למדת",
-            questions: [
-              {
-                question: "מהי התקפת DoS?",
-                options: [
-                  "התקפה שמנסה לעצור שירות",
-                  "התקפה שמנסה לגנוב מידע",
-                  "התקפה שמנסה לפרוץ למחשב",
-                  "התקפה שמנסה להפיץ וירוס"
-                ],
-                correct: 0,
-                explanation: "DoS = Denial of Service - מנסה לעצור שירות"
-              },
-              {
-                question: "מה ההבדל בין DoS ל-DDoS?",
-                options: [
-                  "אין הבדל",
-                  "DDoS מגיע ממקור אחד, DoS ממקורות רבים",
-                  "DoS מגיע ממקור אחד, DDoS ממקורות רבים",
-                  "DoS יותר מסוכן"
-                ],
-                correct: 2,
-                explanation: "DDoS = Distributed DoS - מגיע ממקורות רבים"
-              },
-              {
-                question: "מה זה 'המחשב שלי הוא Botnet'?",
-                options: [
-                  "המחשב שלי חזק מאוד",
-                  "המחשב שלי נגוע וירוס שמשתמשים בו לתקיפות",
-                  "המחשב שלי מחובר לרשת",
-                  "המחשב שלי מוגן"
-                ],
-                correct: 1,
-                explanation: "Botnet = רשת מחשבים נגועים שמשתמשים בהם לתקיפות"
-              }
-            ],
-            showResults: true,
-            certificate: true,
-            duration: 300
-          }
-        },
-        {
-          id: "slide-20",
           type: "presentation",
-          title: "חשיבות התחום והצורך באנשי סייבר 🌟",
+          title: "סיכום השיעור 📚",
           content: {
-            background: "linear-gradient(135deg, #4CAF50 0%, #45a049 100%)",
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
             elements: [
               {
                 type: "title",
-                text: "למה חשוב ללמוד סייבר?",
+                text: "כל הכבוד! סיימת את השיעור הראשון",
                 style: { fontSize: "2.5rem", color: "white", textAlign: "center", marginBottom: "2rem" }
               },
               {
                 type: "list",
                 items: [
-                  "💰 מקצוע עם שכר גבוה",
-                  "🎯 עניין רב ואתגרים",
-                  "🚀 עתיד מבטיח",
-                  "🌍 מגן על העולם הדיגיטלי",
-                  "🎓 האקינג חוקי כל עוד משתמשים בו לטובה"
+                  "✅ למדת מה זה סייבר ואבטחת מידע",
+                  "✅ הכרת סוגי האקרים השונים",
+                  "✅ הבנת איומים דיגיטליים נפוצים",
+                  "✅ למדת איך להישאר בטוחים באינטרנט",
+                  "✅ התאמנת על כלים אינטראקטיביים"
                 ],
                 style: { fontSize: "1.3rem", color: "white", textAlign: "right", lineHeight: "2" }
               },
               {
-                type: "animation",
-                type: "bounce",
-                element: "🏆",
-                style: { fontSize: "4rem", textAlign: "center", margin: "2rem" }
+                type: "subtitle",
+                text: "בשיעור הבא נלמד על רשתות מחשבים ואבטחתן!",
+                style: { fontSize: "1.5rem", color: "white", textAlign: "center", marginTop: "2rem", opacity: 0.9 }
               }
             ],
-            duration: 180
-          }
-        },
-        {
-          id: "slide-21",
-          type: "reflection",
-          title: "מה למדת היום? 🤔",
-          content: {
-            questions: [
-              "מה היה הדבר הכי מעניין שלמדת על האקרים?",
-              "מה הדבר הכי חשוב שתזכור על אבטחת סייבר?",
-              "איך תשנה את ההתנהגות שלך באינטרנט?",
-              "האם תרצה ללמוד עוד על סייבר? למה?",
-              "מה היית רוצה ללמוד בשיעור הבא?"
-            ],
-            type: "text",
-            required: true,
-            duration: 300
+            duration: 120
           }
         }
-      ],
-      progress: {
-        totalSlides: 21,
-        requiredActivities: ["slide-2", "slide-4", "slide-6", "slide-8", "slide-10", "slide-13", "slide-16", "slide-19"],
-        minimumScore: 70
-      }
+      ]
     }
   },
   {
