@@ -37,49 +37,37 @@ const ProtectedRoute = ({ children, allowedRoles = ['student', 'teacher'] }) => 
 
 // Main App Layout
 const AppLayout = () => {
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser, userProfile, loading } = useAuth();
 
-  // Check if user is guest (either from currentUser or userProfile)
+  // Show loading while authentication state is being determined
+  if (loading) {
+    return <LoadingSpinner fullScreen text="טוען..." />;
+  }
+
+  // Check if user is authenticated (either regular user or guest)
+  const isAuthenticated = currentUser || userProfile;
   const isGuest = currentUser?.isGuest || userProfile?.isGuest;
 
-  // If no user and not guest, show login
-  if (!currentUser && !userProfile) {
+  // If not authenticated, show login page
+  if (!isAuthenticated) {
     return <Login />;
   }
 
-  // Guest mode: block profile and teacher dashboard
+  // If authenticated, show the main app with navigation
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navigation />
       <div className="flex-1">
         <Routes>
-          <Route path="/roadmap" element={
-            <ProtectedRoute>
-              <Roadmap />
-            </ProtectedRoute>
-          } />
-          <Route path="/lesson/:lessonId" element={
-            <ProtectedRoute>
-              <Lesson />
-            </ProtectedRoute>
-          } />
-          <Route path="/interactive-lesson/:lessonId" element={
-            <ProtectedRoute>
-              <InteractiveLesson />
-            </ProtectedRoute>
-          } />
+          <Route path="/roadmap" element={<Roadmap />} />
+          <Route path="/lesson/:lessonId" element={<Lesson />} />
+          <Route path="/interactive-lesson/:lessonId" element={<InteractiveLesson />} />
           <Route path="/teacher" element={
-            isGuest ? <Navigate to="/roadmap" replace /> :
-            <ProtectedRoute allowedRoles={['teacher']}>
-              <TeacherDashboard />
-            </ProtectedRoute>
+            isGuest ? <Navigate to="/roadmap" replace /> : <TeacherDashboard />
           } />
-          <Route path="/profile" element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          } />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/" element={<Navigate to="/roadmap" replace />} />
+          <Route path="*" element={<Navigate to="/roadmap" replace />} />
         </Routes>
       </div>
       <footer className="w-full text-center py-4 text-gray-500 text-xs bg-white border-t mt-8">

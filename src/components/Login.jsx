@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, User, Shield, GraduationCap, BookOpen, ArrowRight, Sparkles, Zap, Target, Globe, Users, Award, Code, Lock, Star, TrendingUp, Clock } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -12,7 +11,6 @@ import cyberLogo from '../assets/cyber-logo.png';
  * Features stunning animations, proper branding, and comprehensive information
  */
 const Login = () => {
-  const navigate = useNavigate();
   const { login, signup } = useAuth();
   const [showLoginForm, setShowLoginForm] = useState(false);
   const [selectedRole, setSelectedRole] = useState(null);
@@ -70,11 +68,9 @@ const Login = () => {
       if (isLogin) {
         await login(formData.email, formData.password);
         toast.success('התחברת בהצלחה!');
-        navigate('/roadmap');
       } else {
         await signup(formData.email, formData.password, formData.displayName, selectedRole);
         toast.success('נרשמת בהצלחה!');
-        navigate('/roadmap');
       }
     } catch (error) {
       console.error('Authentication error:', error);
@@ -103,7 +99,6 @@ const Login = () => {
     localStorage.setItem('guestRole', guestRole);
     setShowGuestWarning(false);
     toast.success(`ברוך הבא למצב ${guestRole === 'student' ? 'תלמיד' : 'מורה'} אורח!`);
-    navigate('/roadmap');
   };
 
   // Handle role selection
