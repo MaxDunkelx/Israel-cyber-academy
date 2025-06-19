@@ -160,7 +160,7 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/20 to-purple-900/20 relative overflow-x-hidden">
       {/* Large Background Logo */}
-      <div className="fixed inset-0 flex items-center justify-center opacity-15 pointer-events-none">
+      <div className="fixed inset-0 flex items-center justify-center opacity-25 pointer-events-none z-0">
         <img 
           src={cyberLogo} 
           alt="Israel Cyber Campus Background Logo" 
@@ -169,7 +169,7 @@ const Login = () => {
       </div>
 
       {/* Animated Background Elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
         <motion.div
           className="absolute top-20 left-20 w-40 h-40 bg-blue-500/10 rounded-full blur-xl"
           animate={{
@@ -222,13 +222,13 @@ const Login = () => {
 
       {/* Main Content */}
       <motion.div 
-        className="relative z-10 min-h-screen flex flex-col"
+        className="relative z-10 min-h-screen flex flex-col pt-8"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
         {/* Hero Section */}
-        <section className="flex-1 flex flex-col justify-center items-center px-6 py-20">
+        <section className="flex-1 flex flex-col justify-center items-center px-6 py-20 mt-8">
           {/* Logo Section */}
           <motion.div 
             className="text-center mb-16"
