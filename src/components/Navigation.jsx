@@ -59,7 +59,7 @@ const Navigation = () => {
   // Navigation items based on user role
   const getNavItems = () => {
     const baseItems = [
-      { name: 'דף הבית', path: '/console', icon: Home }
+      { name: 'דף הבית', path: '/roadmap', icon: Home }
     ];
 
     if (role === 'teacher') {
@@ -85,7 +85,7 @@ const Navigation = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo and Brand */}
           <div className="flex items-center">
-            <Link to="/console" className="flex items-center space-x-3">
+            <Link to="/roadmap" className="flex items-center space-x-3">
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                 <Shield className="w-5 h-5 text-white" />
               </div>

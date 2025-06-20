@@ -695,7 +695,7 @@ const Profile = () => {
         {/* Go back to home button */}
         <div className="mb-4 flex justify-end">
           <button
-            onClick={() => navigate('/console')}
+            onClick={() => navigate('/roadmap')}
             className="btn-secondary flex items-center"
           >
             <Home className="h-5 w-5 ml-2" />

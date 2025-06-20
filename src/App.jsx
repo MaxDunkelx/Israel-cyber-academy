@@ -28,7 +28,7 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 import LoadingSpinner from './components/common/LoadingSpinner';
 
 // Import components
-import EnhancedLogin from './components/EnhancedLogin';
+import Login from './components/Login';
 import Roadmap from './components/Roadmap';
 import InteractiveLesson from './components/InteractiveLesson';
 import Profile from './components/Profile';
@@ -36,23 +36,6 @@ import TeacherDashboard from './components/TeacherDashboard';
 import Navigation from './components/Navigation';
 import FirebaseDiagnostic from './components/FirebaseDiagnostic';
 import DataTest from './components/DataTest';
-
-/**
- * Root Redirect Component
- * 
- * Handles redirects from the root path based on authentication state.
- * 
- * @returns {JSX.Element} Redirect component
- */
-const RootRedirect = () => {
-  const { currentUser } = useAuth();
-  
-  if (currentUser) {
-    return <Navigate to="/console" replace />;
-  } else {
-    return <Navigate to="/login" replace />;
-  }
-};
 
 /**
  * Protected Route Component
@@ -78,11 +61,11 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
   }
 
   if (!currentUser) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   if (requiredRole && role !== requiredRole) {
-    return <Navigate to="/console" replace />;
+    return <Navigate to="/roadmap" replace />;
   }
 
   return children;
@@ -130,25 +113,17 @@ const AppContent = () => {
         
         {/* Main Routes */}
         <Routes>
-          {/* Root Route - Handle redirects */}
+          {/* Public Routes */}
           <Route 
             path="/" 
             element={
-              <RootRedirect />
+              currentUser ? <Navigate to="/roadmap" replace /> : <Login />
             } 
           />
           
-          {/* Login Route */}
-          <Route 
-            path="/login" 
-            element={
-              currentUser ? <Navigate to="/console" replace /> : <EnhancedLogin />
-            } 
-          />
-          
-          {/* Main Console/Dashboard */}
+          {/* Protected Routes */}
           <Route
-            path="/console"
+            path="/roadmap"
             element={
               <ProtectedRoute>
                 <Roadmap />
@@ -156,9 +131,8 @@ const AppContent = () => {
             }
           />
           
-          {/* Lessons */}
           <Route
-            path="/lessons/:lessonId"
+            path="/interactive-lesson/:lessonId"
             element={
               <ProtectedRoute>
                 <InteractiveLesson />
@@ -166,7 +140,6 @@ const AppContent = () => {
             }
           />
           
-          {/* Profile */}
           <Route
             path="/profile"
             element={
@@ -201,7 +174,7 @@ const AppContent = () => {
           />
           
           {/* Fallback Route */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         
         {/* Toast Notifications */}
