@@ -9,6 +9,11 @@
  * - Authentication: User login, registration, and session management
  * - Firestore: User profiles, lesson progress, and analytics data
  * 
+ * IMPORTANT FOR PRODUCTION:
+ * - Add your GitHub Pages domain to Firebase Auth authorized domains:
+ *   Go to Firebase Console > Authentication > Settings > Authorized domains
+ *   Add: maxdunkelx.github.io
+ * 
  * Security Note: In production, these API keys should be stored in environment variables
  * and not committed to version control.
  */
