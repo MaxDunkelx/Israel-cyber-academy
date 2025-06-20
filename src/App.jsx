@@ -28,7 +28,7 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 import LoadingSpinner from './components/common/LoadingSpinner';
 
 // Import components
-import Login from './components/Login';
+import EnhancedLogin from './components/EnhancedLogin';
 import Roadmap from './components/Roadmap';
 import InteractiveLesson from './components/InteractiveLesson';
 import Profile from './components/Profile';
@@ -117,7 +117,7 @@ const AppContent = () => {
           <Route 
             path="/" 
             element={
-              currentUser ? <Navigate to="/roadmap" replace /> : <Login />
+              currentUser ? <Navigate to="/roadmap" replace /> : <EnhancedLogin />
             } 
           />
           
