@@ -2,6 +2,12 @@
 
 An interactive learning platform for cybersecurity education, built with React and modern web technologies.
 
+## 🌐 Live Demo
+
+**🎯 [Try it live now!](https://maxdunkelx.github.io/Israel-cyber-academy)**
+
+Experience the full interactive learning platform with cybersecurity lessons, exercises, and progress tracking.
+
 ## 🌟 Features
 
 - **Interactive Lessons**: Slide-based learning with multiple content types
