@@ -11,15 +11,15 @@
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * Password strength requirements
+ * Password strength requirements - Updated to be more flexible
  * @constant
  */
 const PASSWORD_REQUIREMENTS = {
-  minLength: 8,
-  requireUppercase: true,
+  minLength: 6, // Reduced from 8 to 6
+  requireUppercase: false, // Removed uppercase requirement
   requireLowercase: true,
   requireNumbers: true,
-  requireSpecialChars: true
+  requireSpecialChars: false // Removed special character requirement
 };
 
 /**
@@ -61,7 +61,7 @@ export const validatePassword = (password, requirements = PASSWORD_REQUIREMENTS)
     errors.push(`Password must be at least ${requirements.minLength} characters long`);
   }
   
-  // Check for uppercase letters
+  // Check for uppercase letters (only if required)
   if (requirements.requireUppercase && !/[A-Z]/.test(password)) {
     errors.push('Password must contain at least one uppercase letter');
   }
@@ -76,7 +76,7 @@ export const validatePassword = (password, requirements = PASSWORD_REQUIREMENTS)
     errors.push('Password must contain at least one number');
   }
   
-  // Check for special characters
+  // Check for special characters (only if required)
   if (requirements.requireSpecialChars && !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
     errors.push('Password must contain at least one special character');
   }

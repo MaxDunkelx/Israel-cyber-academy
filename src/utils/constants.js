@@ -8,8 +8,7 @@ export const APP_CONFIG = {
 // User roles
 export const USER_ROLES = {
   STUDENT: 'student',
-  TEACHER: 'teacher',
-  GUEST: 'guest'
+  TEACHER: 'teacher'
 };
 
 // Lesson types
@@ -49,8 +48,26 @@ export const ANIMATIONS = {
 
 // Local storage keys
 export const STORAGE_KEYS = {
-  GUEST_MODE: 'isGuest',
-  GUEST_ROLE: 'guestRole',
   THEME: 'theme',
   LANGUAGE: 'language'
+};
+
+// Lesson status
+export const LESSON_STATUS = {
+  LOCKED: 'locked',
+  AVAILABLE: 'available',
+  COMPLETED: 'completed'
+};
+
+// Progress tracking
+export const PROGRESS = {
+  TEMPORARY: 'temporary',
+  PERMANENT: 'permanent'
+};
+
+// Achievement types
+export const ACHIEVEMENTS = {
+  FIRST_LESSON: 'first_lesson',
+  THREE_LESSONS: 'three_lessons',
+  ONE_HOUR: 'one_hour'
 }; 

@@ -10,7 +10,6 @@ import {
   X, 
   Shield, 
   GraduationCap,
-  Sparkles,
   Settings
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -24,7 +23,7 @@ const Navigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout } = useAuth();
-  const { displayName, role, isGuest } = useUserProfile();
+  const { displayName, role } = useUserProfile();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
@@ -114,14 +113,6 @@ const Navigation = () => {
 
           {/* User Menu */}
           <div className="flex items-center space-x-4">
-            {/* Guest Badge */}
-            {isGuest && (
-              <div className="flex items-center space-x-2 bg-yellow-600/20 text-yellow-400 px-3 py-1 rounded-full text-sm">
-                <Sparkles className="w-4 h-4" />
-                <span>מצב אורח</span>
-              </div>
-            )}
-
             {/* User Profile Menu */}
             <div className="relative" ref={userMenuRef}>
               <button
@@ -129,9 +120,7 @@ const Navigation = () => {
                 className="flex items-center space-x-3 bg-gray-800/50 hover:bg-gray-700/50 px-4 py-2 rounded-lg text-white transition-all duration-200"
               >
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                  {isGuest ? (
-                    <Sparkles className="w-4 h-4 text-white" />
-                  ) : role === 'teacher' ? (
+                  {role === 'teacher' ? (
                     <Shield className="w-4 h-4 text-white" />
                   ) : (
                     <GraduationCap className="w-4 h-4 text-white" />
@@ -151,7 +140,7 @@ const Navigation = () => {
                   <div className="px-4 py-2 border-b border-gray-700">
                     <p className="text-sm text-gray-300">{displayName}</p>
                     <p className="text-xs text-gray-500">
-                      {isGuest ? 'משתמש אורח' : role === 'teacher' ? 'מורה' : 'תלמיד'}
+                      {role === 'teacher' ? 'מורה' : 'תלמיד'}
                     </p>
                   </div>
                   
@@ -172,7 +161,7 @@ const Navigation = () => {
                     className="flex items-center space-x-2 px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-colors w-full text-right"
                   >
                     <LogOut className="w-4 h-4" />
-                    <span>{isGuest ? 'התנתק' : 'התנתק'}</span>
+                    <span>{'התנתק'}</span>
                   </button>
                 </motion.div>
               )}
@@ -222,7 +211,7 @@ const Navigation = () => {
                 className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-colors w-full text-right"
               >
                 <LogOut className="w-4 h-4" />
-                <span>{isGuest ? 'התנתק' : 'התנתק'}</span>
+                <span>{'התנתק'}</span>
               </button>
             </div>
           </motion.div>

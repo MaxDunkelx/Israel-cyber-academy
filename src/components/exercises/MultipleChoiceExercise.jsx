@@ -31,38 +31,38 @@ const MultipleChoiceExercise = ({ exercise, onComplete }) => {
   const getAnswerClass = (optionId) => {
     if (!isAnswered) {
       return selectedAnswer === optionId
-        ? 'border-cyber-blue bg-blue-50'
-        : 'border-gray-300 bg-white hover:border-cyber-blue hover:bg-blue-50';
+        ? 'border-blue-400 bg-blue-800/50'
+        : 'border-gray-600 bg-gray-700/50 hover:border-blue-400 hover:bg-blue-800/30';
     }
 
     if (optionId === exercise.correctAnswer) {
-      return 'border-cyber-green bg-green-50';
+      return 'border-green-400 bg-green-800/30';
     }
 
     if (optionId === selectedAnswer && optionId !== exercise.correctAnswer) {
-      return 'border-cyber-red bg-red-50';
+      return 'border-red-400 bg-red-800/30';
     }
 
-    return 'border-gray-300 bg-gray-50 opacity-60';
+    return 'border-gray-600 bg-gray-600/50 opacity-60';
   };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="text-center">
-        <h3 className="text-3xl font-bold text-cyber-blue mb-4">
-          {exercise.title}
+        <h3 className="text-3xl font-bold text-white mb-4">
+          {exercise?.title || "שאלה רב-ברירתית"}
         </h3>
-        {exercise.question && (
-          <p className="text-xl text-cyber-blue leading-relaxed mb-6">
+        {exercise?.question && (
+          <p className="text-xl text-gray-200 leading-relaxed mb-6">
             {exercise.question}
           </p>
         )}
       </div>
 
       {/* Content */}
-      {exercise.content && (
-        <div className="bg-gray-50 p-6 rounded-xl border-2 border-gray-200">
+      {exercise?.content && (
+        <div className="bg-gray-800/50 p-6 rounded-xl border-2 border-gray-600">
           {exercise.content.image && (
             <img 
               src={exercise.content.image} 
@@ -71,7 +71,7 @@ const MultipleChoiceExercise = ({ exercise, onComplete }) => {
             />
           )}
           {exercise.content.text && (
-            <p className="text-lg text-gray-700 text-center">
+            <p className="text-lg text-white text-center">
               {exercise.content.text}
             </p>
           )}
@@ -80,7 +80,7 @@ const MultipleChoiceExercise = ({ exercise, onComplete }) => {
 
       {/* Answer Options */}
       <div className="space-y-3">
-        {exercise.options.map((option, index) => (
+        {exercise?.options?.map((option, index) => (
           <motion.div
             key={option.id}
             className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
@@ -93,8 +93,8 @@ const MultipleChoiceExercise = ({ exercise, onComplete }) => {
             <div className="flex items-center gap-4">
               <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-lg ${
                 selectedAnswer === option.id
-                  ? 'border-cyber-blue bg-cyber-blue text-white'
-                  : 'border-gray-300 bg-white text-gray-600'
+                  ? 'border-blue-400 bg-blue-400 text-white'
+                  : 'border-gray-500 bg-gray-600 text-gray-300'
               }`}>
                 {String.fromCharCode(65 + index)} {/* A, B, C, D */}
               </div>
@@ -102,7 +102,7 @@ const MultipleChoiceExercise = ({ exercise, onComplete }) => {
                 {option.icon && (
                   <span className="text-2xl">{option.icon}</span>
                 )}
-                <span className="font-semibold text-gray-800 text-lg">
+                <span className="font-semibold text-white text-lg">
                   {option.text}
                 </span>
               </div>
@@ -111,7 +111,7 @@ const MultipleChoiceExercise = ({ exercise, onComplete }) => {
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                 >
-                  <CheckCircle className="h-6 w-6 text-cyber-green" />
+                  <CheckCircle className="h-6 w-6 text-green-400" />
                 </motion.div>
               )}
               {isAnswered && option.id === selectedAnswer && option.id !== exercise.correctAnswer && (
@@ -119,7 +119,7 @@ const MultipleChoiceExercise = ({ exercise, onComplete }) => {
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                 >
-                  <XCircle className="h-6 w-6 text-cyber-red" />
+                  <XCircle className="h-6 w-6 text-red-400" />
                 </motion.div>
               )}
             </div>
@@ -128,11 +128,11 @@ const MultipleChoiceExercise = ({ exercise, onComplete }) => {
       </div>
 
       {/* Hint */}
-      {exercise.hint && (
+      {exercise?.hint && (
         <div className="text-center">
           <button
             onClick={() => setShowHint(!showHint)}
-            className="flex items-center gap-2 mx-auto text-cyber-purple hover:text-purple-700 transition-colors"
+            className="flex items-center gap-2 mx-auto text-purple-300 hover:text-purple-200 transition-colors"
           >
             <Lightbulb className="h-5 w-5" />
             <span className="font-medium">רמז</span>
@@ -141,9 +141,9 @@ const MultipleChoiceExercise = ({ exercise, onComplete }) => {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mt-3 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg"
+              className="mt-3 p-4 bg-yellow-900/30 border-2 border-yellow-500 rounded-lg"
             >
-              <p className="text-yellow-800 font-medium">{exercise.hint}</p>
+              <p className="text-yellow-200 font-medium">{exercise.hint}</p>
             </motion.div>
           )}
         </div>
@@ -154,7 +154,7 @@ const MultipleChoiceExercise = ({ exercise, onComplete }) => {
         <motion.button
           onClick={handleSubmit}
           disabled={!selectedAnswer || isAnswered}
-          className="btn-primary flex items-center gap-2 mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg border border-blue-500 hover:border-blue-400 transition-all duration-200 flex items-center gap-2 mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
           whileHover={selectedAnswer && !isAnswered ? { scale: 1.05 } : {}}
           whileTap={selectedAnswer && !isAnswered ? { scale: 0.95 } : {}}
         >
@@ -170,8 +170,8 @@ const MultipleChoiceExercise = ({ exercise, onComplete }) => {
           animate={{ opacity: 1, y: 0 }}
           className={`text-center p-6 rounded-xl border-2 ${
             isCorrect 
-              ? 'bg-green-50 text-green-800 border-green-500' 
-              : 'bg-red-50 text-red-800 border-red-500'
+              ? 'bg-green-900/30 text-green-200 border-green-500' 
+              : 'bg-red-900/30 text-red-200 border-red-500'
           }`}
         >
           <div className="flex items-center justify-center gap-3 mb-4">
@@ -184,7 +184,7 @@ const MultipleChoiceExercise = ({ exercise, onComplete }) => {
               {isCorrect ? 'מעולה! תשובה נכונה!' : 'נסה שוב!'}
             </span>
           </div>
-          {exercise.explanation && (
+          {exercise?.explanation && (
             <p className="text-lg">
               {exercise.explanation}
             </p>

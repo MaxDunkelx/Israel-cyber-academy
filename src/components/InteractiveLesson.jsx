@@ -1,156 +1,465 @@
-import { useState, useEffect, useRef } from 'react';
+/**
+ * Interactive Lesson Component - Israel Cyber Academy
+ * 
+ * This is the core learning interface where users engage with lesson content.
+ * It handles slide navigation, progress tracking, exercise completion, and user engagement.
+ * 
+ * Key Features:
+ * - Slide-based lesson presentation
+ * - Multiple slide types (presentation, poll, video, interactive, break, reflection)
+ * - Progress tracking and auto-save
+ * - Exercise completion and scoring
+ * - Slide engagement tracking
+ * - Resume functionality
+ * - Celebration animations on completion
+ * - Time tracking for each slide
+ * 
+ * Component Flow:
+ * 1. Load lesson data and user progress
+ * 2. Initialize slide navigation and timer
+ * 3. Track slide engagement and progress
+ * 4. Handle exercise completion and scoring
+ * 5. Save progress and unlock next lessons
+ * 6. Show completion celebration and redirect
+ */
+
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getLessonById } from '../data/lessons';
+import { getLessonById, getNextLesson } from '../data/lessons';
 import { 
   ChevronLeft, 
   ChevronRight, 
-  Play, 
-  Pause, 
   Clock,
   CheckCircle,
-  Home
+  Home,
+  BookOpen,
+  Eye,
+  Timer,
+  Target,
+  Award,
+  BarChart3,
+  Play,
+  Pause,
+  SkipForward,
+  SkipBack
 } from 'lucide-react';
+import { PresentationSlide, PollSlide, VideoSlide, InteractiveSlide, BreakSlide, ReflectionSlide, QuizSlide } from './slides';
 import DragDropExercise from './exercises/DragDropExercise';
 import MatchingExercise from './exercises/MatchingExercise';
 import MultipleChoiceExercise from './exercises/MultipleChoiceExercise';
+import Confetti from 'react-confetti';
+import toast from 'react-hot-toast';
+import { 
+  initLessonSession, 
+  logSlideNavigation, 
+  logSlideEngagement, 
+  logExerciseCompletion, 
+  logLessonCompletion,
+  exportSessionData 
+} from '../utils/helpers';
 
+/**
+ * Interactive Lesson Component - Main learning interface
+ */
 const InteractiveLesson = () => {
-  const { lessonId } = useParams();
+  const { currentUser, userProfile, updateUserProgress, trackSlideEngagement, setLastLessonSlide, getLastLessonSlide } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { userProfile, updateUserProgress, setLastLessonSlide, trackSlideEngagement } = useAuth();
-  const [currentSlide, setCurrentSlide] = useState(0);
+  
+  // Extract lesson ID from URL parameters
+  const { lessonId } = useParams();
+  
+  // Component state management
   const [lesson, setLesson] = useState(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(30);
   const [answers, setAnswers] = useState({});
   const [completedSlides, setCompletedSlides] = useState({});
+  const [showConfetti, setShowConfetti] = useState(false);
+  
+  // Statistics tracking - synchronized with userProfile
+  const [totalTimeStudied, setTotalTimeStudied] = useState(0);
+  const [pagesWatched, setPagesWatched] = useState(new Set());
+  const [minutesLearned, setMinutesLearned] = useState(0);
+  const [slideStartTime, setSlideStartTime] = useState(Date.now());
+  const [lessonStartTime, setLessonStartTime] = useState(Date.now());
+  const [slideTimeSpent, setSlideTimeSpent] = useState(0);
+  
+  // UI state
+  const [windowDimensions, setWindowDimensions] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight
+  });
+  
+  // Timer reference for cleanup
   const timerRef = useRef(null);
+  const statsTimerRef = useRef(null);
+  const slideTimerRef = useRef(null);
+  
+  // Prevent infinite loops with refs
+  const isInitialized = useRef(false);
+  const lastSavedSlide = useRef(0);
+  const isCompletedLesson = useRef(false);
 
+  // Debug: Log current slide position
   useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log(`🎯 Current slide: ${currentSlide} (Lesson ${lessonId})`);
+      if (userProfile && lesson) {
+        const savedSlide = getLastLessonSlide(lesson.id);
+        console.log(`💾 Saved slide position: ${savedSlide}`);
+        console.log(`✅ Lesson completed: ${isCompletedLesson.current}`);
+      }
+    }
+  }, [currentSlide, lessonId, userProfile, lesson, getLastLessonSlide]);
+
+  /**
+   * Initialize lesson data and timer - FIXED for completed lessons
+   */
+  useEffect(() => {
+    if (isInitialized.current) return; // Prevent multiple initializations
+    
+    console.log('🔄 Loading lesson data for lessonId:', lessonId);
     const lessonData = getLessonById(parseInt(lessonId));
     if (lessonData) {
+      console.log('✅ Lesson loaded successfully:', {
+        id: lessonData.id,
+        title: lessonData.title,
+        totalSlides: lessonData.content.slides.length,
+        slideTypes: lessonData.content.slides.map(slide => slide.type)
+      });
       setLesson(lessonData);
-      setTimeLeft(lessonData.content.slides[0]?.content?.duration || 30);
+      
+      // Initialize session monitoring
+      if (currentUser) {
+        initLessonSession(currentUser.uid, lessonData.id);
+      }
+      
+      // Check if lesson is completed
+      let isCompleted = false;
+      let startSlide = 0;
+      
+      if (userProfile && userProfile.progress && userProfile.progress[lessonData.id]) {
+        const lessonProgress = userProfile.progress[lessonData.id];
+        isCompleted = lessonProgress.completed || false;
+        isCompletedLesson.current = isCompleted;
+        
+        if (isCompleted) {
+          // For completed lessons, always start from the first slide
+          startSlide = 0;
+          console.log(`🎓 Lesson ${lessonData.id} is completed - starting from first slide`);
+        } else {
+          // For incomplete lessons, restore the last slide position
+          startSlide = lessonProgress.lastSlide || 0;
+          console.log(`📚 Loading saved slide position: ${startSlide} for lesson ${lessonData.id}`);
+        }
+      } else {
+        console.log(`🆕 New lesson ${lessonData.id} - starting from first slide`);
+      }
+      
+      // Set the current slide
+      setCurrentSlide(startSlide);
+      lastSavedSlide.current = startSlide;
+      
+      // Set up timer for the current slide
+      const currentSlideData = lessonData.content.slides[startSlide];
+      setTimeLeft(currentSlideData?.content?.duration || 30);
+      setLessonStartTime(Date.now());
+      setSlideStartTime(Date.now());
+      setSlideTimeSpent(0);
+      
+      isInitialized.current = true;
+    } else {
+      console.error('❌ Lesson not found:', lessonId);
+      toast.error('השיעור לא נמצא');
+      navigate('/roadmap');
     }
-  }, [lessonId]);
+  }, [lessonId, navigate, userProfile, currentUser]);
 
+  /**
+   * Track slide engagement when slide changes - FIXED to prevent conflicts
+   */
   useEffect(() => {
-    if (timeLeft > 0 && isPlaying) {
-      timerRef.current = setTimeout(() => {
-        setTimeLeft(prev => prev - 1);
-      }, 1000);
-    } else if (timeLeft === 0 && isPlaying) {
-      // Remove auto-advance - let user control navigation
-      setIsPlaying(false);
-    }
-    return () => clearTimeout(timerRef.current);
-  }, [timeLeft, isPlaying]);
-
-  // On mount, set currentSlide from URL param if present
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const slideParam = parseInt(params.get('slide'), 10);
-    if (!isNaN(slideParam) && slideParam >= 0) {
-      setCurrentSlide(slideParam);
-    }
-  }, [location.search]);
-
-  // Track slide engagement when slide changes
-  useEffect(() => {
-    if (lesson && userProfile) {
-      const currentSlideData = lesson.content.slides[currentSlide];
-      if (currentSlideData && currentSlideData.id) {
-        // Track this slide as engaged
-        trackSlideEngagement(lesson.id, currentSlideData.id);
+    if (!lesson || !userProfile || !isInitialized.current) return;
+    
+    const currentSlideData = lesson.content.slides[currentSlide];
+    if (currentSlideData && currentSlideData.id) {
+      // Track this slide as engaged
+      trackSlideEngagement(lesson.id, currentSlideData.id);
+      
+      // Log slide engagement for session monitoring
+      const timeSpent = Math.floor((Date.now() - slideStartTime) / 1000);
+      logSlideEngagement(currentSlideData.id, currentSlideData.type, timeSpent);
+      
+      // Add to pages watched set
+      setPagesWatched(prev => new Set([...prev, currentSlideData.id]));
+      
+      // Save slide progress only if it changed and lesson is not completed
+      if (currentSlide !== lastSavedSlide.current && !isCompletedLesson.current) {
+        setLastLessonSlide(lesson.id, currentSlide);
+        lastSavedSlide.current = currentSlide;
+      }
+      
+      // Reset slide timer and set new duration
+      setSlideStartTime(Date.now());
+      setSlideTimeSpent(0);
+      setTimeLeft(currentSlideData.content?.duration || 30);
+      
+      // Log slide progress
+      if (import.meta.env.DEV) {
+        console.log(`📖 SLIDE PROGRESS: ${currentSlide + 1}/${lesson.content.slides.length} - ${currentSlideData.title}`);
       }
     }
-  }, [currentSlide, lesson, userProfile, trackSlideEngagement]);
+  }, [currentSlide, lesson, userProfile, trackSlideEngagement, setLastLessonSlide]);
 
-  // On slide change, persist last slide for resume
+  /**
+   * Synchronize statistics with userProfile - FIXED to prevent loops
+   */
   useEffect(() => {
-    if (lesson && userProfile && !userProfile.isGuest && typeof setLastLessonSlide === 'function') {
-      setLastLessonSlide(lesson.id, currentSlide);
-      // Also updateUserProgress with lastSlide
-      updateUserProgress(lesson.id, false, 0, true, currentSlide);
+    if (!userProfile) return;
+    
+    // Update total time studied from user profile
+    setTotalTimeStudied(userProfile.totalTimeSpent || 0);
+    
+    // Update pages watched from user profile and current session
+    const allPagesEngaged = new Set();
+    if (userProfile.progress) {
+      Object.values(userProfile.progress).forEach(lessonProgress => {
+        if (lessonProgress.pagesEngaged && Array.isArray(lessonProgress.pagesEngaged)) {
+          lessonProgress.pagesEngaged.forEach(pageId => allPagesEngaged.add(pageId));
+        }
+      });
     }
-    // eslint-disable-next-line
-  }, [currentSlide, lesson]);
-
-  // Save temporary progress after each slide interaction
-  useEffect(() => {
-    if (lesson && userProfile && !userProfile.isGuest) {
-      updateUserProgress(lesson.id, false, 0, true); // temporary progress
+    
+    // Add current session pages
+    pagesWatched.forEach(pageId => allPagesEngaged.add(pageId));
+    setPagesWatched(allPagesEngaged);
+    
+    // Update minutes learned (convert from total time spent)
+    setMinutesLearned(Math.floor((userProfile.totalTimeSpent || 0) / 60));
+    
+    // Log statistics update
+    if (import.meta.env.DEV) {
+      console.log('📊 STATISTICS UPDATED:', {
+        totalTimeSpent: userProfile.totalTimeSpent || 0,
+        totalPagesEngaged: allPagesEngaged.size,
+        minutesLearned: Math.floor((userProfile.totalTimeSpent || 0) / 60)
+      });
     }
-    // eslint-disable-next-line
-  }, [currentSlide]);
+  }, [userProfile]);
 
-  // Mark slide as completed when user interacts or views
+  /**
+   * Slide timer - tracks time spent on current slide - FIXED
+   */
   useEffect(() => {
     if (!lesson) return;
-    const slide = lesson.content.slides[currentSlide];
-    // For interactive, only mark as completed if answered
-    if (slide.type === 'interactive') {
-      if (answers[slide.id] && answers[slide.id].isCorrect !== false) {
-        setCompletedSlides(prev => ({ ...prev, [slide.id]: true }));
-      }
-    } else {
-      setCompletedSlides(prev => ({ ...prev, [slide.id]: true }));
-    }
-  }, [currentSlide, answers, lesson]);
-
-  const handleNextSlide = () => {
-    if (currentSlide < lesson.content.slides.length - 1) {
-      const currentSlideData = lesson.content.slides[currentSlide];
+    
+    slideTimerRef.current = setInterval(() => {
+      const now = Date.now();
+      const timeSpent = Math.floor((now - slideStartTime) / 1000);
+      setSlideTimeSpent(timeSpent);
       
-      setCurrentSlide(prev => prev + 1);
-      const nextSlide = lesson.content.slides[currentSlide + 1];
-      setTimeLeft(nextSlide?.content?.duration || 30);
-      setIsPlaying(false); // Don't auto-play
-    }
-  };
+      // Update time left if slide has duration
+      if (lesson.content.slides[currentSlide]?.content?.duration) {
+        const duration = lesson.content.slides[currentSlide].content.duration;
+        const remaining = Math.max(0, duration - timeSpent);
+        setTimeLeft(remaining);
+      }
+    }, 1000);
 
-  const handlePrevSlide = () => {
-    if (currentSlide > 0) {
-      setCurrentSlide(prev => prev - 1);
-      const prevSlide = lesson.content.slides[currentSlide - 1];
-      setTimeLeft(prevSlide?.content?.duration || 30);
-      setIsPlaying(false); // Don't auto-play
-    }
-  };
+    return () => {
+      if (slideTimerRef.current) {
+        clearInterval(slideTimerRef.current);
+      }
+    };
+  }, [slideStartTime, currentSlide, lesson]);
 
-  const handleAnswer = (slideId, answer) => {
+  /**
+   * Window resize handler for responsive design
+   */
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  /**
+   * Navigate to next slide - FIXED to prevent auto-advancement
+   */
+  const handleNextSlide = useCallback(() => {
+    if (!lesson) return;
+    
+    // Log slide navigation
+    logSlideNavigation(currentSlide, currentSlide + 1, 'forward');
+    
+    // Add slide time to total time studied
+    const slideTime = Math.floor((Date.now() - slideStartTime) / 1000);
+    setTotalTimeStudied(prev => prev + slideTime);
+    
+    if (currentSlide < lesson.content.slides.length - 1) {
+      setCurrentSlide(currentSlide + 1);
+    }
+    // Don't automatically complete lesson - let user click finish button
+  }, [lesson, currentSlide, slideStartTime]);
+
+  /**
+   * Navigate to previous slide - FIXED
+   */
+  const handlePrevSlide = useCallback(() => {
+    if (!lesson || currentSlide <= 0) return;
+    
+    // Log slide navigation
+    logSlideNavigation(currentSlide, currentSlide - 1, 'backward');
+    
+    // Add slide time to total time studied
+    const slideTime = Math.floor((Date.now() - slideStartTime) / 1000);
+    setTotalTimeStudied(prev => prev + slideTime);
+    
+    setCurrentSlide(Math.max(0, currentSlide - 1));
+  }, [lesson, currentSlide, slideStartTime]);
+
+  /**
+   * Handle answer submission from exercises
+   */
+  const handleAnswer = useCallback((slideId, answer) => {
     setAnswers(prev => ({ ...prev, [slideId]: answer }));
     
-    if (userProfile && !userProfile.isGuest) {
-      updateUserProgress(lesson.id, true, 50);
-    }
-  };
+    // Log exercise completion
+    logExerciseCompletion(slideId, answer.isCorrect || false, answer.score || 0);
+    
+    // Add slide time to total time studied
+    const slideTime = Math.floor((Date.now() - slideStartTime) / 1000);
+    setTotalTimeStudied(prev => prev + slideTime);
+  }, [slideStartTime]);
 
-  // Mark as permanent on lesson completion
-  const handleCompleteLesson = async () => {
+  /**
+   * Handle lesson completion - FIXED to prevent multiple calls
+   */
+  const handleLessonComplete = useCallback(async () => {
+    if (!lesson || !userProfile) {
+      console.error('❌ Cannot complete lesson: missing lesson or userProfile');
+      return;
+    }
+
+    console.log('🎯 Starting lesson completion for lesson:', lesson.id);
+
+    // Add final slide time
+    const slideTime = Math.floor((Date.now() - slideStartTime) / 1000);
+    const finalTimeStudied = totalTimeStudied + slideTime;
+    
+    // Get all slide IDs to ensure complete tracking
+    const allSlideIds = lesson.content.slides.map(slide => slide.id);
+    
+    // Ensure all slides are marked as engaged
+    allSlideIds.forEach(slideId => {
+      trackSlideEngagement(lesson.id, slideId);
+    });
+    
+    // Log lesson completion
+    logLessonCompletion(lesson.id, finalTimeStudied, finalTimeStudied);
+    
+    // Export session data for analytics
+    const sessionData = exportSessionData();
+    console.log('📊 FINAL SESSION DATA:', sessionData);
+    
+    // Log comprehensive completion summary
+    console.log('🎉 LESSON COMPLETION SUMMARY:', {
+      lessonId: lesson.id,
+      lessonTitle: lesson.title,
+      totalSlides: lesson.content.slides.length,
+      slidesEngaged: allSlideIds.length,
+      timeSpent: finalTimeStudied,
+      timeFormatted: formatTimeStudied(finalTimeStudied),
+      progressPercentage: 100,
+      sessionEvents: sessionData.session?.totalEvents || 0,
+      completionRate: sessionData.session?.completionRate || 0,
+      averageEngagement: sessionData.session?.averageEngagementLevel || 'unknown',
+      userBehavior: sessionData.analytics?.userBehavior,
+      performance: sessionData.analytics?.performance,
+      recommendations: sessionData.analytics?.recommendations
+    });
+    
     try {
-      await updateUserProgress(lesson.id, true, 100, false); // permanent progress
-      // Auto-advance to next lesson if exists
-      const nextLessonId = lesson.id + 1;
-      const nextLesson = getLessonById(nextLessonId);
-      if (nextLesson) {
-        navigate(`/interactive-lesson/${nextLessonId}`);
-      } else {
-        navigate('/roadmap');
-      }
+      console.log('💾 Saving lesson progress...');
+      
+      // Save progress with completion status and all slides engaged
+      await updateUserProgress(lesson.id, true, finalTimeStudied, false, currentSlide, null, allSlideIds);
+      
+      console.log('✅ Progress saved successfully');
+      
+      // Find next lesson before showing animation
+      const nextLesson = getNextLesson(lesson.id);
+      console.log('📚 Next lesson found:', nextLesson);
+      
+      // Show celebration animation
+      setShowConfetti(true);
+      toast.success('כל הכבוד! השיעור הושלם בהצלחה! 🎉');
+      
+      // Wait for animation to complete before navigating
+      setTimeout(() => {
+        try {
+          console.log('🧭 Starting navigation to roadmap...');
+          
+          // Navigate to roadmap with unlock animation param
+          const navigateUrl = nextLesson ? `/roadmap?unlocked=${nextLesson.id}` : '/roadmap';
+          console.log('🧭 Navigating to:', navigateUrl);
+          
+          // Force navigation with replace to ensure it works
+          navigate(navigateUrl, { replace: true });
+          
+          console.log('✅ Navigation completed');
+        } catch (error) {
+          console.error('❌ Error navigating after completion:', error);
+          // Fallback navigation
+          navigate('/roadmap', { replace: true });
+        }
+      }, 3500); // Increased to 3.5 seconds to ensure state updates
+      
     } catch (error) {
-      // Optionally show error toast
+      console.error('❌ Error completing lesson:', error);
+      toast.error('שגיאה בשמירת ההתקדמות');
+      
+      // Still try to navigate even if save failed
+      setTimeout(() => {
+        const nextLesson = getNextLesson(lesson.id);
+        const navigateUrl = nextLesson ? `/roadmap?unlocked=${nextLesson.id}` : '/roadmap';
+        navigate(navigateUrl, { replace: true });
+      }, 1000);
     }
-  };
+  }, [lesson, userProfile, slideStartTime, totalTimeStudied, currentSlide, trackSlideEngagement, updateUserProgress, navigate]);
 
+  /**
+   * Format time display for timer
+   */
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  /**
+   * Format time studied for display
+   */
+  const formatTimeStudied = (seconds) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    
+    if (hours > 0) {
+      return `${hours} שעות ${minutes} דקות`;
+    }
+    return `${minutes} דקות`;
+  };
+
+  /**
+   * Render slide based on type
+   */
   const renderSlide = (slide) => {
     switch (slide.type) {
       case 'presentation':
@@ -165,18 +474,18 @@ const InteractiveLesson = () => {
         return <BreakSlide slide={slide} />;
       case 'reflection':
         return <ReflectionSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
+      case 'quiz':
+        return <QuizSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
       default:
-        return <div>סלייד לא מוכר</div>;
+        return <div className="text-white">סוג שקופית לא מוכר: {slide.type}</div>;
     }
   };
 
+  // Loading state
   if (!lesson) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-cyber-blue to-cyber-purple">
-        <div className="text-center text-white">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p>טוען שיעור...</p>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
+        <div className="text-white text-2xl">טוען שיעור...</div>
       </div>
     );
   }
@@ -184,405 +493,198 @@ const InteractiveLesson = () => {
   const currentSlideData = lesson.content.slides[currentSlide];
   const progressPercentage = ((currentSlide + 1) / lesson.content.slides.length) * 100;
 
-  // Helper: Check if all slides are completed
-  const allSlidesCompleted = lesson && lesson.content.slides.every(slide => completedSlides[slide.id]);
-
-  // Helper: Get checklist data
-  const slideChecklist = lesson ? lesson.content.slides.map(slide => ({
-    id: slide.id,
-    title: slide.title,
-    type: slide.type,
-    completed: !!completedSlides[slide.id]
-  })) : [];
-
-  // On last slide, show checklist, progress bar, and finish button
-  const isLastSlide = lesson && currentSlide === lesson.content.slides.length - 1;
+  // Defensive check: if slide is missing, show a message instead of crashing
+  if (!currentSlideData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
+        <div className="text-white text-2xl">שקופית זו אינה זמינה או לא הוגדרה. אנא פנה למנהל המערכת.</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 relative overflow-hidden">
+      {/* Enhanced Confetti for completion */}
+      {showConfetti && (
+        <>
+          <Confetti
+            width={windowDimensions.width}
+            height={windowDimensions.height}
+            recycle={false}
+            numberOfPieces={300}
+            colors={['#4ade80', '#fbbf24', '#3b82f6', '#8b5cf6', '#ec4899', '#ef4444']}
+          />
+          {/* Completion Overlay */}
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="bg-gradient-to-br from-green-600 to-emerald-600 rounded-3xl p-8 text-center text-white shadow-2xl border-4 border-green-400 animate-pulse">
+              <div className="text-6xl mb-4">🎉</div>
+              <h2 className="text-3xl font-bold mb-2">כל הכבוד!</h2>
+              <p className="text-xl mb-4">השיעור הושלם בהצלחה!</p>
+              <div className="text-lg opacity-90">
+                <p>זמן למידה: {formatTimeStudied(totalTimeStudied)}</p>
+                <p>עמודים נצפו: {pagesWatched.size}</p>
+                <p>התקדמות: {Math.round(progressPercentage)}%</p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Header */}
-      <div className="bg-gray-800 p-4 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={() => navigate('/roadmap')}
-            className="flex items-center space-x-2 text-cyber-blue hover:text-cyber-blue/80"
-          >
-            <Home className="h-5 w-5" />
-            <span>חזרה לדף הבית</span>
-          </button>
-          <div className="text-lg font-semibold">{lesson.title}</div>
-        </div>
-        
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <Clock className="h-5 w-5 text-cyber-green" />
-            <span>{formatTime(timeLeft)}</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <CheckCircle className="h-5 w-5 text-cyber-blue" />
-            <span>{currentSlide + 1} / {lesson.content.slides.length}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Progress Bar */}
-      <div className="w-full bg-gray-700 h-2">
-        <div 
-          className="bg-gradient-to-r from-cyber-blue to-cyber-green h-2 transition-all duration-300"
-          style={{ width: `${progressPercentage}%` }}
-        ></div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 p-8">
-        <div className="max-w-6xl mx-auto">
-          {renderSlide(currentSlideData)}
-          {isLastSlide && (
-            <div className="mt-12 bg-gray-800 rounded-xl p-8 shadow-lg">
-              <h2 className="text-2xl font-bold mb-4 text-center">סיכום התקדמות השיעור</h2>
-              {/* Progress Bar */}
-              <div className="w-full bg-gray-700 rounded-full h-4 mb-6">
-                <div
-                  className="bg-gradient-to-r from-cyber-blue to-cyber-green h-4 rounded-full transition-all duration-300"
-                  style={{ width: `${Math.round((Object.keys(completedSlides).length / lesson.content.slides.length) * 100)}%` }}
-                ></div>
-              </div>
-              {/* Checklist */}
-              <ul className="mb-6 space-y-2">
-                {slideChecklist.map((slide, idx) => (
-                  <li key={slide.id} className="flex items-center space-x-3 space-x-reverse">
-                    <span className={`inline-block w-6 h-6 rounded-full text-center font-bold ${slide.completed ? 'bg-cyber-green text-white' : 'bg-gray-600 text-white'}`}>{slide.completed ? '✔' : idx + 1}</span>
-                    <span className={slide.completed ? 'text-cyber-green' : 'text-gray-300'}>{slide.title}</span>
-                  </li>
-                ))}
-              </ul>
-              {/* Finish Button */}
-              <button
-                className={`w-full btn-primary text-lg py-3 font-bold ${!allSlidesCompleted ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={!allSlidesCompleted}
-                onClick={handleCompleteLesson}
-              >
-                סיים שיעור
-              </button>
-              {!allSlidesCompleted && (
-                <div className="mt-4 text-center text-cyber-red font-semibold">יש להשלים את כל השקופיות והפעילויות לפני סיום השיעור.</div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 flex justify-center items-center gap-8 bg-gray-800 p-4 rounded-full shadow-lg">
-        <button
-          onClick={handlePrevSlide}
-          disabled={currentSlide === 0}
-          className="p-3 bg-cyber-blue rounded-full hover:bg-cyber-blue/80 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-          style={{ width: 56, height: 56 }}
-        >
-          <ChevronLeft className="h-6 w-6" />
-        </button>
-        
-        <button
-          onClick={handleNextSlide}
-          disabled={
-            currentSlide === lesson.content.slides.length - 1 || 
-            (lesson?.content?.slides[currentSlide]?.type === 'interactive' && 
-             (!completedSlides[lesson.content.slides[currentSlide].id]))
-          }
-          className="p-3 bg-cyber-blue rounded-full hover:bg-cyber-blue/80 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-          style={{ width: 56, height: 56 }}
-        >
-          <ChevronRight className="h-6 w-6" />
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// Presentation Slide Component
-const PresentationSlide = ({ slide }) => {
-  return (
-    <div 
-      className="min-h-[70vh] rounded-2xl p-8 flex flex-col justify-center items-center"
-      style={{ background: slide.content.background }}
-    >
-      {slide.content.elements.map((element, index) => {
-        switch (element.type) {
-          case 'title':
-            return (
-              <h1 key={index} style={element.style}>
-                {element.text}
-              </h1>
-            );
-          case 'subtitle':
-            return (
-              <p key={index} style={element.style}>
-                {element.text}
+      <div className="bg-gray-800/50 backdrop-blur-sm border-b border-gray-700/50 p-4 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          {/* Lesson Info */}
+          <div className="flex items-center space-x-4 space-x-reverse">
+            <button
+              onClick={() => navigate('/roadmap')}
+              className="p-2 rounded-lg bg-gray-700/50 hover:bg-gray-600/50 transition-colors"
+            >
+              <Home className="h-6 w-6 text-white" />
+            </button>
+            <div>
+              <h1 className="text-xl font-bold text-white">{lesson.title}</h1>
+              <p className="text-sm text-gray-300">
+                שקופית {currentSlide + 1} מתוך {lesson.content.slides.length}
+                {isCompletedLesson.current && (
+                  <span className="ml-2 text-green-400">(שיעור הושלם)</span>
+                )}
               </p>
-            );
-          case 'image':
-            return (
-              <img 
-                key={index}
-                src={element.src} 
-                alt={element.alt}
-                style={element.style}
-                className="object-cover"
-              />
-            );
-          case 'list':
-            return (
-              <ul key={index} style={element.style} className="list-disc list-inside space-y-2">
-                {element.items.map((item, i) => (
-                  <li key={i}>{item}</li>
-                ))}
-              </ul>
-            );
-          case 'animation':
-            return (
-              <div key={index} style={element.style} className="animate-pulse">
-                {element.element}
-              </div>
-            );
-          default:
-            return null;
-        }
-      })}
-    </div>
-  );
-};
-
-// Poll Slide Component
-const PollSlide = ({ slide, onAnswer, answers }) => {
-  const [selectedOption, setSelectedOption] = useState(null);
-  const [showResults, setShowResults] = useState(false);
-
-  const handleVote = (optionId) => {
-    setSelectedOption(optionId);
-    onAnswer(slide.id, { selected: optionId });
-    setShowResults(true);
-  };
-
-  return (
-    <div className="max-w-2xl mx-auto text-center">
-      <h2 className="text-3xl font-bold mb-8">{slide.title}</h2>
-      <p className="text-xl mb-8">{slide.content.question}</p>
-      
-      <div className="space-y-4">
-        {slide.content.options.map((option) => (
-          <button
-            key={option.id}
-            onClick={() => handleVote(option.id)}
-            disabled={showResults}
-            className={`w-full p-4 rounded-lg border-2 transition-all duration-200 ${
-              selectedOption === option.id
-                ? 'border-cyber-blue bg-cyber-blue/20'
-                : 'border-gray-600 hover:border-cyber-blue'
-            } ${showResults ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-          >
-            <div className="flex items-center justify-center space-x-3">
-              <span className="text-2xl">{option.emoji}</span>
-              <span className="text-lg">{option.text}</span>
             </div>
-          </button>
-        ))}
+          </div>
+
+          {/* Progress Bar */}
+          <div className="flex-1 max-w-md mx-4">
+            <div className="bg-gray-700/50 rounded-full h-2">
+              <div 
+                className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${progressPercentage}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Timer */}
+          <div className="flex items-center space-x-2 space-x-reverse">
+            <Clock className="h-5 w-5 text-blue-400" />
+            <span className="text-white font-mono">{formatTime(timeLeft)}</span>
+          </div>
+        </div>
       </div>
 
-      {showResults && (
-        <div className="mt-8 p-4 bg-gray-800 rounded-lg">
-          <h3 className="text-xl font-semibold mb-4">תוצאות הסקר</h3>
-          <div className="space-y-2">
-            {slide.content.options.map((option) => (
-              <div key={option.id} className="flex items-center justify-between">
-                <span>{option.text}</span>
-                <div className="flex items-center space-x-2">
-                  <div className="w-32 bg-gray-700 rounded-full h-2">
-                    <div 
-                      className="bg-cyber-blue h-2 rounded-full"
-                      style={{ width: `${Math.random() * 100}%` }}
-                    ></div>
-                  </div>
-                  <span className="text-sm">{Math.floor(Math.random() * 100)}%</span>
+      {/* Main Content Area */}
+      <div className="flex h-[calc(100vh-80px)]">
+        {/* Lesson Content - Main Area */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-6">
+            {renderSlide(currentSlideData)}
+          </div>
+        </div>
+
+        {/* Statistics Sidebar - Fixed Position */}
+        <div className="w-80 bg-gray-800/50 backdrop-blur-sm border-l border-gray-700/50 p-6 overflow-y-auto">
+          <div className="space-y-6">
+            <h3 className="text-xl font-bold text-white mb-4">סטטיסטיקות למידה</h3>
+            
+            {/* Time Studied */}
+            <div className="bg-gray-700/30 rounded-lg p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <Timer className="h-5 w-5 text-blue-400" />
+                <span className="text-white font-semibold">זמן למידה</span>
+              </div>
+              <p className="text-2xl font-bold text-blue-400">{formatTimeStudied(totalTimeStudied)}</p>
+            </div>
+
+            {/* Pages Watched */}
+            <div className="bg-gray-700/30 rounded-lg p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <Eye className="h-5 w-5 text-green-400" />
+                <span className="text-white font-semibold">דפים צפו</span>
+              </div>
+              <p className="text-2xl font-bold text-green-400">{pagesWatched.size}</p>
+            </div>
+
+            {/* Minutes Learned */}
+            <div className="bg-gray-700/30 rounded-lg p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <BookOpen className="h-5 w-5 text-purple-400" />
+                <span className="text-white font-semibold">דקות למדו</span>
+              </div>
+              <p className="text-2xl font-bold text-purple-400">{minutesLearned}</p>
+            </div>
+
+            {/* Progress */}
+            <div className="bg-gray-700/30 rounded-lg p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <Target className="h-5 w-5 text-yellow-400" />
+                <span className="text-white font-semibold">התקדמות</span>
+              </div>
+              <p className="text-2xl font-bold text-yellow-400">{Math.round(progressPercentage)}%</p>
+            </div>
+
+            {/* Current Slide Time */}
+            <div className="bg-gray-700/30 rounded-lg p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <BarChart3 className="h-5 w-5 text-cyan-400" />
+                <span className="text-white font-semibold">זמן בשקופית</span>
+              </div>
+              <p className="text-2xl font-bold text-cyan-400">{formatTime(slideTimeSpent)}</p>
+            </div>
+
+            {/* Navigation Controls */}
+            <div className="bg-gray-700/30 rounded-lg p-4">
+              <div className="flex items-center gap-3 mb-4">
+                <ChevronLeft className="h-5 w-5 text-blue-400" />
+                <span className="text-white font-semibold">ניווט</span>
+              </div>
+              
+              {/* Progress indicator */}
+              <div className="flex flex-col items-center space-y-2 mb-4">
+                <div className="text-sm font-bold text-white/80">
+                  {currentSlide + 1} / {lesson.content.slides.length}
+                </div>
+                <div className="w-full h-2 bg-gray-600/50 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${((currentSlide + 1) / lesson.content.slides.length) * 100}%` }}
+                  />
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
-// Video Slide Component
-const VideoSlide = ({ slide, onAnswer, answers }) => {
-  return (
-    <div className="max-w-4xl mx-auto">
-      <h2 className="text-3xl font-bold mb-6 text-center">{slide.title}</h2>
-      <p className="text-lg mb-8 text-center text-gray-300">{slide.content.description}</p>
-      
-      <div className="relative">
-        <iframe
-          src={slide.content.videoUrl}
-          title={slide.title}
-          className="w-full h-96 rounded-lg"
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        ></iframe>
-      </div>
-
-      {slide.content.questions && (
-        <div className="mt-8 p-6 bg-gray-800 rounded-lg">
-          <h3 className="text-xl font-semibold mb-4">שאלות לסרטון</h3>
-          {slide.content.questions.map((question, index) => (
-            <div key={index} className="mb-4">
-              <p className="mb-2">{question.question}</p>
-              <textarea
-                className="w-full p-3 bg-gray-700 rounded-lg border border-gray-600 focus:border-cyber-blue"
-                rows="3"
-                placeholder="כתוב את התשובה שלך..."
-                onChange={(e) => onAnswer(slide.id, { [index]: e.target.value })}
-              />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {slide.content.quiz && (
-        <div className="mt-8 p-6 bg-gray-800 rounded-lg">
-          <h3 className="text-xl font-semibold mb-4">מבחן קצר</h3>
-          {slide.content.quiz.questions.map((question, index) => (
-            <div key={index} className="mb-6">
-              <p className="mb-3">{question.question}</p>
-              <div className="space-y-2">
-                {question.options.map((option, optIndex) => (
+              {/* Navigation Buttons */}
+              <div className="flex items-center justify-between space-x-3 space-x-reverse">
+                {/* Previous Button */}
+                <button
+                  onClick={handlePrevSlide}
+                  disabled={currentSlide === 0}
+                  className="group relative p-3 rounded-full bg-gradient-to-r from-gray-700/80 to-gray-600/80 hover:from-gray-600/90 hover:to-gray-500/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300 hover:scale-110 hover:shadow-lg border border-gray-500/30 hover:border-gray-400/50"
+                  title="שקופית קודמת"
+                >
+                  <ChevronLeft className="h-5 w-5 text-white group-hover:text-blue-300 transition-all duration-300" />
+                </button>
+                
+                {/* Next/Finish Button */}
+                {currentSlide === lesson.content.slides.length - 1 ? (
                   <button
-                    key={optIndex}
-                    onClick={() => onAnswer(slide.id, { [index]: optIndex })}
-                    className={`w-full p-3 text-right rounded-lg border transition-all ${
-                      answers[slide.id]?.[index] === optIndex
-                        ? 'border-cyber-blue bg-cyber-blue/20'
-                        : 'border-gray-600 hover:border-cyber-blue'
-                    }`}
+                    onClick={handleLessonComplete}
+                    className="group relative px-4 py-3 rounded-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 transition-all duration-300 hover:scale-110 hover:shadow-2xl text-white font-bold border-2 border-green-400/50 hover:border-green-300/70 text-sm"
+                    title="סיים שיעור"
                   >
-                    {option}
+                    <span className="group-hover:scale-105 transition-transform duration-300">
+                      סיים
+                    </span>
                   </button>
-                ))}
+                ) : (
+                  <button
+                    onClick={handleNextSlide}
+                    className="group relative p-3 rounded-full bg-gradient-to-r from-blue-600/80 to-purple-600/80 hover:from-blue-500/90 hover:to-purple-500/90 transition-all duration-300 hover:scale-110 hover:shadow-lg border border-blue-500/30 hover:border-blue-400/50"
+                    title="שקופית הבאה"
+                  >
+                    <ChevronRight className="h-5 w-5 text-white group-hover:text-purple-300 transition-all duration-300" />
+                  </button>
+                )}
               </div>
             </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Interactive Slide Component
-const InteractiveSlide = ({ slide, onAnswer, answers }) => {
-  if (slide.content.type === 'drag-drop') {
-    return (
-      <div className="max-w-6xl mx-auto">
-        <DragDropExercise
-          exercise={{
-            title: slide.title,
-            instructions: slide.content.instructions,
-            items: slide.content.items,
-            categories: slide.content.categories
-          }}
-          onComplete={(isCorrect) => onAnswer(slide.id, { isCorrect })}
-        />
-      </div>
-    );
-  }
-  
-  if (slide.content.type === 'matching') {
-    return (
-      <div className="max-w-6xl mx-auto">
-        <MatchingExercise
-          exercise={{
-            title: slide.title,
-            instructions: slide.content.instructions,
-            pairs: slide.content.pairs.map((pair, index) => ({
-              ...pair,
-              correctMatch: index // Each pair matches with its corresponding index
-            }))
-          }}
-          onComplete={(isCorrect) => onAnswer(slide.id, { isCorrect })}
-        />
-      </div>
-    );
-  }
-
-  if (slide.content.type === 'multiple-choice') {
-    return (
-      <div className="max-w-6xl mx-auto">
-        <MultipleChoiceExercise
-          exercise={{
-            title: slide.title,
-            question: slide.content.question,
-            content: slide.content.content,
-            options: slide.content.options,
-            correctAnswer: slide.content.correctAnswer,
-            explanation: slide.content.explanation,
-            hint: slide.content.hint
-          }}
-          onComplete={(isCorrect) => onAnswer(slide.id, { isCorrect })}
-        />
-      </div>
-    );
-  }
-  
-  // Default placeholder for other types
-  return (
-    <div className="max-w-4xl mx-auto text-center">
-      <h2 className="text-3xl font-bold mb-6">{slide.title}</h2>
-      <p className="text-lg mb-8 text-gray-300">{slide.content.instructions}</p>
-      <div className="bg-gray-800 p-8 rounded-lg">
-        <p className="text-xl">פעילות אינטראקטיבית - {slide.content.type}</p>
-        <p className="text-gray-400 mt-2">(תתפתח בקרוב)</p>
-      </div>
-    </div>
-  );
-};
-
-// Break Slide Component
-const BreakSlide = ({ slide }) => {
-  return (
-    <div className="max-w-2xl mx-auto text-center">
-      <div className="text-6xl mb-6">☕</div>
-      <h2 className="text-4xl font-bold mb-4">{slide.title}</h2>
-      <p className="text-xl mb-8">{slide.content.message}</p>
-      
-      {slide.content.activity && (
-        <div className="bg-gray-800 p-6 rounded-lg">
-          <h3 className="text-xl font-semibold mb-4">{slide.content.activity.title}</h3>
-          <p className="mb-4">{slide.content.activity.question}</p>
-          <p className="text-sm text-gray-400">רמז: {slide.content.activity.hint}</p>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Reflection Slide Component
-const ReflectionSlide = ({ slide, onAnswer, answers }) => {
-  return (
-    <div className="max-w-2xl mx-auto">
-      <h2 className="text-3xl font-bold mb-8 text-center">{slide.title}</h2>
-      
-      <div className="space-y-6">
-        {slide.content.questions.map((question, index) => (
-          <div key={index} className="bg-gray-800 p-6 rounded-lg">
-            <p className="text-lg mb-4">{question}</p>
-            <textarea
-              className="w-full p-3 bg-gray-700 rounded-lg border border-gray-600 focus:border-cyber-blue"
-              rows="4"
-              placeholder="כתוב את התשובה שלך..."
-              onChange={(e) => onAnswer(slide.id, { [index]: e.target.value })}
-            />
           </div>
-        ))}
+        </div>
       </div>
     </div>
   );

@@ -1,121 +1,235 @@
+/**
+ * App Component - Main Application Router
+ * 
+ * Handles routing and authentication state management.
+ * Provides protected routes and role-based access control.
+ * 
+ * Key Features:
+ * - Authentication-based routing
+ * - Role-based access control (student/teacher)
+ * - Protected route handling
+ * - Loading state management
+ * - Error boundary integration
+ * 
+ * Component Flow:
+ * 1. Check authentication state
+ * 2. Route to appropriate component based on auth and role
+ * 3. Handle loading and error states
+ * 4. Provide navigation context
+ */
+
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { useAuth } from './hooks/useAuth';
+import { useUserProfile } from './hooks/useAuth';
 import { Toaster } from 'react-hot-toast';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import LoadingSpinner from './components/common/LoadingSpinner';
+
+// Import components
 import Login from './components/Login';
 import Roadmap from './components/Roadmap';
-import Lesson from './components/Lesson';
 import InteractiveLesson from './components/InteractiveLesson';
-import TeacherDashboard from './components/TeacherDashboard';
 import Profile from './components/Profile';
+import TeacherDashboard from './components/TeacherDashboard';
 import Navigation from './components/Navigation';
+import FirebaseDiagnostic from './components/FirebaseDiagnostic';
+import DataTest from './components/DataTest';
 
-// Protected Route Component
-const ProtectedRoute = ({ children, allowedRoles = ['student', 'teacher'] }) => {
-  const { currentUser, userProfile, loading } = useAuth();
+/**
+ * Protected Route Component
+ * 
+ * Wraps routes that require authentication.
+ * Redirects to login if user is not authenticated.
+ * 
+ * @param {Object} props - Component props
+ * @param {React.ReactNode} props.children - Child components to render
+ * @param {string} props.requiredRole - Required user role (optional)
+ * @returns {JSX.Element} Protected route component
+ */
+const ProtectedRoute = ({ children, requiredRole = null }) => {
+  const { currentUser, loading } = useAuth();
+  const { role } = useUserProfile();
 
   if (loading) {
-    return <LoadingSpinner fullScreen text="טוען..." />;
-  }
-
-  // Guest users can access only roadmap and lessons
-  if (currentUser?.isGuest || userProfile?.isGuest) {
-    return children;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
   }
 
   if (!currentUser) {
     return <Navigate to="/" replace />;
   }
 
-  if (userProfile && !allowedRoles.includes(userProfile.role)) {
-    return <Navigate to="/" replace />;
+  if (requiredRole && role !== requiredRole) {
+    return <Navigate to="/roadmap" replace />;
   }
 
   return children;
 };
 
-// Main App Layout
-const AppLayout = () => {
-  const { currentUser, userProfile, loading } = useAuth();
+/**
+ * Teacher Route Component
+ * 
+ * Wraps routes that require teacher role.
+ * Redirects to roadmap if user is not a teacher.
+ * 
+ * @param {Object} props - Component props
+ * @param {React.ReactNode} props.children - Child components to render
+ * @returns {JSX.Element} Teacher route component
+ */
+const TeacherRoute = ({ children }) => {
+  return <ProtectedRoute requiredRole="teacher">{children}</ProtectedRoute>;
+};
 
-  // Show loading while authentication state is being determined
+/**
+ * Main App Component
+ * 
+ * Sets up routing and authentication context.
+ * Handles the main application structure.
+ * 
+ * @returns {JSX.Element} Main app component
+ */
+const AppContent = () => {
+  const { currentUser, loading } = useAuth();
+  const { role } = useUserProfile();
+
   if (loading) {
-    return <LoadingSpinner fullScreen text="טוען..." />;
-  }
-
-  // Check if user is authenticated (either regular user or guest)
-  const isAuthenticated = currentUser || userProfile;
-  const isGuest = currentUser?.isGuest || userProfile?.isGuest;
-
-  // If not authenticated, show login page
-  if (!isAuthenticated) {
-    return <Login />;
-  }
-
-  // If authenticated, show the main app with navigation
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Navigation />
-      <div className="flex-1">
-        <Routes>
-          <Route path="/roadmap" element={<Roadmap />} />
-          <Route path="/lesson/:lessonId" element={<Lesson />} />
-          <Route path="/interactive-lesson/:lessonId" element={<InteractiveLesson />} />
-          <Route path="/teacher" element={
-            isGuest ? <Navigate to="/roadmap" replace /> : <TeacherDashboard />
-          } />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/" element={<Navigate to="/roadmap" replace />} />
-          <Route path="*" element={<Navigate to="/roadmap" replace />} />
-        </Routes>
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center">
+        <LoadingSpinner size="lg" />
       </div>
-      <footer className="w-full text-center py-4 text-gray-500 text-xs bg-white border-t mt-8">
-        © 2024 Israel Cyber Campus. All rights reserved.
-      </footer>
-    </div>
+    );
+  }
+
+  return (
+    <Router>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
+        {/* Navigation - only show when authenticated */}
+        {currentUser && <Navigation />}
+        
+        {/* Main Routes */}
+        <Routes>
+          {/* Public Routes */}
+          <Route 
+            path="/" 
+            element={
+              currentUser ? <Navigate to="/roadmap" replace /> : <Login />
+            } 
+          />
+          
+          {/* Protected Routes */}
+          <Route
+            path="/roadmap"
+            element={
+              <ProtectedRoute>
+                <Roadmap />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/interactive-lesson/:lessonId"
+            element={
+              <ProtectedRoute>
+                <InteractiveLesson />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* Data Test Route - Development Only */}
+          {process.env.NODE_ENV === 'development' && (
+            <Route
+              path="/data-test"
+              element={
+                <ProtectedRoute>
+                  <div className="container mx-auto px-4 py-8">
+                    <DataTest />
+                  </div>
+                </ProtectedRoute>
+              }
+            />
+          )}
+          
+          {/* Teacher Routes */}
+          <Route
+            path="/teacher"
+            element={
+              <TeacherRoute>
+                <TeacherDashboard />
+              </TeacherRoute>
+            }
+          />
+          
+          {/* Fallback Route */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+        
+        {/* Toast Notifications */}
+        <Toaster
+          position="top-center"
+          reverseOrder={false}
+          gutter={8}
+          containerClassName=""
+          containerStyle={{}}
+          toastOptions={{
+            className: '',
+            duration: 4000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+            },
+            success: {
+              duration: 3000,
+              iconTheme: {
+                primary: '#4ade80',
+                secondary: '#fff',
+              },
+            },
+            error: {
+              duration: 4000,
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
+        
+        {/* Firebase Diagnostic Tool - Development Only */}
+        {process.env.NODE_ENV === 'development' && <FirebaseDiagnostic />}
+      </div>
+    </Router>
   );
 };
 
-function App() {
+/**
+ * App Component with Error Boundary
+ * 
+ * Wraps the entire application with error boundary and authentication context.
+ * 
+ * @returns {JSX.Element} App component with error handling
+ */
+const App = () => {
   return (
     <ErrorBoundary>
-      <Router>
-        <AuthProvider>
-          <Routes>
-            <Route path="/*" element={<AppLayout />} />
-          </Routes>
-          <Toaster 
-            position="top-center"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: '#1f2937',
-                color: '#fff',
-                direction: 'rtl',
-                borderRadius: '12px',
-                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)',
-              },
-              success: {
-                duration: 3000,
-                iconTheme: {
-                  primary: '#10b981',
-                  secondary: '#fff',
-                },
-              },
-              error: {
-                duration: 4000,
-                iconTheme: {
-                  primary: '#ef4444',
-                  secondary: '#fff',
-                },
-              },
-            }}
-          />
-        </AuthProvider>
-      </Router>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </ErrorBoundary>
   );
-}
+};
 
 export default App;

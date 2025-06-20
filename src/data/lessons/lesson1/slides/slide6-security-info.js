@@ -1,0 +1,46 @@
+export const slide6SecurityInfo = {
+  id: "slide-6",
+  type: "presentation",
+  title: "מה זה אבטחת מידע? 🔒",
+  content: {
+    background: "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
+    elements: [
+      {
+        type: "title",
+        text: "מה זה אבטחת מידע?",
+        style: { fontSize: "2.5rem", color: "#333", textAlign: "center", marginBottom: "2rem" }
+      },
+      {
+        type: "subtitle",
+        text: "הגנה על מערכות מידע",
+        style: { fontSize: "1.5rem", color: "#666", textAlign: "center", marginBottom: "1rem" }
+      },
+      {
+        type: "list",
+        items: [
+          "💻 מחשבים, שרתים, רשתות",
+          "🚗 תחבורה חכמה",
+          "🏠 מכשירים חכמים (IoT)",
+          "📱 טלפונים ניידים"
+        ],
+        style: { fontSize: "1.3rem", color: "#333", textAlign: "right", lineHeight: "2" }
+      },
+      {
+        type: "subtitle",
+        text: "שיטות הגנה:",
+        style: { fontSize: "1.2rem", color: "#666", textAlign: "center", marginTop: "2rem" }
+      },
+      {
+        type: "list",
+        items: [
+          "✅ אימות זהות",
+          "👁️ ניטור פעילות",
+          "🎛️ בקרה על גישה",
+          "📚 מודעות והדרכה"
+        ],
+        style: { fontSize: "1.1rem", color: "#333", textAlign: "right", lineHeight: "2" }
+      }
+    ],
+    duration: 240
+  }
+}; 

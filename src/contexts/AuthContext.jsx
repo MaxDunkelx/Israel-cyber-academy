@@ -1,3 +1,23 @@
+/**
+ * AuthContext - Authentication and User Management
+ * 
+ * Provides comprehensive authentication and user management functionality.
+ * It handles user authentication, profile management, and progress tracking.
+ * 
+ * Key Features:
+ * - Firebase Authentication integration
+ * - User profile management with Firestore
+ * - Progress tracking and lesson completion
+ * - Achievement system
+ * - Real-time data synchronization
+ * 
+ * Data Flow:
+ * 1. User authentication → Firebase Auth
+ * 2. Progress updates → Firestore
+ * 3. Profile management → Firestore
+ * 4. Real-time sync → Local state + Firestore
+ */
+
 import { createContext, useContext, useEffect, useState } from 'react';
 import { 
   createUserWithEmailAndPassword, 
@@ -7,10 +27,18 @@ import {
   updateProfile 
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase/firebase-config';
+import { auth, db, diagnoseFirestoreConnection } from '../firebase/firebase-config';
 
+// Create React context for authentication
 const AuthContext = createContext();
 
+/**
+ * Custom hook to access authentication context
+ * Ensures the hook is used within an AuthProvider
+ * 
+ * @returns {Object} Authentication context with user data and methods
+ * @throws {Error} If used outside of AuthProvider
+ */
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -19,64 +47,64 @@ export const useAuth = () => {
   return context;
 };
 
+/**
+ * Authentication Provider Component
+ * 
+ * Provides authentication state and methods to the entire application.
+ * Manages user registration, login, logout, and progress tracking.
+ * 
+ * @param {Object} props - Component props
+ * @param {React.ReactNode} props.children - Child components
+ */
 export const AuthProvider = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [userProfile, setUserProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Core authentication state
+  const [currentUser, setCurrentUser] = useState(null); // Firebase auth user
+  const [userProfile, setUserProfile] = useState(null); // Extended user data
+  const [loading, setLoading] = useState(true); // Loading state
 
-  const signup = async (email, password, displayName, role = 'student') => {
+  /**
+   * User Registration Function
+   * 
+   * Creates a new user account with Firebase Auth and stores extended profile in Firestore.
+   * Sets up initial user data including progress tracking and role assignment.
+   * 
+   * @param {string} email - User's email address
+   * @param {string} password - User's password
+   * @param {string} displayName - User's display name
+   * @param {string} role - User role ('student' or 'teacher', default: 'student')
+   * @param {Object} credentials - User credentials (firstName, lastName, age, sex)
+   * @returns {Promise<Object>} Firebase user credential
+   * @throws {Error} If registration fails
+   */
+  const signup = async (email, password, displayName, role = 'student', credentials = {}) => {
     try {
+      // Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(userCredential.user, { displayName });
       
-      // Create user profile in Firestore
+      // Set default display name based on sex if not provided
+      let finalDisplayName = displayName;
+      if (!finalDisplayName || finalDisplayName === 'משתמש חדש') {
+        const sex = credentials.sex || 'male';
+        finalDisplayName = sex === 'female' ? 'לוחמת סייבר' : 'לוחם סייבר';
+      }
+      
+      // Update Firebase Auth profile with display name
+      await updateProfile(userCredential.user, { displayName: finalDisplayName });
+      
+      // Create comprehensive user profile in Firestore with proper initial state
       const userProfile = {
         uid: userCredential.user.uid,
         email: userCredential.user.email,
-        displayName,
+        displayName: finalDisplayName,
         role,
-        progress: {},
-        completedLessons: [],
-        currentLesson: 1,
-        createdAt: new Date(),
-        lastLogin: new Date()
-      };
-      
-      await setDoc(doc(db, 'users', userCredential.user.uid), userProfile);
-      return userCredential;
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const login = async (email, password) => {
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      
-      // Update last login
-      if (userCredential.user) {
-        await setDoc(doc(db, 'users', userCredential.user.uid), {
-          lastLogin: new Date()
-        }, { merge: true });
-      }
-      
-      return userCredential;
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const updateUserProgress = async (lessonId, completed, score = 0, temporary = false, lastSlide = null, slideId = null) => {
-    if (!currentUser) return;
-    
-    try {
-      // Handle guest mode with localStorage
-      if (currentUser.isGuest) {
-        const guestProgress = JSON.parse(localStorage.getItem('guestProgress') || '{}');
-        
-        // Initialize lesson progress if it doesn't exist
-        if (!guestProgress[lessonId]) {
-          guestProgress[lessonId] = {
+        // User credentials
+        firstName: credentials.firstName || '',
+        lastName: credentials.lastName || '',
+        age: credentials.age ? parseInt(credentials.age) : null,
+        sex: credentials.sex || 'male',
+        progress: {
+          // Initialize first lesson as available but not completed
+          1: {
             completed: false,
             score: 0,
             completedAt: null,
@@ -84,38 +112,106 @@ export const AuthProvider = ({ children }) => {
             lastSlide: 0,
             pagesEngaged: [],
             lastActivity: new Date()
-          };
-        }
-        
-        // Update lesson progress
-        guestProgress[lessonId] = {
-          ...guestProgress[lessonId],
-          completed,
-          score,
-          completedAt: completed ? new Date() : guestProgress[lessonId].completedAt,
-          temporary: temporary && !completed ? true : false,
-          lastActivity: new Date(),
-          ...(lastSlide !== null ? { lastSlide } : {})
-        };
-        
-        // Track page engagement if slideId is provided
-        if (slideId && guestProgress[lessonId].pagesEngaged) {
-          if (!guestProgress[lessonId].pagesEngaged.includes(slideId)) {
-            guestProgress[lessonId].pagesEngaged = [...guestProgress[lessonId].pagesEngaged, slideId];
           }
+        },
+        completedLessons: [], // Empty array - no lessons completed yet
+        currentLesson: 1, // First lesson is available
+        createdAt: new Date(),
+        lastLogin: new Date(),
+        totalTimeSpent: 0,
+        totalPagesEngaged: 0,
+        achievements: [],
+        streak: 0,
+        lastActivityDate: new Date()
+      };
+      
+      // Store profile in Firestore
+      await setDoc(doc(db, 'users', userCredential.user.uid), userProfile);
+      return userCredential;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  /**
+   * User Login Function
+   * 
+   * Authenticates user with Firebase Auth and updates last login timestamp.
+   * Ensures proper initialization of user data for new users.
+   * 
+   * @param {string} email - User's email address
+   * @param {string} password - User's password
+   * @returns {Promise<Object>} Firebase user credential
+   * @throws {Error} If login fails
+   */
+  const login = async (email, password) => {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      // Update last login timestamp in Firestore
+      if (userCredential.user) {
+        const userRef = doc(db, 'users', userCredential.user.uid);
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          
+          // Ensure proper initialization for existing users
+          const updatedData = {
+            lastLogin: new Date(),
+            lastActivityDate: new Date()
+          };
+          
+          // If user doesn't have proper initial data, set it up
+          if (!userData.progress || Object.keys(userData.progress).length === 0) {
+            updatedData.progress = {
+              1: {
+                completed: false,
+                score: 0,
+                completedAt: null,
+                temporary: false,
+                lastSlide: 0,
+                pagesEngaged: [],
+                lastActivity: new Date()
+              }
+            };
+            updatedData.currentLesson = 1;
+            updatedData.completedLessons = userData.completedLessons || [];
+            updatedData.totalTimeSpent = userData.totalTimeSpent || 0;
+            updatedData.totalPagesEngaged = userData.totalPagesEngaged || 0;
+            updatedData.achievements = userData.achievements || [];
+            updatedData.streak = userData.streak || 0;
+          }
+          
+          await setDoc(userRef, updatedData, { merge: true });
         }
-        
-        localStorage.setItem('guestProgress', JSON.stringify(guestProgress));
-        
-        // Update local state
-        setUserProfile(prev => ({
-          ...prev,
-          progress: guestProgress
-        }));
-        
-        return;
       }
       
+      return userCredential;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  /**
+   * Update User Progress Function
+   * 
+   * Tracks user progress through lessons, exercises, and slide engagement.
+   * Manages lesson completion, scoring, and automatic lesson unlocking.
+   * 
+   * @param {number} lessonId - ID of the lesson
+   * @param {boolean} completed - Whether the lesson is completed
+   * @param {number} score - User's score (0-100)
+   * @param {boolean} temporary - Whether this is temporary progress (for auto-save)
+   * @param {number} lastSlide - Last slide viewed (for resume functionality)
+   * @param {string} slideId - Specific slide ID for engagement tracking
+   * @param {Array} allSlideIds - Array of all slide IDs to ensure complete tracking
+   */
+  const updateUserProgress = async (lessonId, completed, score = 0, temporary = false, lastSlide = null, slideId = null, allSlideIds = null) => {
+    if (!currentUser) return;
+    
+    try {
+      // Handle regular users with Firestore
       const userRef = doc(db, 'users', currentUser.uid);
       const userDoc = await getDoc(userRef);
       
@@ -136,7 +232,7 @@ export const AuthProvider = ({ children }) => {
           };
         }
         
-        // Update lesson progress
+        // Update lesson progress with new data
         progress[lessonId] = {
           ...progress[lessonId],
           completed,
@@ -154,79 +250,152 @@ export const AuthProvider = ({ children }) => {
           }
         }
         
-        const completedLessons = completed 
-          ? [...new Set([...userData.completedLessons || [], lessonId])]
-          : userData.completedLessons || [];
+        // If lesson is completed, ensure all slides are marked as engaged
+        if (completed && allSlideIds && Array.isArray(allSlideIds)) {
+          const currentEngaged = progress[lessonId].pagesEngaged || [];
+          const allEngaged = [...new Set([...currentEngaged, ...allSlideIds])];
+          progress[lessonId].pagesEngaged = allEngaged;
+          console.log(`📊 All slides marked as engaged for lesson ${lessonId}: ${allEngaged.length} slides`);
+        }
         
+        // Calculate total time spent and pages engaged across all lessons
+        let totalTimeSpent = 0;
+        let totalPagesEngaged = 0;
+        Object.values(progress).forEach(lessonProgress => {
+          if (lessonProgress.pagesEngaged && Array.isArray(lessonProgress.pagesEngaged)) {
+            totalPagesEngaged += lessonProgress.pagesEngaged.length;
+            // Estimate 3 minutes per page/slide
+            totalTimeSpent += lessonProgress.pagesEngaged.length * 3;
+          }
+        });
+        
+        // Calculate lesson unlocking logic
+        const currentCompletedLessons = userData.completedLessons || [];
+        const currentLesson = userData.currentLesson || 1;
+        
+        let newCompletedLessons = currentCompletedLessons;
+        let newCurrentLesson = currentLesson;
+        
+        if (completed) {
+          // Add to completed lessons if not already there
+          if (!currentCompletedLessons.includes(lessonId)) {
+            newCompletedLessons = [...currentCompletedLessons, lessonId];
+            console.log(`✅ Lesson ${lessonId} completed and added to completedLessons`);
+          }
+          // Update current lesson to next available lesson
+          newCurrentLesson = Math.max(currentLesson, lessonId + 1);
+          if (newCurrentLesson > currentLesson) {
+            console.log(`🔓 Next lesson unlocked: ${newCurrentLesson} (was ${currentLesson})`);
+          }
+        }
+        
+        // Ensure first lesson is always available for new users
+        if (newCurrentLesson < 1) {
+          newCurrentLesson = 1;
+        }
+        
+        // Calculate achievements based on progress
+        const achievements = userData.achievements || [];
+        const newAchievements = [...achievements];
+        
+        // First lesson completion achievement
+        if (completed && lessonId === 1 && !achievements.includes('first_lesson')) {
+          newAchievements.push('first_lesson');
+          console.log('🏆 Achievement unlocked: First Lesson Completed!');
+        }
+        
+        // Multiple lessons achievement
+        if (completed && newCompletedLessons.length >= 3 && !achievements.includes('three_lessons')) {
+          newAchievements.push('three_lessons');
+          console.log('🏆 Achievement unlocked: Three Lessons Completed!');
+        }
+        
+        // Time spent achievement
+        if (totalTimeSpent >= 60 && !achievements.includes('one_hour')) {
+          newAchievements.push('one_hour');
+          console.log('🏆 Achievement unlocked: One Hour of Learning!');
+        }
+        
+        // Comprehensive console logging for session tracking
+        console.log('📊 USER SESSION DATA UPDATE:', {
+          userId: currentUser.uid,
+          lessonId,
+          action: completed ? 'LESSON_COMPLETED' : 'PROGRESS_UPDATED',
+          timestamp: new Date().toISOString(),
+          progress: {
+            lessonId,
+            completed,
+            score,
+            lastSlide: lastSlide || progress[lessonId].lastSlide,
+            pagesEngaged: progress[lessonId].pagesEngaged?.length || 0,
+            temporary
+          },
+          statistics: {
+            totalTimeSpent,
+            totalPagesEngaged,
+            completedLessons: newCompletedLessons.length,
+            currentLesson: newCurrentLesson,
+            achievements: newAchievements.length
+          },
+          achievements: {
+            newlyUnlocked: newAchievements.filter(a => !achievements.includes(a)),
+            total: newAchievements.length
+          }
+        });
+        
+        // Update Firestore with new progress data
         await setDoc(userRef, {
           progress,
-          completedLessons,
-          currentLesson: Math.max(userData.currentLesson || 1, lessonId + 1)
+          completedLessons: newCompletedLessons,
+          currentLesson: newCurrentLesson,
+          lastActivityDate: new Date(),
+          totalTimeSpent,
+          totalPagesEngaged,
+          achievements: newAchievements
         }, { merge: true });
         
         // Update local state
         setUserProfile(prev => ({
           ...prev,
           progress,
-          completedLessons,
-          currentLesson: Math.max(prev.currentLesson || 1, lessonId + 1)
+          completedLessons: newCompletedLessons,
+          currentLesson: newCurrentLesson,
+          lastActivityDate: new Date(),
+          totalTimeSpent,
+          totalPagesEngaged,
+          achievements: newAchievements
         }));
+        
+        // Log final state for verification
+        console.log('💾 PROGRESS SAVED SUCCESSFULLY:', {
+          lessonId,
+          completed,
+          score,
+          totalTimeSpent,
+          totalPagesEngaged,
+          completedLessons: newCompletedLessons.length,
+          achievements: newAchievements.length
+        });
       }
     } catch (error) {
-      console.error('Error updating progress:', error);
+      console.error('❌ Error updating progress:', error);
     }
   };
 
-  // Track individual slide engagement
+  /**
+   * Track Slide Engagement Function
+   * 
+   * Records which specific slides/pages a user has engaged with.
+   * Used for analytics and to ensure users don't skip content.
+   * 
+   * @param {number} lessonId - ID of the lesson
+   * @param {string} slideId - ID of the specific slide
+   */
   const trackSlideEngagement = async (lessonId, slideId) => {
     if (!currentUser) return;
     
     try {
-      // Handle guest mode with localStorage
-      if (currentUser.isGuest) {
-        const guestProgress = JSON.parse(localStorage.getItem('guestProgress') || '{}');
-        
-        // Initialize lesson progress if it doesn't exist
-        if (!guestProgress[lessonId]) {
-          guestProgress[lessonId] = {
-            completed: false,
-            score: 0,
-            completedAt: null,
-            temporary: false,
-            lastSlide: 0,
-            pagesEngaged: [],
-            lastActivity: new Date()
-          };
-        }
-        
-        // Initialize pagesEngaged array if it doesn't exist
-        if (!guestProgress[lessonId].pagesEngaged) {
-          guestProgress[lessonId].pagesEngaged = [];
-        }
-        
-        // Add slide to pagesEngaged if not already present (ensures uniqueness)
-        if (!guestProgress[lessonId].pagesEngaged.includes(slideId)) {
-          guestProgress[lessonId].pagesEngaged = [...guestProgress[lessonId].pagesEngaged, slideId];
-          guestProgress[lessonId].lastActivity = new Date();
-          
-          localStorage.setItem('guestProgress', JSON.stringify(guestProgress));
-          
-          // Update local state
-          setUserProfile(prev => ({
-            ...prev,
-            progress: {
-              ...prev.progress,
-              [lessonId]: {
-                ...prev.progress?.[lessonId],
-                pagesEngaged: guestProgress[lessonId].pagesEngaged,
-                lastActivity: guestProgress[lessonId].lastActivity
-              }
-            }
-          }));
-        }
-        return;
-      }
-      
+      // Handle regular users with Firestore
       const userRef = doc(db, 'users', currentUser.uid);
       const userDoc = await getDoc(userRef);
       
@@ -257,30 +426,83 @@ export const AuthProvider = ({ children }) => {
           progress[lessonId].pagesEngaged = [...progress[lessonId].pagesEngaged, slideId];
           progress[lessonId].lastActivity = new Date();
           
-          await setDoc(userRef, { progress }, { merge: true });
+          // Calculate total time spent and pages engaged across all lessons
+          let totalTimeSpent = 0;
+          let totalPagesEngaged = 0;
+          Object.values(progress).forEach(lessonProgress => {
+            if (lessonProgress.pagesEngaged && Array.isArray(lessonProgress.pagesEngaged)) {
+              totalPagesEngaged += lessonProgress.pagesEngaged.length;
+              // Estimate 3 minutes per page/slide
+              totalTimeSpent += lessonProgress.pagesEngaged.length * 3;
+            }
+          });
+          
+          // Comprehensive console logging for slide engagement
+          console.log('👁️ SLIDE ENGAGEMENT TRACKED:', {
+            userId: currentUser.uid,
+            lessonId,
+            slideId,
+            timestamp: new Date().toISOString(),
+            engagement: {
+              lessonId,
+              slideId,
+              totalSlidesInLesson: progress[lessonId].pagesEngaged.length,
+              isNewEngagement: true
+            },
+            statistics: {
+              totalTimeSpent,
+              totalPagesEngaged,
+              lessonProgress: Math.round((progress[lessonId].pagesEngaged.length / 10) * 100) // Estimate total slides
+            }
+          });
+          
+          await setDoc(userRef, { 
+            progress,
+            totalTimeSpent,
+            totalPagesEngaged,
+            lastActivityDate: new Date()
+          }, { merge: true });
           
           // Update local state
           setUserProfile(prev => ({
             ...prev,
-            progress: {
-              ...prev.progress,
-              [lessonId]: {
-                ...prev.progress?.[lessonId],
-                pagesEngaged: progress[lessonId].pagesEngaged,
-                lastActivity: progress[lessonId].lastActivity
-              }
-            }
+            progress,
+            totalTimeSpent,
+            totalPagesEngaged,
+            lastActivityDate: new Date()
           }));
+          
+          // Log engagement summary
+          console.log('📈 ENGAGEMENT SUMMARY:', {
+            lessonId,
+            slideId,
+            totalPagesEngaged,
+            totalTimeSpent,
+            lessonProgress: `${progress[lessonId].pagesEngaged.length} slides engaged`
+          });
+        } else {
+          // Log duplicate engagement attempt
+          console.log('🔄 DUPLICATE SLIDE ENGAGEMENT:', {
+            userId: currentUser.uid,
+            lessonId,
+            slideId,
+            timestamp: new Date().toISOString(),
+            message: 'Slide already engaged, skipping duplicate tracking'
+          });
         }
       }
     } catch (error) {
-      console.error('Error tracking slide engagement:', error);
+      console.error('❌ Error tracking slide engagement:', error);
     }
   };
 
-  // Remove all temporary progress from Firestore and local state
+  /**
+   * Remove Temporary Progress Function
+   * 
+   * Cleans up temporary progress data when user logs out or session ends.
+   */
   const removeTemporaryProgress = async () => {
-    if (!currentUser || localStorage.getItem('isGuest')) return;
+    if (!currentUser) return;
     try {
       const userRef = doc(db, 'users', currentUser.uid);
       const userDoc = await getDoc(userRef);
@@ -288,12 +510,16 @@ export const AuthProvider = ({ children }) => {
         const userData = userDoc.data();
         const progress = userData.progress || {};
         let changed = false;
+        
+        // Remove all temporary progress entries
         Object.keys(progress).forEach(key => {
           if (progress[key].temporary) {
             delete progress[key];
             changed = true;
           }
         });
+        
+        // Update Firestore if changes were made
         if (changed) {
           await setDoc(userRef, { progress }, { merge: true });
           setUserProfile(prev => ({ ...prev, progress }));
@@ -304,122 +530,310 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Remove temporary progress on logout
+  /**
+   * User Logout Function
+   * 
+   * Handles user logout and redirects to login page.
+   * Cleans up temporary progress and signs out from Firebase.
+   */
   const logout = async () => {
-    // Handle guest mode logout
-    if (currentUser?.isGuest || userProfile?.isGuest) {
-      // Clear all guest-related data
-      localStorage.removeItem('isGuest');
-      localStorage.removeItem('guestRole');
-      localStorage.removeItem('guestProgress');
+    try {
+      console.log('🔄 Logging out user...');
       
-      // Clear state
+      // Clean up temporary progress before logout
+      await removeTemporaryProgress();
+      
+      // Sign out from Firebase Auth
+      await signOut(auth);
+      
+      // Clear local state
+      setCurrentUser(null);
+      setUserProfile(null);
+      
+      console.log('✅ User logged out successfully');
+      
+      // Force redirect to login page
+      window.location.href = '/';
+      
+    } catch (error) {
+      console.error('❌ Error during logout:', error);
+      
+      // Even if there's an error, clear state and redirect
       setCurrentUser(null);
       setUserProfile(null);
       
       // Force redirect to login page
       window.location.href = '/';
-      return;
     }
-    
-    // Handle regular user logout
-    localStorage.removeItem('isGuest');
-    await removeTemporaryProgress();
-    
-    // Sign out from Firebase
-    await signOut(auth);
-    
-    // Force redirect to login page
-    window.location.href = '/';
   };
 
-  // Add setLastLessonSlide to context
+  /**
+   * Update User Display Name Function
+   * 
+   * Updates the user's display name in both Firebase Auth and Firestore.
+   * Also updates the local context state for immediate UI updates.
+   * 
+   * @param {string} newDisplayName - New display name for the user
+   * @returns {Promise<void>}
+   */
+  const updateDisplayName = async (newDisplayName) => {
+    if (!currentUser) return;
+    
+    try {
+      // Update Firebase Auth profile
+      await updateProfile(currentUser, { displayName: newDisplayName });
+      
+      // Update Firestore profile
+      const userRef = doc(db, 'users', currentUser.uid);
+      await setDoc(userRef, { 
+        displayName: newDisplayName,
+        lastActivityDate: new Date()
+      }, { merge: true });
+      
+      // Update local context state
+      setUserProfile(prev => ({
+        ...prev,
+        displayName: newDisplayName,
+        lastActivityDate: new Date()
+      }));
+      
+      console.log('✅ Display name updated successfully:', newDisplayName);
+    } catch (error) {
+      console.error('❌ Error updating display name:', error);
+      throw error;
+    }
+  };
+
+  /**
+   * Get last slide for resume functionality
+   * 
+   * @param {number} lessonId - ID of the lesson
+   * @returns {number} Last slide index (0-based)
+   */
+  const getLastLessonSlide = (lessonId) => {
+    const lastSlide = userProfile?.progress?.[lessonId]?.lastSlide ?? 0;
+    console.log(`📖 GET LAST SLIDE: Lesson ${lessonId} -> Slide ${lastSlide + 1}`);
+    return lastSlide;
+  };
+
+  /**
+   * Set last slide for resume functionality
+   * 
+   * @param {number} lessonId - ID of the lesson
+   * @param {number} slideIndex - Slide index to save (0-based)
+   */
   const setLastLessonSlide = async (lessonId, slideIndex) => {
-    if (!currentUser || localStorage.getItem('isGuest')) return;
+    if (!currentUser) return;
+    
     try {
       const userRef = doc(db, 'users', currentUser.uid);
       const userDoc = await getDoc(userRef);
+      
       if (userDoc.exists()) {
         const userData = userDoc.data();
         const progress = userData.progress || {};
-        if (!progress[lessonId]) progress[lessonId] = {};
+        
+        // Initialize lesson progress if it doesn't exist
+        if (!progress[lessonId]) {
+          progress[lessonId] = {
+            completed: false,
+            score: 0,
+            completedAt: null,
+            temporary: false,
+            lastSlide: 0,
+            pagesEngaged: [],
+            lastActivity: new Date()
+          };
+        }
+        
+        // Update last slide
         progress[lessonId].lastSlide = slideIndex;
-        await setDoc(userRef, { progress }, { merge: true });
+        progress[lessonId].lastActivity = new Date();
+        
+        // Console logging for slide position tracking
+        console.log('💾 SLIDE POSITION SAVED:', {
+          userId: currentUser.uid,
+          lessonId,
+          slideIndex: slideIndex + 1, // Convert to 1-based for display
+          timestamp: new Date().toISOString(),
+          action: 'RESUME_POSITION_SAVED'
+        });
+        
+        await setDoc(userRef, { 
+          progress,
+          lastActivityDate: new Date()
+        }, { merge: true });
+        
+        // Update local state
         setUserProfile(prev => ({
           ...prev,
-          progress: {
-            ...prev.progress,
-            [lessonId]: {
-              ...prev.progress?.[lessonId],
-              lastSlide: slideIndex
-            }
-          }
+          progress,
+          lastActivityDate: new Date()
         }));
       }
     } catch (error) {
-      console.error('Error updating last slide:', error);
+      console.error('❌ Error saving slide position:', error);
     }
   };
 
-  // Set guest mode function
-  const setGuestMode = (role) => {
-    localStorage.setItem('isGuest', 'true');
-    localStorage.setItem('guestRole', role);
-    
-    // Generate a random email for guest
-    const randomId = Math.random().toString(36).substring(2, 8);
-    const guestEmail = `guest_${role}_${randomId}@demo.com`;
-    
-    setCurrentUser({ uid: 'guest', isGuest: true });
-    setUserProfile({
-      uid: 'guest',
-      displayName: role === 'teacher' ? 'מורה אורח' : 'תלמיד אורח',
-      role: role,
-      email: guestEmail,
-      password: 'none',
-      progress: {},
-      completedLessons: [],
-      currentLesson: 1,
-      isGuest: true
-    });
-  };
-
-  useEffect(() => {
-    // Guest mode support
-    if (localStorage.getItem('isGuest')) {
-      const guestRole = localStorage.getItem('guestRole') || 'student';
-      // Generate a random email for guest
-      const randomId = Math.random().toString(36).substring(2, 8);
-      const guestEmail = `guest_${guestRole}_${randomId}@demo.com`;
-      setCurrentUser({ uid: 'guest', isGuest: true });
-      setUserProfile({
-        uid: 'guest',
-        displayName: guestRole === 'teacher' ? 'מורה אורח' : 'תלמיד אורח',
-        role: guestRole,
-        email: guestEmail,
-        password: 'none',
-        progress: {},
-        completedLessons: [],
-        currentLesson: 1,
-        isGuest: true
+  /**
+   * Test Firestore Connectivity
+   * 
+   * Enhanced test to check if Firestore is accessible with detailed diagnostics
+   */
+  const testFirestoreConnection = async () => {
+    try {
+      console.log('🧪 Testing Firestore connectivity...');
+      
+      // Use the enhanced diagnostic function
+      const diagnosis = await diagnoseFirestoreConnection();
+      
+      if (diagnosis.success) {
+        console.log('✅ Firestore connection diagnosis completed successfully');
+        return true;
+      } else {
+        console.error('❌ Firestore connection diagnosis failed:', diagnosis.error);
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Firestore connectivity test failed:', error);
+      console.error('🔍 Error details:', {
+        code: error.code,
+        message: error.message
       });
-      setLoading(false);
-      return;
+      return false;
     }
+  };
 
+  /**
+   * Authentication State Effect
+   * 
+   * Listens for Firebase authentication state changes.
+   * Handles user authentication and profile management.
+   */
+  useEffect(() => {
+    console.log('🔄 Setting up authentication listener...');
+    
+    // Test Firestore connectivity first with enhanced diagnostics
+    testFirestoreConnection().then(isConnected => {
+      if (!isConnected) {
+        console.error('❌ Firestore is not accessible - check the following:');
+        console.error('   1. Firestore database is created in Firebase Console');
+        console.error('   2. Security rules allow read/write access');
+        console.error('   3. Project is properly configured');
+        console.error('   4. API keys are correct');
+      }
+    });
+    
+    // Regular user authentication listener
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      console.log('🔄 Auth state changed:', user ? `User logged in: ${user.email}` : 'User logged out');
+      
       setCurrentUser(user);
       
       if (user) {
         try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          console.log('📥 Fetching user profile for:', user.email);
+          console.log('🔍 User UID:', user.uid);
+          
+          // Fetch user profile from Firestore
+          const userRef = doc(db, 'users', user.uid);
+          console.log('📄 Firestore document reference created');
+          
+          const userDoc = await getDoc(userRef);
+          console.log('📋 Firestore document fetch completed');
+          
           if (userDoc.exists()) {
-            setUserProfile(userDoc.data());
+            const userData = userDoc.data();
+            console.log('✅ User profile loaded:', userData.displayName);
+            console.log('📊 User data:', {
+              role: userData.role,
+              currentLesson: userData.currentLesson,
+              completedLessons: userData.completedLessons?.length || 0,
+              progress: Object.keys(userData.progress || {}).length
+            });
+            
+            // Ensure default values for user credentials
+            const userProfileWithDefaults = {
+              ...userData,
+              firstName: userData.firstName || '',
+              lastName: userData.lastName || '',
+              age: userData.age || null,
+              sex: userData.sex || 'male',
+              displayName: userData.displayName || (userData.sex === 'female' ? 'לוחמת סייבר' : 'לוחם סייבר')
+            };
+            
+            setUserProfile(userProfileWithDefaults);
+          } else {
+            console.log('⚠️ User profile not found in Firestore - creating new profile');
+            // Create a new user profile if it doesn't exist
+            const newUserProfile = {
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName || 'לוחם סייבר',
+              role: 'student',
+              // Default user credentials
+              firstName: '',
+              lastName: '',
+              age: null,
+              sex: 'male',
+              progress: {
+                1: {
+                  completed: false,
+                  score: 0,
+                  completedAt: null,
+                  temporary: false,
+                  lastSlide: 0,
+                  pagesEngaged: [],
+                  lastActivity: new Date()
+                }
+              },
+              completedLessons: [],
+              currentLesson: 1,
+              createdAt: new Date(),
+              lastLogin: new Date(),
+              totalTimeSpent: 0,
+              totalPagesEngaged: 0,
+              achievements: [],
+              streak: 0,
+              lastActivityDate: new Date()
+            };
+            
+            try {
+              await setDoc(userRef, newUserProfile);
+              console.log('✅ New user profile created successfully');
+              setUserProfile(newUserProfile);
+            } catch (createError) {
+              console.error('❌ Error creating user profile:', createError);
+              console.error('🔍 Create error details:', {
+                code: createError.code,
+                message: createError.message
+              });
+              setUserProfile(null);
+            }
           }
         } catch (error) {
-          console.error('Error fetching user profile:', error);
+          console.error('❌ Error fetching user profile:', error);
+          console.error('🔍 Error details:', {
+            code: error.code,
+            message: error.message,
+            stack: error.stack
+          });
+          
+          // Provide specific guidance based on error type
+          if (error.code === 'permission-denied') {
+            console.error('💡 This is likely a Firestore security rules issue');
+            console.error('💡 Check your Firestore security rules in Firebase Console');
+          } else if (error.code === 'not-found') {
+            console.error('💡 Firestore database might not exist');
+            console.error('💡 Create Firestore database in Firebase Console');
+          }
+          
+          setUserProfile(null);
         }
       } else {
+        console.log('👋 User signed out, clearing profile');
+        // User is signed out, clear all state
         setUserProfile(null);
       }
       
@@ -429,6 +843,7 @@ export const AuthProvider = ({ children }) => {
     return unsubscribe;
   }, []);
 
+  // Context value containing all authentication state and methods
   const value = {
     currentUser,
     userProfile,
@@ -440,7 +855,8 @@ export const AuthProvider = ({ children }) => {
     loading,
     removeTemporaryProgress,
     trackSlideEngagement,
-    setGuestMode
+    updateDisplayName,
+    getLastLessonSlide
   };
 
   return (

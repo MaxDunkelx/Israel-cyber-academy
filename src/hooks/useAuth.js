@@ -1,4 +1,5 @@
 import { useAuth as useAuthContext } from '../contexts/AuthContext';
+import { useContext } from 'react';
 
 /**
  * Custom hook for authentication functionality
@@ -10,7 +11,23 @@ import { useAuth as useAuthContext } from '../contexts/AuthContext';
  * @example
  * const { currentUser, login, logout, isAuthenticated } = useAuth();
  */
-export const useAuth = useAuthContext;
+export const useAuth = () => {
+  const authContext = useAuthContext();
+  
+  return {
+    ...authContext,
+    isAuthenticated: !!authContext.currentUser,
+    displayName: authContext.userProfile?.displayName || authContext.currentUser?.displayName,
+    email: authContext.userProfile?.email || authContext.currentUser?.email,
+    role: authContext.userProfile?.role || 'student',
+    progress: authContext.userProfile?.progress || {},
+    completedLessons: authContext.userProfile?.completedLessons || [],
+    currentLesson: authContext.userProfile?.currentLesson || 1,
+    totalTimeSpent: authContext.userProfile?.totalTimeSpent || 0,
+    totalPagesEngaged: authContext.userProfile?.totalPagesEngaged || 0,
+    achievements: authContext.userProfile?.achievements || []
+  };
+};
 
 /**
  * Custom hook for checking authentication status
@@ -24,11 +41,11 @@ export const useAuthStatus = () => {
   const { currentUser, userProfile, loading } = useAuth();
   
   return {
-    isAuthenticated: !!currentUser && !currentUser.isGuest,
-    isGuest: currentUser?.isGuest || userProfile?.isGuest,
+    isAuthenticated: !!currentUser,
+    isGuest: false,
     isLoading: loading,
     hasProfile: !!userProfile,
-    role: userProfile?.role || 'guest'
+    role: userProfile?.role || 'student'
   };
 };
 
@@ -41,15 +58,17 @@ export const useAuthStatus = () => {
  * const { displayName, email, role, progress } = useUserProfile();
  */
 export const useUserProfile = () => {
-  const { userProfile, currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuthContext();
   
   return {
-    displayName: userProfile?.displayName || currentUser?.displayName || 'Unknown User',
+    displayName: userProfile?.displayName || currentUser?.displayName || 'משתמש',
     email: userProfile?.email || currentUser?.email || '',
-    role: userProfile?.role || 'guest',
+    role: userProfile?.role || 'student',
     progress: userProfile?.progress || {},
     completedLessons: userProfile?.completedLessons || [],
     currentLesson: userProfile?.currentLesson || 1,
-    isGuest: userProfile?.isGuest || currentUser?.isGuest
+    totalTimeSpent: userProfile?.totalTimeSpent || 0,
+    totalPagesEngaged: userProfile?.totalPagesEngaged || 0,
+    achievements: userProfile?.achievements || []
   };
 }; 

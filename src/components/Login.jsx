@@ -1,6 +1,27 @@
+/**
+ * Login Component - Israel Cyber Academy Landing Page
+ * 
+ * This is the main landing page and authentication interface for the application.
+ * It serves as both a marketing page and login/signup form.
+ * 
+ * Key Features:
+ * - Beautiful animated landing page with cyber security branding
+ * - User registration and login forms
+ * - Form validation and error handling
+ * - Role-based user creation (student/teacher)
+ * - Responsive design with Hebrew RTL support
+ * 
+ * Component Flow:
+ * 1. User sees landing page with feature highlights
+ * 2. User selects role (student/teacher)
+ * 3. Form appears for login/signup
+ * 4. Validation and authentication processing
+ * 5. Redirect to main application on success
+ */
+
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, User, Shield, GraduationCap, BookOpen, ArrowRight, Sparkles, Zap, Target, Globe, Users, Award, Code, Lock, Star, TrendingUp, Clock } from 'lucide-react';
+import { Eye, EyeOff, User, Shield, GraduationCap, BookOpen, ArrowRight, Zap, Target, Globe, Users, Award, Code, Lock, Star, TrendingUp, Clock } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { validateForm } from '../utils/validation';
 import toast from 'react-hot-toast';
@@ -11,31 +32,45 @@ import cyberLogo from '../assets/cyber-logo.png';
  * Features stunning animations, proper branding, and comprehensive information
  */
 const Login = () => {
-  const { login, signup, setGuestMode } = useAuth();
+  // Authentication context
+  const { login, signup } = useAuth();
+  
+  // Form state management
   const [showLoginForm, setShowLoginForm] = useState(false);
   const [selectedRole, setSelectedRole] = useState(null);
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [showGuestWarning, setShowGuestWarning] = useState(false);
-  const [guestRole, setGuestRole] = useState(null);
-  const [guestWarningAccepted, setGuestWarningAccepted] = useState(false);
+  
+  // Form data and validation
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     displayName: '',
+    firstName: '',
+    lastName: '',
+    age: '',
+    sex: 'male',
     role: 'student'
   });
   const [errors, setErrors] = useState({});
 
-  // Form validation rules
+  // Form validation rules for different scenarios
   const validationRules = {
     email: { required: true, type: 'email' },
     password: { required: true, type: 'password' },
-    displayName: { required: !isLogin, minLength: 2, maxLength: 50 }
+    displayName: { required: !isLogin, minLength: 2, maxLength: 50 },
+    firstName: { required: !isLogin, minLength: 2, maxLength: 30 },
+    lastName: { required: !isLogin, minLength: 2, maxLength: 30 },
+    age: { required: !isLogin, type: 'number', min: 1, max: 120 }
   };
 
-  // Handle form input changes
+  /**
+   * Handle form input changes
+   * Updates form data and clears validation errors when user starts typing
+   * 
+   * @param {Event} e - Input change event
+   */
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -50,11 +85,16 @@ const Login = () => {
     }
   };
 
-  // Handle form submission
+  /**
+   * Handle form submission
+   * Validates form data and attempts authentication
+   * 
+   * @param {Event} e - Form submit event
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validate form
+    // Validate form using utility function
     const validation = validateForm(formData, validationRules);
     if (!validation.isValid) {
       setErrors(validation.fieldErrors);
@@ -66,14 +106,25 @@ const Login = () => {
 
     try {
       if (isLogin) {
+        // Attempt user login
         await login(formData.email, formData.password);
         toast.success('התחברת בהצלחה!');
       } else {
-        await signup(formData.email, formData.password, formData.displayName, selectedRole);
+        // Prepare credentials object for signup
+        const credentials = {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          age: formData.age,
+          sex: formData.sex
+        };
+        
+        // Attempt user registration with credentials
+        await signup(formData.email, formData.password, formData.displayName, selectedRole, credentials);
         toast.success('נרשמת בהצלחה!');
       }
     } catch (error) {
       console.error('Authentication error:', error);
+      // Provide user-friendly error messages in Hebrew
       const errorMessage = error.code === 'auth/user-not-found' ? 'משתמש לא נמצא' :
                           error.code === 'auth/wrong-password' ? 'סיסמה שגויה' :
                           error.code === 'auth/email-already-in-use' ? 'אימייל כבר קיים במערכת' :
@@ -84,29 +135,18 @@ const Login = () => {
     }
   };
 
-  // Handle guest mode - show warning first
-  const handleGuestMode = (role) => {
-    setGuestRole(role);
-    setShowGuestWarning(true);
-    setGuestWarningAccepted(false);
-  };
-
-  // Handle actual guest login after warning acceptance
-  const handleGuestLogin = () => {
-    if (!guestWarningAccepted) return;
-    
-    setGuestMode(guestRole);
-    setShowGuestWarning(false);
-    toast.success(`ברוך הבא למצב ${guestRole === 'student' ? 'תלמיד' : 'מורה'} אורח!`);
-  };
-
-  // Handle role selection
+  /**
+   * Handle role selection
+   * Shows login form and sets selected role
+   * 
+   * @param {string} role - Selected role ('student' or 'teacher')
+   */
   const handleRoleSelect = (role) => {
     setSelectedRole(role);
     setShowLoginForm(true);
   };
 
-  // Animation variants
+  // Animation variants for smooth page transitions
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -166,7 +206,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/20 to-purple-900/20 relative overflow-x-hidden">
-      {/* Large Background Logo */}
+      {/* Large Background Logo - Creates immersive cyber atmosphere */}
       <div className="fixed inset-0 flex items-center justify-center opacity-25 pointer-events-none z-0">
         <img 
           src={cyberLogo} 
@@ -175,7 +215,7 @@ const Login = () => {
         />
       </div>
 
-      {/* Animated Background Elements */}
+      {/* Animated Background Elements - Floating orbs for visual appeal */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
         <motion.div
           className="absolute top-20 left-20 w-40 h-40 bg-blue-500/10 rounded-full blur-xl"
@@ -386,16 +426,6 @@ const Login = () => {
                       <BookOpen className="w-6 h-6 inline ml-3" />
                       התחבר כתלמיד
                     </button>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleGuestMode('student');
-                      }}
-                      className="w-full py-3 px-8 bg-gray-700/50 text-gray-300 rounded-xl font-medium hover:bg-gray-600/50 transition-all duration-300 border border-gray-600"
-                    >
-                      <Sparkles className="w-5 h-5 inline ml-3" />
-                      נסה כמשתמש אורח
-                    </button>
                   </div>
                 </div>
               </motion.div>
@@ -425,16 +455,6 @@ const Login = () => {
                     <button className="w-full py-4 px-8 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-semibold text-lg hover:from-emerald-700 hover:to-teal-700 transition-all duration-300 shadow-lg">
                       <Shield className="w-6 h-6 inline ml-3" />
                       התחבר כמורה
-                    </button>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleGuestMode('teacher');
-                      }}
-                      className="w-full py-3 px-8 bg-gray-700/50 text-gray-300 rounded-xl font-medium hover:bg-gray-600/50 transition-all duration-300 border border-gray-600"
-                    >
-                      <Sparkles className="w-5 h-5 inline ml-3" />
-                      נסה כמשתמש אורח
                     </button>
                   </div>
                 </div>
@@ -467,26 +487,112 @@ const Login = () => {
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 {!isLogin && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-3">
-                      שם מלא
-                    </label>
-                    <input
-                      type="text"
-                      name="displayName"
-                      value={formData.displayName}
-                      onChange={handleInputChange}
-                      className={`w-full px-5 py-4 bg-gray-700/50 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-300 text-lg ${
-                        errors.displayName 
-                          ? 'border-red-500 focus:ring-red-500' 
-                          : 'border-gray-600 focus:ring-blue-500'
-                      }`}
-                      placeholder="הכנס את שמך המלא"
-                    />
-                    {errors.displayName && (
-                      <p className="text-red-400 text-sm mt-2">{errors.displayName[0]}</p>
-                    )}
-                  </div>
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-3">
+                        שם מלא
+                      </label>
+                      <input
+                        type="text"
+                        name="displayName"
+                        value={formData.displayName}
+                        onChange={handleInputChange}
+                        className={`w-full px-5 py-4 bg-gray-700/50 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-300 text-lg ${
+                          errors.displayName 
+                            ? 'border-red-500 focus:ring-red-500' 
+                            : 'border-gray-600 focus:ring-blue-500'
+                        }`}
+                        placeholder="הכנס את שמך המלא"
+                      />
+                      {errors.displayName && (
+                        <p className="text-red-400 text-sm mt-2">{errors.displayName[0]}</p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-3">
+                          שם פרטי
+                        </label>
+                        <input
+                          type="text"
+                          name="firstName"
+                          value={formData.firstName}
+                          onChange={handleInputChange}
+                          className={`w-full px-5 py-4 bg-gray-700/50 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-300 text-lg ${
+                            errors.firstName 
+                              ? 'border-red-500 focus:ring-red-500' 
+                              : 'border-gray-600 focus:ring-blue-500'
+                          }`}
+                          placeholder="שם פרטי"
+                        />
+                        {errors.firstName && (
+                          <p className="text-red-400 text-sm mt-2">{errors.firstName[0]}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-3">
+                          שם משפחה
+                        </label>
+                        <input
+                          type="text"
+                          name="lastName"
+                          value={formData.lastName}
+                          onChange={handleInputChange}
+                          className={`w-full px-5 py-4 bg-gray-700/50 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-300 text-lg ${
+                            errors.lastName 
+                              ? 'border-red-500 focus:ring-red-500' 
+                              : 'border-gray-600 focus:ring-blue-500'
+                          }`}
+                          placeholder="שם משפחה"
+                        />
+                        {errors.lastName && (
+                          <p className="text-red-400 text-sm mt-2">{errors.lastName[0]}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-3">
+                          גיל
+                        </label>
+                        <input
+                          type="number"
+                          name="age"
+                          value={formData.age}
+                          onChange={handleInputChange}
+                          min="1"
+                          max="120"
+                          className={`w-full px-5 py-4 bg-gray-700/50 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-300 text-lg ${
+                            errors.age 
+                              ? 'border-red-500 focus:ring-red-500' 
+                              : 'border-gray-600 focus:ring-blue-500'
+                          }`}
+                          placeholder="גיל"
+                        />
+                        {errors.age && (
+                          <p className="text-red-400 text-sm mt-2">{errors.age[0]}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-3">
+                          מגדר
+                        </label>
+                        <select
+                          name="sex"
+                          value={formData.sex}
+                          onChange={handleInputChange}
+                          className="w-full px-5 py-4 bg-gray-700/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 text-lg"
+                        >
+                          <option value="male">זכר</option>
+                          <option value="female">נקבה</option>
+                        </select>
+                      </div>
+                    </div>
+                  </>
                 )}
 
                 <div>
@@ -594,67 +700,6 @@ const Login = () => {
           </div>
         </footer>
       </motion.div>
-
-      {/* Guest Warning Modal */}
-      {showGuestWarning && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-        >
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.8, opacity: 0 }}
-            className="bg-gray-800/95 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-gray-700 max-w-md w-full"
-          >
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Sparkles className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-3">
-                אזהרה - מצב אורח
-              </h3>
-              <p className="text-gray-300 text-lg leading-relaxed">
-                אתה עומד להיכנס למצב אורח כ-{guestRole === 'student' ? 'תלמיד' : 'מורה'}.
-                <br /><br />
-                <span className="text-yellow-400 font-semibold">שים לב:</span> הנתונים שלך לא יישמרו באופן קבוע ויימחקו בעת יציאה מהמערכת.
-              </p>
-            </div>
-
-            <div className="mb-6">
-              <label className="flex items-center space-x-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={guestWarningAccepted}
-                  onChange={(e) => setGuestWarningAccepted(e.target.checked)}
-                  className="w-5 h-5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
-                />
-                <span className="text-gray-300 text-lg">
-                  אני מבין שהנתונים שלי לא יישמרו באופן קבוע
-                </span>
-              </label>
-            </div>
-
-            <div className="flex space-x-4 space-x-reverse">
-              <button
-                onClick={() => setShowGuestWarning(false)}
-                className="flex-1 py-3 px-6 bg-gray-700 text-gray-300 rounded-xl font-medium hover:bg-gray-600 transition-all duration-300 border border-gray-600"
-              >
-                ביטול
-              </button>
-              <button
-                onClick={handleGuestLogin}
-                disabled={!guestWarningAccepted}
-                className="flex-1 py-3 px-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                המשך למצב אורח
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
     </div>
   );
 };

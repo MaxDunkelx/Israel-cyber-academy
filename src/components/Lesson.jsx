@@ -22,7 +22,7 @@ import MatchingExercise from './exercises/MatchingExercise';
 const Lesson = () => {
   const { lessonId } = useParams();
   const navigate = useNavigate();
-  const { userProfile, updateUserProgress } = useAuth();
+  const { userProfile, updateUserProgress, setLastLessonSlide } = useAuth();
   const [currentStep, setCurrentStep] = useState('theory'); // 'theory', 'exercise', 'complete'
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [exerciseResults, setExerciseResults] = useState({});
@@ -47,6 +47,13 @@ const Lesson = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Save progress when slide changes
+  useEffect(() => {
+    if (userProfile) {
+      setLastLessonSlide(lesson.id, currentSlide);
+    }
+  }, [currentSlide, lesson, userProfile, setLastLessonSlide]);
 
   if (!lesson) {
     return (

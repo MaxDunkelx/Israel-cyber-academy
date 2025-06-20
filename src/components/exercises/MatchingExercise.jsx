@@ -3,7 +3,8 @@ import { motion } from 'framer-motion';
 import { CheckCircle, XCircle, Shuffle, ArrowRight } from 'lucide-react';
 
 const MatchingExercise = ({ exercise, onComplete }) => {
-  const pairs = exercise.pairs || [];
+  // Extract data from exercise prop
+  const pairs = exercise?.pairs || [];
   const [selectedLeft, setSelectedLeft] = useState(null);
   const [selectedRight, setSelectedRight] = useState(null);
   const [matches, setMatches] = useState({});
@@ -11,6 +12,10 @@ const MatchingExercise = ({ exercise, onComplete }) => {
   const [isCorrect, setIsCorrect] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [score, setScore] = useState(0);
+
+  // For matching exercises, each tool should match with its own description
+  // So the correct match is the same index
+  const getCorrectMatch = (leftIndex) => leftIndex;
 
   const handleLeftClick = (index) => {
     if (isCompleted || matches[index] !== undefined) return;
@@ -32,14 +37,14 @@ const MatchingExercise = ({ exercise, onComplete }) => {
     setSelectedRight(null);
 
     // Check if this match is correct
-    if (pairs[selectedLeft].correctMatch === selectedRight) {
+    if (getCorrectMatch(selectedLeft) === selectedRight) {
       setScore(score + 1);
     }
   };
 
   const checkAnswer = () => {
     const correctMatches = Object.keys(matches).filter(
-      leftIndex => pairs[leftIndex].correctMatch === matches[leftIndex]
+      leftIndex => getCorrectMatch(parseInt(leftIndex)) === matches[leftIndex]
     ).length;
 
     const isAllCorrect = correctMatches === pairs.length;
@@ -73,18 +78,18 @@ const MatchingExercise = ({ exercise, onComplete }) => {
 
   const isMatchCorrect = (leftIndex) => {
     const rightIndex = matches[leftIndex];
-    return rightIndex !== undefined && pairs[leftIndex].correctMatch === rightIndex;
+    return rightIndex !== undefined && getCorrectMatch(leftIndex) === rightIndex;
   };
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       {/* Header */}
       <div className="text-center">
-        <h3 className="text-3xl font-bold text-cyber-blue mb-4">
-          {exercise.title}
+        <h3 className="text-3xl font-bold text-white mb-4">
+          {exercise?.title || "משחק התאמה"}
         </h3>
-        <p className="text-xl text-cyber-blue leading-relaxed">
-          {exercise.instructions}
+        <p className="text-xl text-gray-200 leading-relaxed">
+          {exercise?.instructions || "לחץ על פריט ואז על התיאור המתאים לו"}
         </p>
       </div>
 
@@ -92,7 +97,7 @@ const MatchingExercise = ({ exercise, onComplete }) => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left Column - Tools */}
         <div className="space-y-4">
-          <h4 className="text-2xl font-bold text-cyber-purple text-center mb-4">
+          <h4 className="text-2xl font-bold text-purple-300 text-center mb-4">
             כלי אבטחה
           </h4>
           <div className="space-y-3">
@@ -101,12 +106,12 @@ const MatchingExercise = ({ exercise, onComplete }) => {
                 key={`left-${index}`}
                 className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
                   selectedLeft === index
-                    ? 'border-cyber-blue bg-blue-50 shadow-lg scale-105'
+                    ? 'border-blue-400 bg-blue-800/50 shadow-lg scale-105'
                     : matches[index] !== undefined
                     ? isMatchCorrect(index)
-                      ? 'border-cyber-green bg-green-50'
-                      : 'border-cyber-red bg-red-50'
-                    : 'border-gray-300 bg-white hover:border-cyber-purple hover:bg-purple-50'
+                      ? 'border-green-400 bg-green-800/30'
+                      : 'border-red-400 bg-red-800/30'
+                    : 'border-gray-600 bg-gray-700/50 hover:border-purple-400 hover:bg-purple-800/30'
                 }`}
                 onClick={() => handleLeftClick(index)}
                 whileHover={matches[index] === undefined ? { scale: 1.02 } : {}}
@@ -114,7 +119,7 @@ const MatchingExercise = ({ exercise, onComplete }) => {
               >
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">{pair.icon}</span>
-                  <span className="font-semibold text-gray-800 text-lg">
+                  <span className="font-semibold text-white text-lg">
                     {pair.tool}
                   </span>
                   {matches[index] !== undefined && (
@@ -124,9 +129,9 @@ const MatchingExercise = ({ exercise, onComplete }) => {
                       className="ml-auto"
                     >
                       {isMatchCorrect(index) ? (
-                        <CheckCircle className="h-6 w-6 text-cyber-green" />
+                        <CheckCircle className="h-6 w-6 text-green-400" />
                       ) : (
-                        <XCircle className="h-6 w-6 text-cyber-red" />
+                        <XCircle className="h-6 w-6 text-red-400" />
                       )}
                     </motion.div>
                   )}
@@ -138,7 +143,7 @@ const MatchingExercise = ({ exercise, onComplete }) => {
 
         {/* Right Column - Descriptions */}
         <div className="space-y-4">
-          <h4 className="text-2xl font-bold text-cyber-green text-center mb-4">
+          <h4 className="text-2xl font-bold text-green-300 text-center mb-4">
             תיאורים
           </h4>
           <div className="space-y-3">
@@ -147,17 +152,17 @@ const MatchingExercise = ({ exercise, onComplete }) => {
                 key={`right-${index}`}
                 className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
                   selectedRight === index
-                    ? 'border-cyber-blue bg-blue-50 shadow-lg scale-105'
+                    ? 'border-blue-400 bg-blue-800/50 shadow-lg scale-105'
                     : isRightMatched(index)
-                    ? 'border-gray-400 bg-gray-100 opacity-60'
-                    : 'border-gray-300 bg-white hover:border-cyber-green hover:bg-green-50'
+                    ? 'border-gray-500 bg-gray-600/50 opacity-60'
+                    : 'border-gray-600 bg-gray-700/50 hover:border-green-400 hover:bg-green-800/30'
                 }`}
                 onClick={() => handleRightClick(index)}
                 whileHover={!isRightMatched(index) ? { scale: 1.02 } : {}}
                 whileTap={!isRightMatched(index) ? { scale: 0.98 } : {}}
               >
                 <div className="flex items-center gap-3">
-                  <span className="font-semibold text-gray-800 text-lg">
+                  <span className="font-semibold text-white text-lg">
                     {pair.description}
                   </span>
                 </div>
@@ -176,7 +181,7 @@ const MatchingExercise = ({ exercise, onComplete }) => {
         >
           <motion.button
             onClick={makeMatch}
-            className="btn-primary flex items-center gap-2 mx-auto"
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg border border-blue-500 hover:border-blue-400 transition-all duration-200 flex items-center gap-2 mx-auto"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -190,7 +195,7 @@ const MatchingExercise = ({ exercise, onComplete }) => {
       <div className="flex justify-center space-x-4 space-x-reverse pt-6">
         <motion.button
           onClick={shuffleItems}
-          className="btn-secondary flex items-center gap-2"
+          className="px-6 py-3 bg-gray-700/50 hover:bg-gray-600/50 text-white rounded-lg border border-gray-600 hover:border-gray-500 transition-all duration-200 flex items-center gap-2"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
@@ -200,14 +205,26 @@ const MatchingExercise = ({ exercise, onComplete }) => {
         
         <motion.button
           onClick={checkAnswer}
-          disabled={isCompleted || Object.keys(matches).length !== pairs.length}
-          className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          whileHover={!isCompleted && Object.keys(matches).length === pairs.length ? { scale: 1.05 } : {}}
-          whileTap={!isCompleted && Object.keys(matches).length === pairs.length ? { scale: 0.95 } : {}}
+          disabled={Object.keys(matches).length !== pairs.length}
+          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg border border-blue-500 hover:border-blue-400 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          whileHover={Object.keys(matches).length === pairs.length ? { scale: 1.05 } : {}}
+          whileTap={Object.keys(matches).length === pairs.length ? { scale: 0.95 } : {}}
         >
-          <ArrowRight className="h-5 w-5" />
-          בדוק תשובה
+          <CheckCircle className="h-5 w-5" />
+          בדוק תשובות
         </motion.button>
+      </div>
+
+      {/* Progress */}
+      <div className="text-center">
+        <p className="text-lg text-gray-300">
+          התאמות: {Object.keys(matches).length} / {pairs.length}
+        </p>
+        {score > 0 && (
+          <p className="text-lg text-green-400 font-semibold">
+            נכון: {score} / {Object.keys(matches).length}
+          </p>
+        )}
       </div>
 
       {/* Feedback */}
@@ -215,10 +232,10 @@ const MatchingExercise = ({ exercise, onComplete }) => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`text-center p-6 rounded-xl ${
+          className={`text-center p-6 rounded-xl border-2 ${
             isCorrect 
-              ? 'bg-green-50 text-green-800 border-2 border-green-500' 
-              : 'bg-red-50 text-red-800 border-2 border-red-500'
+              ? 'bg-green-900/30 text-green-200 border-green-500' 
+              : 'bg-red-900/30 text-red-200 border-red-500'
           }`}
         >
           <div className="flex items-center justify-center gap-3 mb-4">
@@ -228,33 +245,16 @@ const MatchingExercise = ({ exercise, onComplete }) => {
               <XCircle className="h-8 w-8" />
             )}
             <span className="text-2xl font-bold">
-              {isCorrect ? 'מעולה! התאמה נכונה!' : 'נסה שוב!'}
+              {isCorrect ? 'מעולה! כל ההתאמות נכונות!' : 'נסה שוב!'}
             </span>
           </div>
           <p className="text-lg">
             {isCorrect 
-              ? `ציון: ${score}/${pairs.length} - כל ההתאמות נכונות!`
-              : `ציון: ${score}/${pairs.length} - בדוק שוב את ההתאמות שלך`
+              ? 'כל הכבוד! הצלחת להתאים את כל הכלים לתיאורים הנכונים שלהם!' 
+              : 'יש כמה התאמות שגויות. נסה שוב!'
             }
           </p>
         </motion.div>
-      )}
-
-      {/* Progress Indicator */}
-      {!isCompleted && (
-        <div className="text-center">
-          <p className="text-gray-600">
-            {Object.keys(matches).length} / {pairs.length} התאמות הושלמו
-          </p>
-          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-            <motion.div 
-              className="bg-cyber-blue h-2 rounded-full"
-              initial={{ width: 0 }}
-              animate={{ width: `${(Object.keys(matches).length / pairs.length) * 100}%` }}
-              transition={{ duration: 0.5 }}
-            />
-          </div>
-        </div>
       )}
     </div>
   );

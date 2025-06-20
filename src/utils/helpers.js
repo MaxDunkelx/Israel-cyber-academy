@@ -404,4 +404,555 @@ export const isEmpty = (value) => {
   if (Array.isArray(value)) return value.length === 0;
   if (typeof value === 'object') return Object.keys(value).length === 0;
   return false;
+};
+
+/**
+ * Helper Functions - Israel Cyber Academy
+ * 
+ * Utility functions for data formatting, validation, and session monitoring.
+ * Provides comprehensive logging and analytics support.
+ */
+
+/**
+ * Format time display for various components
+ * 
+ * @param {number} seconds - Time in seconds
+ * @returns {string} Formatted time string
+ */
+export const formatTime = (seconds) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+/**
+ * Format time studied for display
+ * 
+ * @param {number} seconds - Time in seconds
+ * @returns {string} Formatted time string
+ */
+export const formatTimeStudied = (seconds) => {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  
+  if (hours > 0) {
+    return `${hours} שעות ${minutes} דקות`;
+  }
+  return `${minutes} דקות`;
+};
+
+/**
+ * Session Monitoring and Analytics
+ * Comprehensive logging system for user behavior tracking
+ */
+export class SessionMonitor {
+  constructor() {
+    this.sessionStart = Date.now();
+    this.events = [];
+    this.userId = null;
+    this.lessonId = null;
+  }
+
+  /**
+   * Initialize session monitoring
+   * 
+   * @param {string} userId - User ID
+   * @param {number} lessonId - Current lesson ID
+   */
+  init(userId, lessonId = null) {
+    this.userId = userId;
+    this.lessonId = lessonId;
+    
+    console.log('🚀 SESSION MONITOR INITIALIZED:', {
+      userId,
+      lessonId,
+      timestamp: new Date().toISOString(),
+      sessionId: this.generateSessionId()
+    });
+  }
+
+  /**
+   * Generate unique session ID
+   * 
+   * @returns {string} Session ID
+   */
+  generateSessionId() {
+    return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * Log user event
+   * 
+   * @param {string} eventType - Type of event
+   * @param {Object} data - Event data
+   */
+  logEvent(eventType, data = {}) {
+    const event = {
+      type: eventType,
+      timestamp: new Date().toISOString(),
+      sessionTime: Date.now() - this.sessionStart,
+      userId: this.userId,
+      lessonId: this.lessonId,
+      data
+    };
+
+    this.events.push(event);
+    
+    // Console logging with emojis for easy identification
+    const emojiMap = {
+      'slide_navigation': '🔄',
+      'slide_engagement': '👁️',
+      'exercise_completion': '✅',
+      'lesson_completion': '🎉',
+      'error': '❌',
+      'progress_save': '💾',
+      'user_action': '👤'
+    };
+
+    const emoji = emojiMap[eventType] || '📝';
+    console.log(`${emoji} SESSION EVENT:`, event);
+  }
+
+  /**
+   * Log slide navigation
+   * 
+   * @param {number} fromSlide - Previous slide
+   * @param {number} toSlide - New slide
+   * @param {string} direction - Navigation direction
+   */
+  logSlideNavigation(fromSlide, toSlide, direction) {
+    this.logEvent('slide_navigation', {
+      fromSlide: fromSlide + 1, // Convert to 1-based
+      toSlide: toSlide + 1,
+      direction,
+      timeSpent: Date.now() - this.sessionStart
+    });
+  }
+
+  /**
+   * Log slide engagement
+   * 
+   * @param {string} slideId - Slide ID
+   * @param {string} slideType - Type of slide
+   * @param {number} timeSpent - Time spent on slide
+   */
+  logSlideEngagement(slideId, slideType, timeSpent) {
+    this.logEvent('slide_engagement', {
+      slideId,
+      slideType,
+      timeSpent,
+      engagementLevel: this.calculateEngagementLevel(timeSpent)
+    });
+  }
+
+  /**
+   * Calculate engagement level based on time spent
+   * 
+   * @param {number} timeSpent - Time spent in seconds
+   * @returns {string} Engagement level
+   */
+  calculateEngagementLevel(timeSpent) {
+    if (timeSpent < 30) return 'low';
+    if (timeSpent < 120) return 'medium';
+    return 'high';
+  }
+
+  /**
+   * Log exercise completion
+   * 
+   * @param {string} exerciseId - Exercise ID
+   * @param {boolean} isCorrect - Whether answer was correct
+   * @param {number} score - Exercise score
+   */
+  logExerciseCompletion(exerciseId, isCorrect, score) {
+    this.logEvent('exercise_completion', {
+      exerciseId,
+      isCorrect,
+      score,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  /**
+   * Log lesson completion
+   * 
+   * @param {number} lessonId - Lesson ID
+   * @param {number} totalScore - Total lesson score
+   * @param {number} timeSpent - Total time spent
+   */
+  logLessonCompletion(lessonId, totalScore, timeSpent) {
+    this.logEvent('lesson_completion', {
+      lessonId,
+      totalScore,
+      timeSpent,
+      completionRate: this.calculateCompletionRate(),
+      achievements: this.getUnlockedAchievements()
+    });
+  }
+
+  /**
+   * Calculate completion rate for current session
+   * 
+   * @returns {number} Completion rate percentage
+   */
+  calculateCompletionRate() {
+    const completedEvents = this.events.filter(e => e.type === 'exercise_completion' && e.data.isCorrect);
+    const totalEvents = this.events.filter(e => e.type === 'exercise_completion');
+    return totalEvents.length > 0 ? Math.round((completedEvents.length / totalEvents.length) * 100) : 0;
+  }
+
+  /**
+   * Get unlocked achievements for current session
+   * 
+   * @returns {Array} Array of achievement IDs
+   */
+  getUnlockedAchievements() {
+    // This would be populated from the auth context
+    return [];
+  }
+
+  /**
+   * Generate session summary
+   * 
+   * @returns {Object} Session summary
+   */
+  generateSessionSummary() {
+    const sessionDuration = Date.now() - this.sessionStart;
+    const slideEvents = this.events.filter(e => e.type === 'slide_navigation');
+    const engagementEvents = this.events.filter(e => e.type === 'slide_engagement');
+    const exerciseEvents = this.events.filter(e => e.type === 'exercise_completion');
+
+    const summary = {
+      sessionId: this.generateSessionId(),
+      userId: this.userId,
+      lessonId: this.lessonId,
+      duration: sessionDuration,
+      totalEvents: this.events.length,
+      slideNavigations: slideEvents.length,
+      slideEngagements: engagementEvents.length,
+      exercisesCompleted: exerciseEvents.length,
+      completionRate: this.calculateCompletionRate(),
+      averageEngagementLevel: this.calculateAverageEngagementLevel(),
+      events: this.events
+    };
+
+    console.log('📊 SESSION SUMMARY:', summary);
+    return summary;
+  }
+
+  /**
+   * Calculate average engagement level
+   * 
+   * @returns {string} Average engagement level
+   */
+  calculateAverageEngagementLevel() {
+    const engagementEvents = this.events.filter(e => e.type === 'slide_engagement');
+    if (engagementEvents.length === 0) return 'unknown';
+
+    const totalTime = engagementEvents.reduce((sum, event) => sum + (event.data.timeSpent || 0), 0);
+    const averageTime = totalTime / engagementEvents.length;
+    
+    return this.calculateEngagementLevel(averageTime);
+  }
+
+  /**
+   * Export session data for analytics
+   * 
+   * @returns {Object} Session data for external analytics
+   */
+  exportSessionData() {
+    const summary = this.generateSessionSummary();
+    
+    return {
+      session: summary,
+      analytics: {
+        userBehavior: this.analyzeUserBehavior(),
+        performance: this.analyzePerformance(),
+        recommendations: this.generateRecommendations()
+      }
+    };
+  }
+
+  /**
+   * Analyze user behavior patterns
+   * 
+   * @returns {Object} Behavior analysis
+   */
+  analyzeUserBehavior() {
+    const slideEvents = this.events.filter(e => e.type === 'slide_navigation');
+    const engagementEvents = this.events.filter(e => e.type === 'slide_engagement');
+    
+    return {
+      navigationPattern: this.analyzeNavigationPattern(slideEvents),
+      engagementPattern: this.analyzeEngagementPattern(engagementEvents),
+      learningStyle: this.determineLearningStyle()
+    };
+  }
+
+  /**
+   * Analyze navigation pattern
+   * 
+   * @param {Array} slideEvents - Slide navigation events
+   * @returns {Object} Navigation pattern analysis
+   */
+  analyzeNavigationPattern(slideEvents) {
+    const forwardMoves = slideEvents.filter(e => e.data.direction === 'forward').length;
+    const backwardMoves = slideEvents.filter(e => e.data.direction === 'backward').length;
+    
+    return {
+      forwardMoves,
+      backwardMoves,
+      pattern: forwardMoves > backwardMoves ? 'progressive' : 'reviewing',
+      efficiency: this.calculateNavigationEfficiency(slideEvents)
+    };
+  }
+
+  /**
+   * Calculate navigation efficiency
+   * 
+   * @param {Array} slideEvents - Slide navigation events
+   * @returns {number} Efficiency score (0-100)
+   */
+  calculateNavigationEfficiency(slideEvents) {
+    if (slideEvents.length === 0) return 100;
+    
+    const forwardMoves = slideEvents.filter(e => e.data.direction === 'forward').length;
+    const totalMoves = slideEvents.length;
+    
+    return Math.round((forwardMoves / totalMoves) * 100);
+  }
+
+  /**
+   * Analyze engagement pattern
+   * 
+   * @param {Array} engagementEvents - Engagement events
+   * @returns {Object} Engagement pattern analysis
+   */
+  analyzeEngagementPattern(engagementEvents) {
+    const engagementLevels = engagementEvents.map(e => e.data.engagementLevel);
+    const highEngagement = engagementLevels.filter(level => level === 'high').length;
+    const mediumEngagement = engagementLevels.filter(level => level === 'medium').length;
+    const lowEngagement = engagementLevels.filter(level => level === 'low').length;
+    
+    return {
+      highEngagement,
+      mediumEngagement,
+      lowEngagement,
+      averageEngagement: this.calculateAverageEngagementLevel(),
+      consistency: this.calculateEngagementConsistency(engagementLevels)
+    };
+  }
+
+  /**
+   * Calculate engagement consistency
+   * 
+   * @param {Array} engagementLevels - Array of engagement levels
+   * @returns {string} Consistency level
+   */
+  calculateEngagementConsistency(engagementLevels) {
+    if (engagementLevels.length === 0) return 'unknown';
+    
+    const uniqueLevels = new Set(engagementLevels);
+    if (uniqueLevels.size === 1) return 'very_consistent';
+    if (uniqueLevels.size === 2) return 'consistent';
+    return 'inconsistent';
+  }
+
+  /**
+   * Determine learning style based on behavior
+   * 
+   * @returns {string} Learning style
+   */
+  determineLearningStyle() {
+    const slideEvents = this.events.filter(e => e.type === 'slide_navigation');
+    const engagementEvents = this.events.filter(e => e.type === 'slide_engagement');
+    
+    const averageTimePerSlide = engagementEvents.length > 0 
+      ? engagementEvents.reduce((sum, e) => sum + (e.data.timeSpent || 0), 0) / engagementEvents.length
+      : 0;
+    
+    const backwardMoves = slideEvents.filter(e => e.data.direction === 'backward').length;
+    
+    if (averageTimePerSlide > 180 && backwardMoves > 2) return 'thorough_reviewer';
+    if (averageTimePerSlide < 60) return 'quick_learner';
+    if (backwardMoves > 5) return 'repetitive_learner';
+    return 'balanced_learner';
+  }
+
+  /**
+   * Analyze performance metrics
+   * 
+   * @returns {Object} Performance analysis
+   */
+  analyzePerformance() {
+    const exerciseEvents = this.events.filter(e => e.type === 'exercise_completion');
+    const correctAnswers = exerciseEvents.filter(e => e.data.isCorrect).length;
+    const totalAnswers = exerciseEvents.length;
+    
+    return {
+      accuracy: totalAnswers > 0 ? Math.round((correctAnswers / totalAnswers) * 100) : 0,
+      speed: this.calculateAverageResponseTime(),
+      consistency: this.calculatePerformanceConsistency(),
+      improvement: this.calculateImprovementTrend()
+    };
+  }
+
+  /**
+   * Calculate average response time
+   * 
+   * @returns {number} Average response time in seconds
+   */
+  calculateAverageResponseTime() {
+    const exerciseEvents = this.events.filter(e => e.type === 'exercise_completion');
+    if (exerciseEvents.length === 0) return 0;
+    
+    // This would need to be enhanced with actual response time tracking
+    return 30; // Placeholder
+  }
+
+  /**
+   * Calculate performance consistency
+   * 
+   * @returns {string} Consistency level
+   */
+  calculatePerformanceConsistency() {
+    const exerciseEvents = this.events.filter(e => e.type === 'exercise_completion');
+    if (exerciseEvents.length < 3) return 'insufficient_data';
+    
+    const scores = exerciseEvents.map(e => e.data.score || 0);
+    const variance = this.calculateVariance(scores);
+    
+    if (variance < 10) return 'very_consistent';
+    if (variance < 25) return 'consistent';
+    return 'inconsistent';
+  }
+
+  /**
+   * Calculate variance of scores
+   * 
+   * @param {Array} scores - Array of scores
+   * @returns {number} Variance
+   */
+  calculateVariance(scores) {
+    const mean = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+    const squaredDifferences = scores.map(score => Math.pow(score - mean, 2));
+    return squaredDifferences.reduce((sum, diff) => sum + diff, 0) / scores.length;
+  }
+
+  /**
+   * Calculate improvement trend
+   * 
+   * @returns {string} Improvement trend
+   */
+  calculateImprovementTrend() {
+    const exerciseEvents = this.events.filter(e => e.type === 'exercise_completion');
+    if (exerciseEvents.length < 3) return 'insufficient_data';
+    
+    const scores = exerciseEvents.map(e => e.data.score || 0);
+    const firstHalf = scores.slice(0, Math.floor(scores.length / 2));
+    const secondHalf = scores.slice(Math.floor(scores.length / 2));
+    
+    const firstHalfAvg = firstHalf.reduce((sum, score) => sum + score, 0) / firstHalf.length;
+    const secondHalfAvg = secondHalf.reduce((sum, score) => sum + score, 0) / secondHalf.length;
+    
+    if (secondHalfAvg > firstHalfAvg + 10) return 'improving';
+    if (secondHalfAvg < firstHalfAvg - 10) return 'declining';
+    return 'stable';
+  }
+
+  /**
+   * Generate recommendations based on analysis
+   * 
+   * @returns {Array} Array of recommendations
+   */
+  generateRecommendations() {
+    const recommendations = [];
+    const behavior = this.analyzeUserBehavior();
+    const performance = this.analyzePerformance();
+    
+    if (behavior.navigationPattern.efficiency < 70) {
+      recommendations.push('Consider reducing backward navigation to improve learning efficiency');
+    }
+    
+    if (behavior.engagementPattern.lowEngagement > behavior.engagementPattern.highEngagement) {
+      recommendations.push('Try spending more time on each slide to improve understanding');
+    }
+    
+    if (performance.accuracy < 80) {
+      recommendations.push('Review previous lessons to strengthen foundational knowledge');
+    }
+    
+    if (behavior.learningStyle === 'quick_learner' && performance.accuracy < 90) {
+      recommendations.push('Slow down and review content more thoroughly');
+    }
+    
+    return recommendations;
+  }
+}
+
+// Create global session monitor instance
+export const sessionMonitor = new SessionMonitor();
+
+/**
+ * Initialize session monitoring for a lesson
+ * 
+ * @param {string} userId - User ID
+ * @param {number} lessonId - Lesson ID
+ */
+export const initLessonSession = (userId, lessonId) => {
+  sessionMonitor.init(userId, lessonId);
+  console.log('🎯 LESSON SESSION STARTED:', { userId, lessonId });
+};
+
+/**
+ * Log slide navigation event
+ * 
+ * @param {number} fromSlide - Previous slide
+ * @param {number} toSlide - New slide
+ * @param {string} direction - Navigation direction
+ */
+export const logSlideNavigation = (fromSlide, toSlide, direction) => {
+  sessionMonitor.logSlideNavigation(fromSlide, toSlide, direction);
+};
+
+/**
+ * Log slide engagement event
+ * 
+ * @param {string} slideId - Slide ID
+ * @param {string} slideType - Type of slide
+ * @param {number} timeSpent - Time spent on slide
+ */
+export const logSlideEngagement = (slideId, slideType, timeSpent) => {
+  sessionMonitor.logSlideEngagement(slideId, slideType, timeSpent);
+};
+
+/**
+ * Log exercise completion event
+ * 
+ * @param {string} exerciseId - Exercise ID
+ * @param {boolean} isCorrect - Whether answer was correct
+ * @param {number} score - Exercise score
+ */
+export const logExerciseCompletion = (exerciseId, isCorrect, score) => {
+  sessionMonitor.logExerciseCompletion(exerciseId, isCorrect, score);
+};
+
+/**
+ * Log lesson completion event
+ * 
+ * @param {number} lessonId - Lesson ID
+ * @param {number} totalScore - Total lesson score
+ * @param {number} timeSpent - Total time spent
+ */
+export const logLessonCompletion = (lessonId, totalScore, timeSpent) => {
+  sessionMonitor.logLessonCompletion(lessonId, totalScore, timeSpent);
+};
+
+/**
+ * Export session data for analytics
+ * 
+ * @returns {Object} Session data
+ */
+export const exportSessionData = () => {
+  return sessionMonitor.exportSessionData();
 }; 
