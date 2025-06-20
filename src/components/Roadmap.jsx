@@ -290,7 +290,7 @@ const Roadmap = () => {
     }
     const status = getLessonStatus(lesson.id);
     if (status !== 'locked') {
-      navigate(`/interactive-lesson/${lesson.id}`);
+      navigate(`/lessons/${lesson.id}`);
     }
   }, [navigate, getLessonStatus]);
 
@@ -300,7 +300,7 @@ const Roadmap = () => {
    */
   const handleContinueLastLesson = useCallback(() => {
     if (lastLesson) {
-      navigate(`/interactive-lesson/${lastLesson.lesson.id}`);
+      navigate(`/lessons/${lastLesson.lesson.id}`);
       toast.success(`ממשיך בשיעור: ${lastLesson.lesson.title}`);
     }
   }, [lastLesson, navigate]);

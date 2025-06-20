@@ -552,8 +552,11 @@ export const AuthProvider = ({ children }) => {
       
       console.log('✅ User logged out successfully');
       
-      // Force redirect to login page
-      window.location.href = '/';
+      // Use a small delay to ensure state is cleared, then redirect
+      setTimeout(() => {
+        const baseUrl = window.location.origin + window.location.pathname;
+        window.location.href = baseUrl + '#/login';
+      }, 100);
       
     } catch (error) {
       console.error('❌ Error during logout:', error);
@@ -562,8 +565,11 @@ export const AuthProvider = ({ children }) => {
       setCurrentUser(null);
       setUserProfile(null);
       
-      // Force redirect to login page
-      window.location.href = '/';
+      // Use a small delay to ensure state is cleared, then redirect
+      setTimeout(() => {
+        const baseUrl = window.location.origin + window.location.pathname;
+        window.location.href = baseUrl + '#/login';
+      }, 100);
     }
   };
 
