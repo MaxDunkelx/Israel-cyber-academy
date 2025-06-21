@@ -8,6 +8,7 @@ import NetworkSimulator from '../exercises/NetworkSimulator';
 import ProtocolSimulator from '../exercises/ProtocolSimulator';
 import CodeEditor from '../exercises/CodeEditor';
 import WebsiteBuilder from '../exercises/WebsiteBuilder';
+import DatabaseSimulator from '../exercises/DatabaseSimulator';
 
 /**
  * Interactive Slide Component
@@ -60,6 +61,12 @@ const InteractiveSlide = ({ slide, onAnswer, answers }) => {
               onComplete={handleExerciseComplete}
             />
           )}
+          {content.type === 'quiz' && (
+            <MultipleChoiceExercise
+              exercise={content}
+              onComplete={handleExerciseComplete}
+            />
+          )}
           {content.type === 'windows-simulator' && (
             <WindowsSimulator
               exercise={content}
@@ -93,6 +100,12 @@ const InteractiveSlide = ({ slide, onAnswer, answers }) => {
           )}
           {content.type === 'website-builder' && (
             <WebsiteBuilder
+              content={content}
+              onComplete={handleExerciseComplete}
+            />
+          )}
+          {content.type === 'database-simulator' && (
+            <DatabaseSimulator
               content={content}
               onComplete={handleExerciseComplete}
             />
