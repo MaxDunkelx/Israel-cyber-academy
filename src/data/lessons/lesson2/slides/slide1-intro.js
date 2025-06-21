@@ -17,7 +17,7 @@ export const slide1Intro = {
       },
       {
         type: "image",
-        src: "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400",
+        src: "https://images.unsplash.com/photo-1587831990711-23ca6441447b?w=400&fit=crop&crop=center",
         alt: "Computer Components",
         style: { width: "300px", borderRadius: "15px", margin: "2rem auto" }
       },

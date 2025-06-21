@@ -78,9 +78,12 @@ const PresentationSlide = ({ slide }) => {
                     style={{
                       ...element.style,
                       boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
-                      borderRadius: '20px'
+                      borderRadius: '20px',
+                      maxWidth: '100%',
+                      height: 'auto'
                     }}
                     className="mx-auto transform hover:scale-105 transition-transform duration-300"
+                    loading="lazy"
                   />
                 </div>
               );
