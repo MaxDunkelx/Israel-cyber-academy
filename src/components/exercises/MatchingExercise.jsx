@@ -81,6 +81,37 @@ const MatchingExercise = ({ exercise, onComplete }) => {
     return rightIndex !== undefined && getCorrectMatch(leftIndex) === rightIndex;
   };
 
+  // Helper function to get the appropriate text based on data structure
+  const getLeftText = (pair) => {
+    return pair.tool || pair.left || pair.command || 'פריט';
+  };
+
+  const getRightText = (pair) => {
+    return pair.description || pair.right || 'תיאור';
+  };
+
+  const getLeftIcon = (pair) => {
+    return pair.icon || '💻';
+  };
+
+  // Determine column headers based on data structure
+  const getLeftHeader = () => {
+    if (pairs.length > 0) {
+      if (pairs[0].tool) return 'כלי אבטחה';
+      if (pairs[0].command) return 'פקודות';
+      return 'פקודות';
+    }
+    return 'פריטים';
+  };
+
+  const getRightHeader = () => {
+    if (pairs.length > 0) {
+      if (pairs[0].description) return 'תיאורים';
+      return 'תיאורים';
+    }
+    return 'תיאורים';
+  };
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       {/* Header */}
@@ -98,7 +129,7 @@ const MatchingExercise = ({ exercise, onComplete }) => {
         {/* Left Column - Tools */}
         <div className="space-y-4">
           <h4 className="text-2xl font-bold text-purple-300 text-center mb-4">
-            כלי אבטחה
+            {getLeftHeader()}
           </h4>
           <div className="space-y-3">
             {pairs.map((pair, index) => (
@@ -118,9 +149,9 @@ const MatchingExercise = ({ exercise, onComplete }) => {
                 whileTap={matches[index] === undefined ? { scale: 0.98 } : {}}
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">{pair.icon}</span>
+                  <span className="text-2xl">{getLeftIcon(pair)}</span>
                   <span className="font-semibold text-white text-lg">
-                    {pair.tool}
+                    {getLeftText(pair)}
                   </span>
                   {matches[index] !== undefined && (
                     <motion.div
@@ -144,7 +175,7 @@ const MatchingExercise = ({ exercise, onComplete }) => {
         {/* Right Column - Descriptions */}
         <div className="space-y-4">
           <h4 className="text-2xl font-bold text-green-300 text-center mb-4">
-            תיאורים
+            {getRightHeader()}
           </h4>
           <div className="space-y-3">
             {pairs.map((pair, index) => (
@@ -163,7 +194,7 @@ const MatchingExercise = ({ exercise, onComplete }) => {
               >
                 <div className="flex items-center gap-3">
                   <span className="font-semibold text-white text-lg">
-                    {pair.description}
+                    {getRightText(pair)}
                   </span>
                 </div>
               </motion.div>

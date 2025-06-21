@@ -1,7 +1,12 @@
 import { lesson1 } from './lesson1/index.js';
 import { lesson2 } from './lesson2/index.js';
+import { lesson3 } from './lesson3/index.js';
+import { lesson4 } from './lesson4/index.js';
+import { lesson5 } from './lesson5/index.js';
+import { lesson6 } from './lesson6/index.js';
+import { lesson7 } from './lesson7/index.js';
 
-// Create placeholder lessons for 3-18 with metadata from backup
+// Create placeholder lessons for 6-18 with metadata from backup
 const createPlaceholderLesson = (id, title, description, icon, duration, difficulty, targetAge, breakDuration) => ({
   id,
   title,
@@ -51,11 +56,11 @@ const createPlaceholderLesson = (id, title, description, icon, duration, difficu
 export const lessons = [
   lesson1,
   lesson2,
-  createPlaceholderLesson(3, "הכרת Windows", "עבודה עם מערכת ההפעלה Windows. כולל הפסקה של 45-55 דקות.", "🪟", "3 שעות", "בינוני", "10-13", 15),
-  createPlaceholderLesson(4, "הכרת Linux", "עבודה עם מערכת ההפעלה Linux. כולל הפסקה של 45-55 דקות.", "🐧", "3 שעות", "בינוני", "10-13", 15),
-  createPlaceholderLesson(5, "רשתות", "הכרת עולם הרשתות והאינטרנט. כולל הפסקה של 45-55 דקות.", "🌐", "3 שעות", "בינוני", "10-13", 15),
-  createPlaceholderLesson(6, "פרוטוקולים", "הכרת פרוטוקולי תקשורת. כולל הפסקה של 45-55 דקות.", "📡", "3 שעות", "בינוני", "10-13", 15),
-  createPlaceholderLesson(7, "תכנות והקמת אתר", "בניית אתר אינטרנט בסיסי. כולל הפסקה של 45-55 דקות.", "💻", "3 שעות", "בינוני", "10-13", 15),
+  lesson3,
+  lesson4,
+  lesson5,
+  lesson6,
+  lesson7,
   createPlaceholderLesson(8, "הכרת דפדפן", "עבודה מתקדמת עם דפדפן האינטרנט. כולל הפסקה של 45-55 דקות.", "🌍", "3 שעות", "קל", "10-13", 15),
   createPlaceholderLesson(9, "אנונימיות", "הגנה על פרטיות באינטרנט", "🕵️", "75 דקות", "בינוני", "10-13", 10),
   createPlaceholderLesson(10, "קריפטוגרפיה", "הצפנה ופענוח מידע", "🔐", "90 דקות", "מתקדם", "10-13", 10),

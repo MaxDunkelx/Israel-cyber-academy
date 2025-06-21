@@ -2,10 +2,16 @@ import { useState } from 'react';
 import DragDropExercise from '../exercises/DragDropExercise';
 import MatchingExercise from '../exercises/MatchingExercise';
 import MultipleChoiceExercise from '../exercises/MultipleChoiceExercise';
+import WindowsSimulator from '../exercises/WindowsSimulator';
+import LinuxSimulator from '../exercises/LinuxSimulator';
+import NetworkSimulator from '../exercises/NetworkSimulator';
+import ProtocolSimulator from '../exercises/ProtocolSimulator';
+import CodeEditor from '../exercises/CodeEditor';
+import WebsiteBuilder from '../exercises/WebsiteBuilder';
 
 /**
  * Interactive Slide Component
- * Renders interactive exercises (drag-drop, matching, multiple-choice)
+ * Renders interactive exercises (drag-drop, matching, multiple-choice, windows-simulator, linux-simulator, network-simulator, protocol-simulator)
  * 
  * @param {Object} props - Component props
  * @param {Object} props.slide - Slide data
@@ -51,6 +57,43 @@ const InteractiveSlide = ({ slide, onAnswer, answers }) => {
           {content.type === 'multiple-choice' && (
             <MultipleChoiceExercise
               exercise={content}
+              onComplete={handleExerciseComplete}
+            />
+          )}
+          {content.type === 'windows-simulator' && (
+            <WindowsSimulator
+              exercise={content}
+              onComplete={handleExerciseComplete}
+            />
+          )}
+          {content.type === 'linux-simulator' && (
+            <LinuxSimulator
+              commands={content.commands}
+              instructions={content.instructions}
+              onComplete={handleExerciseComplete}
+            />
+          )}
+          {content.type === 'network-simulator' && (
+            <NetworkSimulator
+              exercise={content}
+              onComplete={handleExerciseComplete}
+            />
+          )}
+          {content.type === 'protocol-simulator' && (
+            <ProtocolSimulator
+              content={content}
+              onComplete={handleExerciseComplete}
+            />
+          )}
+          {content.type === 'code-editor' && (
+            <CodeEditor
+              content={content}
+              onComplete={handleExerciseComplete}
+            />
+          )}
+          {content.type === 'website-builder' && (
+            <WebsiteBuilder
+              content={content}
               onComplete={handleExerciseComplete}
             />
           )}
