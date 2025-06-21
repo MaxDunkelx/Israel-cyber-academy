@@ -26,21 +26,21 @@ const VideoSlide = ({ slide, onAnswer, answers }) => {
   };
 
   return (
-    <div className="h-[calc(100vh-120px)] flex flex-col items-center justify-center p-4" style={{ minHeight: '500px' }}>
+    <div className="h-[calc(100vh-120px)] flex flex-col items-center justify-center p-8" style={{ minHeight: '500px' }}>
       <div className="max-w-4xl w-full h-full flex flex-col">
         {/* Title */}
-        <div className="text-center mb-4 flex-shrink-0">
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-2" style={{ textShadow: '0 4px 8px rgba(0,0,0,0.3)' }}>
+        <div className="text-center mb-8">
+          <h2 className="text-4xl font-bold text-white mb-4" style={{ textShadow: '0 4px 8px rgba(0,0,0,0.3)' }}>
             {slide.title}
           </h2>
-          <p className="text-base md:text-lg text-gray-200" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+          <p className="text-xl text-gray-200" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
             {content.description}
           </p>
         </div>
 
         {/* Video Container */}
         <div className="relative bg-gray-900 rounded-xl overflow-hidden shadow-2xl flex-1 flex flex-col justify-center">
-          <div className="aspect-video w-full max-h-64">
+          <div className="aspect-video">
             <iframe
               src={content.videoUrl}
               title={slide.title}
@@ -56,8 +56,8 @@ const VideoSlide = ({ slide, onAnswer, answers }) => {
           {/* Play Button Overlay */}
           {!videoStarted && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/20 transition-all duration-300 cursor-pointer" onClick={handleVideoStart}>
-              <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
-                <Play className="w-8 h-8 text-white" />
+              <div className="bg-white/20 backdrop-blur-sm rounded-full p-4">
+                <Play className="w-12 h-12 text-white" />
               </div>
             </div>
           )}
@@ -65,10 +65,10 @@ const VideoSlide = ({ slide, onAnswer, answers }) => {
 
         {/* Completion Status */}
         {videoEnded && (
-          <div className="mt-3 text-center flex-shrink-0">
-            <div className="bg-green-600/20 border border-green-500/30 rounded-xl p-3">
-              <h3 className="text-lg font-bold text-green-400 mb-1">וידאו הושלם!</h3>
-              <p className="text-gray-300 text-xs">הצפייה שלך נשמרה בהצלחה</p>
+          <div className="mt-8 text-center">
+            <div className="bg-green-600/20 border border-green-500/30 rounded-xl p-6">
+              <h3 className="text-2xl font-bold text-green-400 mb-2">וידאו הושלם!</h3>
+              <p className="text-gray-300">הצפייה שלך נשמרה בהצלחה</p>
             </div>
           </div>
         )}

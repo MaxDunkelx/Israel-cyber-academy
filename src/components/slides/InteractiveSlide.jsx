@@ -22,20 +22,20 @@ const InteractiveSlide = ({ slide, onAnswer, answers }) => {
   };
 
   return (
-    <div className="h-[calc(100vh-120px)] flex flex-col items-center justify-center p-4" style={{ minHeight: '500px' }}>
-      <div className="max-w-4xl w-full h-full flex flex-col">
+    <div className="h-[calc(100vh-120px)] flex flex-col items-center justify-center p-8" style={{ minHeight: '500px' }}>
+      <div className="max-w-5xl w-full h-full flex flex-col">
         {/* Title */}
-        <div className="text-center mb-4 flex-shrink-0">
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-2" style={{ textShadow: '0 4px 8px rgba(0,0,0,0.3)' }}>
+        <div className="text-center mb-8">
+          <h2 className="text-4xl font-bold text-white mb-4" style={{ textShadow: '0 4px 8px rgba(0,0,0,0.3)' }}>
             {slide.title}
           </h2>
-          <p className="text-base md:text-lg text-gray-200" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+          <p className="text-xl text-gray-200" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
             {content.instructions}
           </p>
         </div>
 
         {/* Exercise Container */}
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700/50 shadow-2xl flex-1 flex flex-col justify-center">
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-8 border border-gray-700/50 shadow-2xl flex-1 flex flex-col justify-center">
           {content.type === 'drag-drop' && (
             <DragDropExercise
               exercise={content}
@@ -58,10 +58,10 @@ const InteractiveSlide = ({ slide, onAnswer, answers }) => {
 
         {/* Completion Status */}
         {exerciseCompleted && (
-          <div className="mt-3 text-center flex-shrink-0">
-            <div className="bg-green-600/20 border border-green-500/30 rounded-xl p-3">
-              <h3 className="text-lg font-bold text-green-400 mb-1">תרגיל הושלם!</h3>
-              <p className="text-gray-300 text-xs">כל הכבוד! התשובה שלך נשמרה בהצלחה</p>
+          <div className="mt-8 text-center">
+            <div className="bg-green-600/20 border border-green-500/30 rounded-xl p-6">
+              <h3 className="text-2xl font-bold text-green-400 mb-2">תרגיל הושלם!</h3>
+              <p className="text-gray-300">כל הכבוד! התשובה שלך נשמרה בהצלחה</p>
             </div>
           </div>
         )}

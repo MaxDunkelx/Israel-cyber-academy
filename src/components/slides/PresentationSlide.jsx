@@ -32,7 +32,7 @@ const PresentationSlide = ({ slide }) => {
                     textShadow: '0 4px 8px rgba(0,0,0,0.3)',
                     fontWeight: '700'
                   }} 
-                  className="mb-4 text-3xl md:text-4xl lg:text-5xl"
+                  className="mb-8 text-5xl md:text-6xl"
                 >
                   {element.text}
                 </h1>
@@ -45,7 +45,7 @@ const PresentationSlide = ({ slide }) => {
                     ...element.style,
                     textShadow: '0 2px 4px rgba(0,0,0,0.3)'
                   }} 
-                  className="mb-3 text-lg md:text-xl lg:text-2xl"
+                  className="mb-6 text-2xl md:text-3xl"
                 >
                   {element.text}
                 </h2>
@@ -58,12 +58,12 @@ const PresentationSlide = ({ slide }) => {
                     ...element.style,
                     textShadow: '0 1px 2px rgba(0,0,0,0.3)'
                   }} 
-                  className="text-right space-y-1 max-h-48 overflow-y-auto"
+                  className="text-right space-y-3"
                 >
                   {element.items?.map((item, itemIndex) => (
                     <li 
                       key={itemIndex} 
-                      className="mb-1 p-2 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:bg-white/20 transition-all duration-300 text-sm"
+                      className="mb-3 p-3 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:bg-white/20 transition-all duration-300"
                     >
                       {item}
                     </li>
@@ -72,7 +72,7 @@ const PresentationSlide = ({ slide }) => {
               );
             case 'image':
               return (
-                <div key={index} className="my-3 flex justify-center">
+                <div key={index} className="my-8">
                   <img
                     src={element.src}
                     alt={element.alt}
@@ -80,9 +80,8 @@ const PresentationSlide = ({ slide }) => {
                       ...element.style,
                       boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
                       borderRadius: '20px',
-                      maxHeight: '300px',
                       maxWidth: '100%',
-                      objectFit: 'contain'
+                      height: 'auto'
                     }}
                     className="mx-auto transform hover:scale-105 transition-transform duration-300"
                     loading="lazy"
