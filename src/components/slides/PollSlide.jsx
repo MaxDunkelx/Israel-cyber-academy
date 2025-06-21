@@ -22,41 +22,39 @@ const PollSlide = ({ slide, onAnswer, answers }) => {
   };
 
   return (
-    <div className="min-h-[600px] flex flex-col items-center justify-center p-8">
-      <div className="max-w-4xl w-full">
+    <div className="h-[calc(100vh-120px)] flex flex-col items-center justify-center p-4" style={{ minHeight: '500px' }}>
+      <div className="max-w-4xl w-full h-full flex flex-col">
         {/* Question */}
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-white mb-6" style={{ textShadow: '0 4px 8px rgba(0,0,0,0.3)' }}>
+        <div className="text-center mb-6 flex-shrink-0">
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-3" style={{ textShadow: '0 4px 8px rgba(0,0,0,0.3)' }}>
             {slide.title}
           </h2>
-          <p className="text-2xl text-gray-200" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+          <p className="text-lg md:text-xl text-gray-200" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
             {content.question}
           </p>
         </div>
 
         {/* Options */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1 flex flex-col justify-center">
           {content.options?.map((option) => (
             <button
               key={option.id}
               onClick={() => handleVote(option.id)}
               disabled={showResults}
-              className={`p-6 rounded-xl border-2 transition-all duration-300 transform hover:scale-105 ${
+              className={`p-3 rounded-xl border-2 transition-all duration-300 transform hover:scale-105 ${
                 selectedOption === option.id
                   ? 'bg-gradient-to-r from-blue-600 to-purple-600 border-blue-400 text-white shadow-2xl'
-                  : showResults
-                  ? 'bg-gray-700/50 border-gray-600 text-gray-300 cursor-not-allowed'
-                  : 'bg-gray-800/50 border-gray-600 text-white hover:bg-gray-700/50 hover:border-gray-500'
+                  : 'bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20'
               }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <span className="text-3xl mr-4">{option.emoji}</span>
-                  <span className="text-lg font-medium">{option.text}</span>
+                  <span className="text-xl mr-2">{option.emoji}</span>
+                  <span className="text-sm font-medium">{option.text}</span>
                 </div>
                 {selectedOption === option.id && (
-                  <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
-                    <CheckCircle className="w-4 h-4 text-blue-600" />
+                  <div className="w-4 h-4 bg-white rounded-full flex items-center justify-center">
+                    <CheckCircle className="w-2 h-2 text-blue-600" />
                   </div>
                 )}
               </div>
@@ -66,10 +64,10 @@ const PollSlide = ({ slide, onAnswer, answers }) => {
 
         {/* Results */}
         {showResults && (
-          <div className="mt-8 text-center">
-            <div className="bg-green-600/20 border border-green-500/30 rounded-xl p-6">
-              <h3 className="text-2xl font-bold text-green-400 mb-2">תודה על התשובה!</h3>
-              <p className="text-gray-300">התשובה שלך נשמרה בהצלחה</p>
+          <div className="mt-3 text-center flex-shrink-0">
+            <div className="bg-green-600/20 border border-green-500/30 rounded-xl p-3">
+              <h3 className="text-lg font-bold text-green-400 mb-1">תודה על התשובה!</h3>
+              <p className="text-gray-300 text-xs">התשובה שלך נשמרה בהצלחה</p>
             </div>
           </div>
         )}
