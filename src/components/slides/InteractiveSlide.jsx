@@ -9,6 +9,7 @@ import ProtocolSimulator from '../exercises/ProtocolSimulator';
 import CodeEditor from '../exercises/CodeEditor';
 import WebsiteBuilder from '../exercises/WebsiteBuilder';
 import DatabaseSimulator from '../exercises/DatabaseSimulator';
+import BrowserSimulator from '../exercises/BrowserSimulator';
 
 /**
  * Interactive Slide Component
@@ -106,6 +107,12 @@ const InteractiveSlide = ({ slide, onAnswer, answers }) => {
           )}
           {content.type === 'database-simulator' && (
             <DatabaseSimulator
+              content={content}
+              onComplete={handleExerciseComplete}
+            />
+          )}
+          {content.type === 'browser-simulator' && (
+            <BrowserSimulator
               content={content}
               onComplete={handleExerciseComplete}
             />
