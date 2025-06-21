@@ -951,6 +951,44 @@ const EnhancedLogin = () => {
               </motion.div>
             ))}
           </motion.div>
+
+          {/* Footer */}
+          <motion.footer 
+            className="mt-20 mb-8 text-center"
+            variants={itemVariants}
+          >
+            <div className="bg-gray-800/40 backdrop-blur-xl rounded-2xl p-6 border border-gray-700/50 max-w-2xl mx-auto">
+              <motion.p 
+                className="text-gray-400 text-lg font-medium"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8, duration: 0.6 }}
+              >
+                ישראל קמפוס סייבר - כל הזכויות שמורות
+              </motion.p>
+              <motion.p 
+                className="text-gray-500 text-sm mt-2"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.0, duration: 0.6 }}
+              >
+                Israel Cyber Academy - All Rights Reserved
+              </motion.p>
+              <motion.div 
+                className="mt-4 pt-4 border-t border-gray-700/50"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 1.2, duration: 0.6 }}
+              >
+                <p className="text-gray-500 text-xs">
+                  © 2024 - המרכז המתקדם ביותר ללימודי אבטחת מידע בישראל
+                </p>
+                <p className="text-gray-500 text-xs mt-1">
+                  © 2024 - The Most Advanced Cyber Security Learning Center in Israel
+                </p>
+              </motion.div>
+            </div>
+          </motion.footer>
         </section>
       </motion.div>
     </div>
