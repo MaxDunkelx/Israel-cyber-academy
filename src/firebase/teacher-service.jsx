@@ -43,52 +43,53 @@ import { logSecurityEvent } from '../utils/security';
  */
 
 /**
- * Get all available students (non-teacher users) from the database
- * @returns {Promise<Array>} Array of available student objects
+ * Get all available students (excluding teachers and admins)
+ * Fetches student profiles with role validation
+ * 
+ * @returns {Promise<Array>} Array of student objects
+ * @throws {Error} If database operation fails
  */
 export const getAllAvailableStudents = async () => {
   try {
     const usersRef = collection(db, 'users');
+    const q = query(
+      usersRef,
+      where('role', 'in', ['student']),
+      orderBy('displayName', 'asc')
+    );
     
-    // Get all users first
-    const querySnapshot = await getDocs(usersRef);
-    const allUsers = [];
+    const querySnapshot = await getDocs(q);
+    const students = [];
     
     querySnapshot.forEach((doc) => {
-      allUsers.push({
+      const userData = doc.data();
+      students.push({
         uid: doc.id,
-        ...doc.data()
+        displayName: userData.displayName || userData.email,
+        email: userData.email,
+        role: userData.role,
+        createdAt: userData.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        lastLoginAt: userData.lastLoginAt?.toDate?.()?.toISOString() || null,
+        completedLessons: userData.completedLessons || [],
+        totalTimeSpent: userData.totalTimeSpent || 0,
+        profileComplete: userData.profileComplete || false
       });
     });
     
-    // Filter out teachers and return all other users as available students
-    const availableStudents = allUsers.filter(user => 
-      user.role !== 'teacher' && user.role !== 'instructor' && user.role !== 'admin'
-    );
-    
-    // Sort by display name
-    availableStudents.sort((a, b) => {
-      const nameA = (a.displayName || a.email || '').toLowerCase();
-      const nameB = (b.displayName || b.email || '').toLowerCase();
-      return nameA.localeCompare(nameB);
+    logSecurityEvent('AVAILABLE_STUDENTS_FETCHED', {
+      count: students.length,
+      timestamp: new Date().toISOString()
     });
     
-    console.log('✅ Available students fetched successfully:', availableStudents.length);
-    console.log('📊 Total users:', allUsers.length, 'Teachers:', allUsers.filter(u => u.role === 'teacher').length, 'Available students:', availableStudents.length);
-    
-    return availableStudents;
+    return students;
   } catch (error) {
-    console.error('❌ Error fetching available students:', error);
-    throw error;
+    console.error('Error fetching available students:', error);
+    logSecurityEvent('AVAILABLE_STUDENTS_FETCH_ERROR', {
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+    throw new Error('Failed to fetch available students');
   }
-};
-
-/**
- * Get all students from the database (legacy function - now uses getAllAvailableStudents)
- * @returns {Promise<Array>} Array of student objects
- */
-export const getStudents = async () => {
-  return getAllAvailableStudents();
 };
 
 /**
@@ -186,16 +187,12 @@ export const getTeacherClasses = async (teacherId) => {
     if (!teacherId) {
       throw new Error('Teacher ID is required');
     }
-    
+
     const classesRef = collection(db, 'classes');
     const q = query(
       classesRef,
       where('teacherId', '==', teacherId),
-<<<<<<< HEAD
       where('isActive', '==', true)
-=======
-      orderBy('createdAt', 'desc')
->>>>>>> a251aaca0ea6b5a7c1e7ab50859cc0fcdef93781
     );
     
     const querySnapshot = await getDocs(q);
@@ -212,18 +209,17 @@ export const getTeacherClasses = async (teacherId) => {
       });
     });
     
-<<<<<<< HEAD
     // Sort in JavaScript instead of Firestore
     classes.sort((a, b) => {
       const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt) || new Date(0);
       const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt) || new Date(0);
       return dateB - dateA; // Descending order
-=======
+    });
+    
     logSecurityEvent('TEACHER_CLASSES_FETCHED', {
       teacherId,
       count: classes.length,
       timestamp: new Date().toISOString()
->>>>>>> a251aaca0ea6b5a7c1e7ab50859cc0fcdef93781
     });
     
     return classes;
@@ -343,7 +339,6 @@ export const deleteClass = async (classId) => {
  */
 export const assignStudentToClass = async (studentId, classId, teacherId) => {
   try {
-<<<<<<< HEAD
     // Get current class data
     const classRef = doc(db, 'classes', classId);
     const classDoc = await getDoc(classRef);
@@ -368,40 +363,6 @@ export const assignStudentToClass = async (studentId, classId, teacherId) => {
     });
     
     console.log('✅ Student assigned to class successfully');
-=======
-    if (!studentId || !classId || !teacherId) {
-      throw new Error('Student ID, Class ID, and Teacher ID are required');
-    }
-    
-    const classRef = doc(db, 'classes', classId);
-    const classDoc = await getDoc(classRef);
-    
-    if (!classDoc.exists()) {
-      throw new Error('Class not found');
-    }
-    
-    const classData = classDoc.data();
-    if (classData.students.includes(studentId)) {
-      throw new Error('Student is already assigned to this class');
-    }
-    
-    if (classData.students.length >= classData.maxStudents) {
-      throw new Error('Class is at maximum capacity');
-    }
-    
-    await updateDoc(classRef, {
-      students: arrayUnion(studentId),
-      updatedAt: serverTimestamp()
-    });
-    
-    logSecurityEvent('STUDENT_ASSIGNED_TO_CLASS', {
-      studentId,
-      classId,
-      teacherId,
-      timestamp: new Date().toISOString()
-    });
-    
->>>>>>> a251aaca0ea6b5a7c1e7ab50859cc0fcdef93781
   } catch (error) {
     console.error('Error assigning student to class:', error);
     logSecurityEvent('STUDENT_ASSIGNMENT_ERROR', {
@@ -423,7 +384,6 @@ export const assignStudentToClass = async (studentId, classId, teacherId) => {
  */
 export const removeStudentFromClass = async (studentId, classId) => {
   try {
-<<<<<<< HEAD
     // Get current class data
     const classRef = doc(db, 'classes', classId);
     const classDoc = await getDoc(classRef);
@@ -444,36 +404,6 @@ export const removeStudentFromClass = async (studentId, classId) => {
     });
     
     console.log('✅ Student removed from class successfully');
-=======
-    if (!studentId || !classId) {
-      throw new Error('Student ID and Class ID are required');
-    }
-    
-    const classRef = doc(db, 'classes', classId);
-    const classDoc = await getDoc(classRef);
-    
-    if (!classDoc.exists()) {
-      throw new Error('Class not found');
-    }
-    
-    const classData = classDoc.data();
-    if (!classData.students.includes(studentId)) {
-      throw new Error('Student is not assigned to this class');
-    }
-    
-    await updateDoc(classRef, {
-      students: arrayRemove(studentId),
-      updatedAt: serverTimestamp()
-    });
-    
-    logSecurityEvent('STUDENT_REMOVED_FROM_CLASS', {
-      studentId,
-      classId,
-      teacherId: classData.teacherId,
-      timestamp: new Date().toISOString()
-    });
-    
->>>>>>> a251aaca0ea6b5a7c1e7ab50859cc0fcdef93781
   } catch (error) {
     console.error('Error removing student from class:', error);
     logSecurityEvent('STUDENT_REMOVAL_ERROR', {
@@ -886,48 +816,6 @@ export const getTeacherAnalytics = async (teacherId) => {
 };
 
 /**
- * Get all students from the database
- * Fetches student profiles with role validation
- * 
- * @returns {Promise<Array>} Array of student objects
- * @throws {Error} If database operation fails
- */
-export const getStudents = async () => {
-  try {
-    const studentsRef = collection(db, 'users');
-    const q = query(
-      studentsRef,
-      where('role', '==', 'student'),
-      orderBy('displayName', 'asc')
-    );
-    
-    const querySnapshot = await getDocs(q);
-    const students = [];
-    
-    querySnapshot.forEach((doc) => {
-      students.push({
-        uid: doc.id,
-        ...doc.data()
-      });
-    });
-    
-    logSecurityEvent('STUDENTS_FETCHED', {
-      count: students.length,
-      timestamp: new Date().toISOString()
-    });
-    
-    return students;
-  } catch (error) {
-    console.error('Error fetching students:', error);
-    logSecurityEvent('STUDENTS_FETCH_ERROR', {
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-    throw new Error('Failed to fetch students');
-  }
-};
-
-/**
  * Get teacher profile data
  * Fetches teacher information from users collection
  * 
@@ -1025,4 +913,5 @@ export const updateTeacherProfile = async (teacherId, updateData) => {
     });
     throw error;
   }
+}; 
 }; 
