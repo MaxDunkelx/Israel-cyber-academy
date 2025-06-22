@@ -1,18 +1,20 @@
 /**
- * Teacher Service - Firebase operations for teacher functionality
+ * Teacher Service - Israel Cyber Academy
  * 
- * This service handles all teacher-specific Firebase operations:
- * - Class management (CRUD operations)
- * - Student assignment to classes
- * - Teacher comments on lessons and slides
- * - Teacher lesson access management
- * - Teacher analytics and reporting
+ * Firebase service layer for teacher-specific operations including:
+ * - Student management and assignment
+ * - Class creation and management
+ * - Teacher data operations
+ * - Security logging and validation
  * 
- * Collections:
- * - classes: Class information and metadata
- * - classStudents: Student-class relationships
- * - teacherComments: Comments added by teachers to lessons/slides
- * - teacherLessonAccess: Teacher access to lessons
+ * Features:
+ * - Real-time Firestore operations
+ * - Role-based access control
+ * - Error handling and validation
+ * - Security event logging
+ * - Data consistency checks
+ * 
+ * @module teacher-service
  */
 
 import { 
@@ -29,9 +31,12 @@ import {
   orderBy, 
   limit,
   serverTimestamp,
-  writeBatch
+  writeBatch,
+  arrayUnion,
+  arrayRemove
 } from 'firebase/firestore';
 import { db } from './firebase-config';
+import { logSecurityEvent } from '../utils/security';
 
 /**
  * Student Management Operations
@@ -102,20 +107,71 @@ export const getStudents = async () => {
  */
 export const createClass = async (classData, teacherId) => {
   try {
+    // Validate required fields
+    const requiredFields = ['name', 'lessonId', 'lessonName', 'startDate', 'teacherId'];
+    for (const field of requiredFields) {
+      if (!classData[field]) {
+        throw new Error(`Missing required field: ${field}`);
+      }
+    }
+    
+    // Validate and convert date
+    let startDate;
+    try {
+      startDate = new Date(classData.startDate);
+      if (isNaN(startDate.getTime())) {
+        throw new Error('Invalid date format');
+      }
+    } catch (dateError) {
+      console.error('Date conversion error:', dateError);
+      throw new Error('Invalid start date format');
+    }
+    
+    // Prepare class document
     const classDoc = {
-      ...classData,
-      teacherId,
+      name: classData.name,
+      lessonId: classData.lessonId,
+      lessonName: classData.lessonName,
+      startDate: startDate.toISOString(),
+      startHour: classData.startHour || '09:00',
+      maxStudents: classData.maxStudents || 25,
+      teacherId: classData.teacherId,
+      teacherName: classData.teacherName,
+      students: classData.students || [],
+      currentLesson: classData.currentLesson || 1,
+      totalLessons: classData.totalLessons || 25,
+      status: classData.status || 'active',
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      studentCount: 0,
-      isActive: true
+      updatedAt: serverTimestamp()
     };
-
-    const docRef = await addDoc(collection(db, 'classes'), classDoc);
-    console.log('✅ Class created successfully:', docRef.id);
-    return docRef.id;
+    
+    // Add to Firestore
+    const classesRef = collection(db, 'classes');
+    const docRef = await addDoc(classesRef, classDoc);
+    
+    const createdClass = {
+      id: docRef.id,
+      ...classDoc,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    logSecurityEvent('CLASS_CREATED', {
+      classId: docRef.id,
+      teacherId: classData.teacherId,
+      className: classData.name,
+      lessonId: classData.lessonId,
+      timestamp: new Date().toISOString()
+    });
+    
+    return createdClass;
   } catch (error) {
-    console.error('❌ Error creating class:', error);
+    console.error('Error creating class:', error);
+    logSecurityEvent('CLASS_CREATION_ERROR', {
+      teacherId: classData?.teacherId,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
     throw error;
   }
 };
@@ -127,33 +183,58 @@ export const createClass = async (classData, teacherId) => {
  */
 export const getTeacherClasses = async (teacherId) => {
   try {
+    if (!teacherId) {
+      throw new Error('Teacher ID is required');
+    }
+    
+    const classesRef = collection(db, 'classes');
     const q = query(
-      collection(db, 'classes'),
+      classesRef,
       where('teacherId', '==', teacherId),
+<<<<<<< HEAD
       where('isActive', '==', true)
+=======
+      orderBy('createdAt', 'desc')
+>>>>>>> a251aaca0ea6b5a7c1e7ab50859cc0fcdef93781
     );
     
     const querySnapshot = await getDocs(q);
     const classes = [];
     
     querySnapshot.forEach((doc) => {
+      const data = doc.data();
       classes.push({
         id: doc.id,
-        ...doc.data()
+        ...data,
+        // Convert Firestore timestamps to ISO strings
+        createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString()
       });
     });
     
+<<<<<<< HEAD
     // Sort in JavaScript instead of Firestore
     classes.sort((a, b) => {
       const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt) || new Date(0);
       const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt) || new Date(0);
       return dateB - dateA; // Descending order
+=======
+    logSecurityEvent('TEACHER_CLASSES_FETCHED', {
+      teacherId,
+      count: classes.length,
+      timestamp: new Date().toISOString()
+>>>>>>> a251aaca0ea6b5a7c1e7ab50859cc0fcdef93781
     });
     
     return classes;
   } catch (error) {
-    console.error('❌ Error fetching teacher classes:', error);
-    throw error;
+    console.error('Error fetching teacher classes:', error);
+    logSecurityEvent('TEACHER_CLASSES_FETCH_ERROR', {
+      teacherId,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+    throw new Error('Failed to fetch teacher classes');
   }
 };
 
@@ -208,14 +289,43 @@ export const updateClass = async (classId, updates) => {
  */
 export const deleteClass = async (classId) => {
   try {
-    const docRef = doc(db, 'classes', classId);
-    await updateDoc(docRef, {
-      isActive: false,
-      updatedAt: serverTimestamp()
+    if (!classId) {
+      throw new Error('Class ID is required');
+    }
+    
+    const classRef = doc(db, 'classes', classId);
+    const classDoc = await getDoc(classRef);
+    
+    if (!classDoc.exists()) {
+      throw new Error('Class not found');
+    }
+    
+    const classData = classDoc.data();
+    
+    // Use batch operation for consistency
+    const batch = writeBatch(db);
+    
+    // Delete the class document
+    batch.delete(classRef);
+    
+    // Commit the batch
+    await batch.commit();
+    
+    logSecurityEvent('CLASS_DELETED', {
+      classId,
+      teacherId: classData.teacherId,
+      className: classData.name,
+      studentsCount: classData.students.length,
+      timestamp: new Date().toISOString()
     });
-    console.log('✅ Class deleted successfully');
+    
   } catch (error) {
-    console.error('❌ Error deleting class:', error);
+    console.error('Error deleting class:', error);
+    logSecurityEvent('CLASS_DELETION_ERROR', {
+      classId,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
     throw error;
   }
 };
@@ -233,6 +343,7 @@ export const deleteClass = async (classId) => {
  */
 export const assignStudentToClass = async (studentId, classId, teacherId) => {
   try {
+<<<<<<< HEAD
     // Get current class data
     const classRef = doc(db, 'classes', classId);
     const classDoc = await getDoc(classRef);
@@ -257,8 +368,49 @@ export const assignStudentToClass = async (studentId, classId, teacherId) => {
     });
     
     console.log('✅ Student assigned to class successfully');
+=======
+    if (!studentId || !classId || !teacherId) {
+      throw new Error('Student ID, Class ID, and Teacher ID are required');
+    }
+    
+    const classRef = doc(db, 'classes', classId);
+    const classDoc = await getDoc(classRef);
+    
+    if (!classDoc.exists()) {
+      throw new Error('Class not found');
+    }
+    
+    const classData = classDoc.data();
+    if (classData.students.includes(studentId)) {
+      throw new Error('Student is already assigned to this class');
+    }
+    
+    if (classData.students.length >= classData.maxStudents) {
+      throw new Error('Class is at maximum capacity');
+    }
+    
+    await updateDoc(classRef, {
+      students: arrayUnion(studentId),
+      updatedAt: serverTimestamp()
+    });
+    
+    logSecurityEvent('STUDENT_ASSIGNED_TO_CLASS', {
+      studentId,
+      classId,
+      teacherId,
+      timestamp: new Date().toISOString()
+    });
+    
+>>>>>>> a251aaca0ea6b5a7c1e7ab50859cc0fcdef93781
   } catch (error) {
-    console.error('❌ Error assigning student to class:', error);
+    console.error('Error assigning student to class:', error);
+    logSecurityEvent('STUDENT_ASSIGNMENT_ERROR', {
+      studentId,
+      classId,
+      teacherId,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
     throw error;
   }
 };
@@ -271,6 +423,7 @@ export const assignStudentToClass = async (studentId, classId, teacherId) => {
  */
 export const removeStudentFromClass = async (studentId, classId) => {
   try {
+<<<<<<< HEAD
     // Get current class data
     const classRef = doc(db, 'classes', classId);
     const classDoc = await getDoc(classRef);
@@ -291,8 +444,44 @@ export const removeStudentFromClass = async (studentId, classId) => {
     });
     
     console.log('✅ Student removed from class successfully');
+=======
+    if (!studentId || !classId) {
+      throw new Error('Student ID and Class ID are required');
+    }
+    
+    const classRef = doc(db, 'classes', classId);
+    const classDoc = await getDoc(classRef);
+    
+    if (!classDoc.exists()) {
+      throw new Error('Class not found');
+    }
+    
+    const classData = classDoc.data();
+    if (!classData.students.includes(studentId)) {
+      throw new Error('Student is not assigned to this class');
+    }
+    
+    await updateDoc(classRef, {
+      students: arrayRemove(studentId),
+      updatedAt: serverTimestamp()
+    });
+    
+    logSecurityEvent('STUDENT_REMOVED_FROM_CLASS', {
+      studentId,
+      classId,
+      teacherId: classData.teacherId,
+      timestamp: new Date().toISOString()
+    });
+    
+>>>>>>> a251aaca0ea6b5a7c1e7ab50859cc0fcdef93781
   } catch (error) {
-    console.error('❌ Error removing student from class:', error);
+    console.error('Error removing student from class:', error);
+    logSecurityEvent('STUDENT_REMOVAL_ERROR', {
+      studentId,
+      classId,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
     throw error;
   }
 };
@@ -692,6 +881,148 @@ export const getTeacherAnalytics = async (teacherId) => {
     return analytics;
   } catch (error) {
     console.error('❌ Error fetching teacher analytics:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get all students from the database
+ * Fetches student profiles with role validation
+ * 
+ * @returns {Promise<Array>} Array of student objects
+ * @throws {Error} If database operation fails
+ */
+export const getStudents = async () => {
+  try {
+    const studentsRef = collection(db, 'users');
+    const q = query(
+      studentsRef,
+      where('role', '==', 'student'),
+      orderBy('displayName', 'asc')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const students = [];
+    
+    querySnapshot.forEach((doc) => {
+      students.push({
+        uid: doc.id,
+        ...doc.data()
+      });
+    });
+    
+    logSecurityEvent('STUDENTS_FETCHED', {
+      count: students.length,
+      timestamp: new Date().toISOString()
+    });
+    
+    return students;
+  } catch (error) {
+    console.error('Error fetching students:', error);
+    logSecurityEvent('STUDENTS_FETCH_ERROR', {
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+    throw new Error('Failed to fetch students');
+  }
+};
+
+/**
+ * Get teacher profile data
+ * Fetches teacher information from users collection
+ * 
+ * @param {string} teacherId - Teacher's user ID
+ * @returns {Promise<Object>} Teacher profile object
+ * @throws {Error} If operation fails
+ */
+export const getTeacherProfile = async (teacherId) => {
+  try {
+    if (!teacherId) {
+      throw new Error('Teacher ID is required');
+    }
+    
+    const teacherRef = doc(db, 'users', teacherId);
+    const teacherDoc = await getDoc(teacherRef);
+    
+    if (!teacherDoc.exists()) {
+      throw new Error('Teacher not found');
+    }
+    
+    const teacherData = teacherDoc.data();
+    
+    if (teacherData.role !== 'teacher') {
+      throw new Error('User is not a teacher');
+    }
+    
+    logSecurityEvent('TEACHER_PROFILE_FETCHED', {
+      teacherId,
+      timestamp: new Date().toISOString()
+    });
+    
+    return {
+      uid: teacherDoc.id,
+      ...teacherData
+    };
+    
+  } catch (error) {
+    console.error('Error fetching teacher profile:', error);
+    logSecurityEvent('TEACHER_PROFILE_FETCH_ERROR', {
+      teacherId,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+    throw error;
+  }
+};
+
+/**
+ * Update teacher profile data
+ * Updates teacher information in users collection
+ * 
+ * @param {string} teacherId - Teacher's user ID
+ * @param {Object} updateData - Data to update
+ * @returns {Promise<void>}
+ * @throws {Error} If operation fails
+ */
+export const updateTeacherProfile = async (teacherId, updateData) => {
+  try {
+    if (!teacherId) {
+      throw new Error('Teacher ID is required');
+    }
+    
+    const teacherRef = doc(db, 'users', teacherId);
+    const teacherDoc = await getDoc(teacherRef);
+    
+    if (!teacherDoc.exists()) {
+      throw new Error('Teacher not found');
+    }
+    
+    const teacherData = teacherDoc.data();
+    if (teacherData.role !== 'teacher') {
+      throw new Error('User is not a teacher');
+    }
+    
+    // Remove sensitive fields that shouldn't be updated
+    const { uid, role, email, createdAt, ...safeUpdateData } = updateData;
+    
+    await updateDoc(teacherRef, {
+      ...safeUpdateData,
+      updatedAt: serverTimestamp()
+    });
+    
+    logSecurityEvent('TEACHER_PROFILE_UPDATED', {
+      teacherId,
+      updatedFields: Object.keys(safeUpdateData),
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Error updating teacher profile:', error);
+    logSecurityEvent('TEACHER_PROFILE_UPDATE_ERROR', {
+      teacherId,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
     throw error;
   }
 }; 

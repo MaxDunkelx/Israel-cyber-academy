@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   Search, 
@@ -7,8 +7,21 @@ import {
   UserMinus,
   Building,
   Eye,
-  Filter
+  Filter,
+  Plus,
+  Edit,
+  Trash2,
+  Mail,
+  Phone,
+  GraduationCap
 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { useAuth } from '../../hooks/useAuth';
+import { useUserProfile } from '../../hooks/useAuth';
+import { isTeacher, validateTeacherAccess, logSecurityEvent } from '../../utils/security';
+import Card from '../ui/Card';
+import Button from '../ui/Button';
+import LoadingSpinner from '../common/LoadingSpinner';
 
 export default function StudentManagement({
   students,
@@ -21,10 +34,122 @@ export default function StudentManagement({
   getUnassignedStudents,
   getOtherTeachersStudents
 }) {
+  const { currentUser } = useAuth();
+  const { role } = useUserProfile();
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all'); // all, my, unassigned, others
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingStudent, setEditingStudent] = useState(null);
+
+  useEffect(() => {
+    // Security check - ensure only teachers can access this component
+    if (!currentUser) {
+      logSecurityEvent('UNAUTHORIZED_ACCESS_ATTEMPT', { role: 'none' }, { component: 'StudentManagement' });
+      return;
+    }
+
+    const validation = validateTeacherAccess({ role }, 'manage_students');
+    if (!validation.success) {
+      logSecurityEvent('INSUFFICIENT_PERMISSIONS', { role, uid: currentUser.uid }, { 
+        component: 'StudentManagement',
+        reason: validation.message 
+      });
+      toast.error('אין לך הרשאות לניהול תלמידים');
+      return;
+    }
+
+    // Load mock data
+    loadData();
+  }, [currentUser, role]);
+
+  // Security check - if not a teacher, show access denied
+  if (!isTeacher({ role })) {
+    logSecurityEvent('STUDENT_ACCESS_ATTEMPT', { role, uid: currentUser?.uid }, { component: 'StudentManagement' });
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-400">אין לך הרשאות לגשת לניהול תלמידים</p>
+      </div>
+    );
+  }
+
+  const loadData = () => {
+    // Mock data - in real app, this would come from Firebase
+    const mockClasses = [
+      { id: 1, name: 'כיתה א\'' },
+      { id: 2, name: 'כיתה ב\'' },
+      { id: 3, name: 'כיתה ג\'' }
+    ];
+
+    const mockStudents = [
+      {
+        id: 1,
+        name: 'יוסי כהן',
+        email: 'yossi@example.com',
+        phone: '050-1234567',
+        classId: 1,
+        className: 'כיתה א\'',
+        progress: 75,
+        lastActivity: '2024-01-15T10:30:00Z',
+        completedLessons: 6,
+        totalLessons: 9
+      },
+      {
+        id: 2,
+        name: 'שרה לוי',
+        email: 'sarah@example.com',
+        phone: '050-2345678',
+        classId: 1,
+        className: 'כיתה א\'',
+        progress: 88,
+        lastActivity: '2024-01-15T09:15:00Z',
+        completedLessons: 8,
+        totalLessons: 9
+      },
+      {
+        id: 3,
+        name: 'דוד אברהם',
+        email: 'david@example.com',
+        phone: '050-3456789',
+        classId: 2,
+        className: 'כיתה ב\'',
+        progress: 92,
+        lastActivity: '2024-01-15T11:45:00Z',
+        completedLessons: 9,
+        totalLessons: 9
+      },
+      {
+        id: 4,
+        name: 'מיכל רוזן',
+        email: 'michal@example.com',
+        phone: '050-4567890',
+        classId: 2,
+        className: 'כיתה ב\'',
+        progress: 67,
+        lastActivity: '2024-01-14T16:20:00Z',
+        completedLessons: 6,
+        totalLessons: 9
+      },
+      {
+        id: 5,
+        name: 'עמית שפירא',
+        email: 'amit@example.com',
+        phone: '050-5678901',
+        classId: 3,
+        className: 'כיתה ג\'',
+        progress: 100,
+        lastActivity: '2024-01-15T12:30:00Z',
+        completedLessons: 9,
+        totalLessons: 9
+      }
+    ];
+
+    setClasses(mockClasses);
+    setStudents(mockStudents);
+    setLoading(false);
+  };
 
   const myStudents = getMyStudents();
   const unassignedStudents = getUnassignedStudents();
@@ -51,7 +176,7 @@ export default function StudentManagement({
     // Apply search
     if (searchTerm) {
       filtered = filtered.filter(student => 
-        student.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         student.email?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
@@ -81,7 +206,36 @@ export default function StudentManagement({
     }
   };
 
+  const handleAddStudent = (studentData) => {
+    const newStudent = {
+      id: Date.now(),
+      ...studentData,
+      progress: 0,
+      lastActivity: new Date().toISOString(),
+      completedLessons: 0,
+      totalLessons: 9
+    };
+    setStudents([...students, newStudent]);
+    setShowAddModal(false);
+    toast.success('תלמיד נוסף בהצלחה');
+  };
+
+  const handleEditStudent = (studentData) => {
+    setStudents(students.map(student => student.id === studentData.id ? studentData : student));
+    setEditingStudent(null);
+    toast.success('תלמיד עודכן בהצלחה');
+  };
+
+  const handleDeleteStudent = (studentId) => {
+    setStudents(students.filter(student => student.id !== studentId));
+    toast.success('תלמיד נמחק בהצלחה');
+  };
+
   const filteredStudents = getFilteredStudents();
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <div className="space-y-6">
@@ -196,12 +350,12 @@ export default function StudentManagement({
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
                           <div className="h-10 w-10 rounded-full bg-cyber-blue flex items-center justify-center text-white font-medium">
-                            {(student.displayName || student.email || '?')[0].toUpperCase()}
+                            {(student.name || student.email || '?')[0].toUpperCase()}
                           </div>
                         </div>
                         <div className="mr-4">
                           <div className="text-sm font-medium text-gray-900">
-                            {student.displayName || 'ללא שם'}
+                            {student.name || 'ללא שם'}
                           </div>
                           <div className="text-sm text-gray-500">
                             {student.email}
@@ -305,7 +459,7 @@ export default function StudentManagement({
 
             <div className="mb-4">
               <p className="text-gray-600 mb-2">
-                <strong>{selectedStudent.displayName || selectedStudent.email}</strong>
+                <strong>{selectedStudent.name || selectedStudent.email}</strong>
               </p>
               <p className="text-sm text-gray-500">
                 התקדמות נוכחית: {getStudentProgress(selectedStudent)}%
@@ -343,6 +497,112 @@ export default function StudentManagement({
           <p className="text-gray-500">נסה לשנות את החיפוש או הפילטרים</p>
         </div>
       )}
+
+      {/* Add/Edit Student Modal */}
+      {(showAddModal || editingStudent) && (
+        <StudentModal
+          studentData={editingStudent}
+          classes={classes}
+          onSave={editingStudent ? handleEditStudent : handleAddStudent}
+          onCancel={() => {
+            setShowAddModal(false);
+            setEditingStudent(null);
+          }}
+        />
+      )}
     </div>
   );
 }
+
+// Student Modal Component
+const StudentModal = ({ studentData, classes, onSave, onCancel }) => {
+  const [formData, setFormData] = useState({
+    name: studentData?.name || '',
+    email: studentData?.email || '',
+    phone: studentData?.phone || '',
+    classId: studentData?.classId || classes[0]?.id || ''
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!formData.name || !formData.email || !formData.classId) {
+      toast.error('נא למלא את כל השדות הנדרשים');
+      return;
+    }
+    
+    const selectedClass = classes.find(cls => cls.id === parseInt(formData.classId));
+    onSave({ 
+      ...studentData, 
+      ...formData, 
+      classId: parseInt(formData.classId),
+      className: selectedClass?.name 
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <Card className="w-full max-w-md mx-4">
+        <h3 className="text-xl font-bold text-white mb-4">
+          {studentData ? 'ערוך תלמיד' : 'הוסף תלמיד חדש'}
+        </h3>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-gray-300 text-sm mb-2">שם מלא</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="שם התלמיד"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-gray-300 text-sm mb-2">אימייל</label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="student@example.com"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-gray-300 text-sm mb-2">טלפון</label>
+            <input
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="050-1234567"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-gray-300 text-sm mb-2">כיתה</label>
+            <select
+              value={formData.classId}
+              onChange={(e) => setFormData({ ...formData, classId: e.target.value })}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {classes.map(cls => (
+                <option key={cls.id} value={cls.id}>{cls.name}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="flex space-x-3 pt-4">
+            <Button type="submit" variant="primary" className="flex-1">
+              {studentData ? 'עדכן' : 'הוסף'}
+            </Button>
+            <Button type="button" variant="secondary" onClick={onCancel} className="flex-1">
+              ביטול
+            </Button>
+          </div>
+        </form>
+      </Card>
+    </div>
+  );
+};
