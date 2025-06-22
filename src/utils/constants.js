@@ -1,8 +1,8 @@
 // App-wide constants
 export const APP_CONFIG = {
-  NAME: 'Israel Cyber Academy',
+  NAME: 'Israel Cyber Campus',
   VERSION: '1.0.0',
-  SUPPORT_EMAIL: 'support@israelcyberacademy.com'
+  SUPPORT_EMAIL: 'support@israelcybercampus.com'
 };
 
 // User roles

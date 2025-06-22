@@ -381,7 +381,7 @@ const Roadmap = () => {
               </div>
               <div>
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">
-                  Israel Cyber Academy
+                  Israel Cyber Campus
                 </h1>
                 <p className="text-green-400 text-sm font-mono">Terminal v2.0.1</p>
               </div>

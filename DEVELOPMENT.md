@@ -1,4 +1,4 @@
-# 🚀 Israel Cyber Academy - Development Guide
+# 🚀 Israel Cyber Campus - Development Guide
 
 ## 📋 Table of Contents
 - [Project Overview](#project-overview)
@@ -13,7 +13,7 @@
 
 ## 🎯 Project Overview
 
-Israel Cyber Academy is a React-based educational platform focused on cybersecurity learning. The platform features interactive lessons, role-based access, and real-time progress tracking.
+Israel Cyber Campus is a React-based educational platform focused on cybersecurity learning. The platform features interactive lessons, role-based access, and real-time progress tracking.
 
 ### Tech Stack
 - **Frontend**: React 18, Vite, Tailwind CSS

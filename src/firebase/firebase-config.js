@@ -1,5 +1,5 @@
 /**
- * Firebase Configuration - Israel Cyber Academy
+ * Firebase Configuration - Israel Cyber Campus
  * 
  * This file configures Firebase services for the application:
  * - Firebase Authentication for user management

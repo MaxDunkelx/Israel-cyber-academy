@@ -559,7 +559,7 @@ const EnhancedLogin = () => {
                 }}
                 className="bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-[length:200%_200%] bg-clip-text text-transparent"
               >
-                ישראל קמפוס סייבר
+                Israel Cyber Campus
               </motion.span>
             </motion.h1>
             
@@ -715,12 +715,14 @@ const EnhancedLogin = () => {
                   >
                     ← חזור לבחירת תפקיד
                   </motion.button>
-                  <h3 className="text-4xl font-black text-white mb-4">
-                    {isLogin ? 'התחברות' : 'הרשמה'}
-                  </h3>
-                  <p className="text-gray-400 text-xl">
+                  <motion.h2 
+                    className="text-3xl font-bold text-white mb-6 text-center"
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6 }}
+                  >
                     {isLogin ? 'ברוך שובך לישראל קמפוס סייבר!' : 'צור חשבון חדש והצטרף אלינו'}
-                  </p>
+                  </motion.h2>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-8 relative z-10">
@@ -728,15 +730,15 @@ const EnhancedLogin = () => {
                     <>
                       <div>
                         <label className="block text-lg font-semibold text-gray-300 mb-4">
-                          שם מלא
+                          First Name
                         </label>
                         <input
                           type="text"
-                          name="displayName"
-                          value={formData.displayName}
+                          name="firstName"
+                          value={formData.firstName}
                           onChange={handleInputChange}
                           className={`w-full px-6 py-5 bg-gray-700/50 border-2 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:ring-4 transition-all duration-300 text-lg backdrop-blur-sm ${
-                            errors.displayName 
+                            errors.firstName 
                               ? 'border-red-500 focus:ring-red-500/20' 
                               : 'border-gray-600 focus:ring-blue-500/20 focus:border-blue-500'
                           }`}
@@ -972,21 +974,8 @@ const EnhancedLogin = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1.0, duration: 0.6 }}
               >
-                Israel Cyber Academy - All Rights Reserved
+                Israel Cyber Campus - All Rights Reserved
               </motion.p>
-              <motion.div 
-                className="mt-4 pt-4 border-t border-gray-700/50"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 1.2, duration: 0.6 }}
-              >
-                <p className="text-gray-500 text-xs">
-                  © 2024 - המרכז המתקדם ביותר ללימודי אבטחת מידע בישראל
-                </p>
-                <p className="text-gray-500 text-xs mt-1">
-                  © 2024 - The Most Advanced Cyber Security Learning Center in Israel
-                </p>
-              </motion.div>
             </div>
           </motion.footer>
         </section>

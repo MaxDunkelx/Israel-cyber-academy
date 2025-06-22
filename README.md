@@ -1,4 +1,4 @@
-# Israel Cyber Academy 🛡️
+# Israel Cyber Campus 🛡️
 
 An interactive learning platform for cybersecurity education, built with React and modern web technologies.
 

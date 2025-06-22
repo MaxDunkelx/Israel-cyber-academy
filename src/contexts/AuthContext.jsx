@@ -28,6 +28,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db, diagnoseFirestoreConnection } from '../firebase/firebase-config';
+import { grantTeacherLessonAccess } from '../firebase/teacher-service.jsx';
 
 // Create React context for authentication
 const AuthContext = createContext();
@@ -102,31 +103,71 @@ export const AuthProvider = ({ children }) => {
         lastName: credentials.lastName || '',
         age: credentials.age ? parseInt(credentials.age) : null,
         sex: credentials.sex || 'male',
-        progress: {
-          // Initialize first lesson as available but not completed
-          1: {
-            completed: false,
-            score: 0,
-            completedAt: null,
-            temporary: false,
-            lastSlide: 0,
-            pagesEngaged: [],
-            lastActivity: new Date()
-          }
-        },
-        completedLessons: [], // Empty array - no lessons completed yet
-        currentLesson: 1, // First lesson is available
+        // Student-specific fields (only for students)
+        ...(role === 'student' && {
+          progress: {
+            // Initialize first lesson as available but not completed
+            1: {
+              completed: false,
+              score: 0,
+              completedAt: null,
+              temporary: false,
+              lastSlide: 0,
+              pagesEngaged: [],
+              lastActivity: new Date()
+            }
+          },
+          completedLessons: [], // Empty array - no lessons completed yet
+          currentLesson: 1, // First lesson is available
+          totalTimeSpent: 0,
+          totalPagesEngaged: 0,
+          achievements: [],
+          streak: 0,
+          // Class assignment fields
+          classId: null,
+          teacherId: null
+        }),
+        // Teacher-specific fields (only for teachers)
+        ...(role === 'teacher' && {
+          teacherClasses: [], // Array of class IDs managed by this teacher
+          teacherPermissions: ['manage_students', 'view_analytics', 'add_comments'],
+          teacherSettings: {
+            defaultClassId: null,
+            notificationPreferences: {
+              emailNotifications: true,
+              studentProgressAlerts: true,
+              classUpdates: true
+            }
+          },
+          // Teacher doesn't need progress tracking
+          progress: {},
+          completedLessons: [],
+          currentLesson: 1,
+          totalTimeSpent: 0,
+          totalPagesEngaged: 0,
+          achievements: [],
+          streak: 0
+        }),
         createdAt: new Date(),
         lastLogin: new Date(),
-        totalTimeSpent: 0,
-        totalPagesEngaged: 0,
-        achievements: [],
-        streak: 0,
-        lastActivityDate: new Date()
+        lastActivityDate: new Date(),
+        updatedAt: new Date()
       };
       
       // Store profile in Firestore
       await setDoc(doc(db, 'users', userCredential.user.uid), userProfile);
+      
+      // If user is a teacher, grant access to all lessons
+      if (role === 'teacher') {
+        try {
+          await grantTeacherLessonAccess(userCredential.user.uid);
+          console.log('✅ Teacher lesson access granted for new teacher');
+        } catch (error) {
+          console.warn('⚠️ Failed to grant teacher lesson access:', error);
+          // Don't fail the signup if this fails
+        }
+      }
+      
       return userCredential;
     } catch (error) {
       throw error;

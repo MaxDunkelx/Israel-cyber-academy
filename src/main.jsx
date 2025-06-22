@@ -1,8 +1,8 @@
 /**
- * Main Entry Point - Israel Cyber Academy React Application
+ * Main Entry Point - Israel Cyber Campus React Application
  * 
- * This file serves as the entry point for the React application.
- * It initializes the React root and renders the main App component.
+ * This file initializes the React application and renders the root component.
+ * It sets up the necessary providers and configurations for the app to run.
  * 
  * Key Responsibilities:
  * - Create React root for DOM mounting
