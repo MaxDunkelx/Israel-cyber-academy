@@ -1,5 +1,12 @@
-import React, { useState } from 'react';
-import { Plus, Edit, Trash2, Users, Building, UserPlus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Edit, Trash2, Users, Building, UserPlus, Search, Filter } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { useAuth } from '../../hooks/useAuth';
+import { useUserProfile } from '../../hooks/useAuth';
+import { isTeacher, validateTeacherAccess, logSecurityEvent } from '../../utils/security';
+import Card from '../ui/Card';
+import Button from '../ui/Button';
+import LoadingSpinner from '../common/LoadingSpinner';
 
 export default function ClassManagement({
   classes,
@@ -13,6 +20,8 @@ export default function ClassManagement({
   onSelectClass,
   getClassProgress
 }) {
+  const { currentUser } = useAuth();
+  const { role } = useUserProfile();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -20,6 +29,78 @@ export default function ClassManagement({
     maxStudents: 30,
     schedule: ''
   });
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterGrade, setFilterGrade] = useState('all');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingClass, setEditingClass] = useState(null);
+
+  useEffect(() => {
+    // Security check - ensure only teachers can access this component
+    if (!currentUser) {
+      logSecurityEvent('UNAUTHORIZED_ACCESS_ATTEMPT', { role: 'none' }, { component: 'ClassManagement' });
+      return;
+    }
+
+    const validation = validateTeacherAccess({ role }, 'manage_classes');
+    if (!validation.success) {
+      logSecurityEvent('INSUFFICIENT_PERMISSIONS', { role, uid: currentUser.uid }, { 
+        component: 'ClassManagement',
+        reason: validation.message 
+      });
+      toast.error('אין לך הרשאות לניהול כיתות');
+      return;
+    }
+
+    // Load mock data
+    loadClasses();
+  }, [currentUser, role]);
+
+  // Security check - if not a teacher, show access denied
+  if (!isTeacher({ role })) {
+    logSecurityEvent('STUDENT_ACCESS_ATTEMPT', { role, uid: currentUser?.uid }, { component: 'ClassManagement' });
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-400">אין לך הרשאות לגשת לניהול כיתות</p>
+      </div>
+    );
+  }
+
+  const loadClasses = () => {
+    // Mock data - in real app, this would come from Firebase
+    const mockClasses = [
+      {
+        id: 1,
+        name: 'כיתה א\'',
+        grade: 'א',
+        teacher: 'שרה כהן',
+        students: 15,
+        activeStudents: 12,
+        lastActivity: '2024-01-15T10:30:00Z'
+      },
+      {
+        id: 2,
+        name: 'כיתה ב\'',
+        grade: 'ב',
+        teacher: 'דוד לוי',
+        students: 18,
+        activeStudents: 16,
+        lastActivity: '2024-01-15T09:15:00Z'
+      },
+      {
+        id: 3,
+        name: 'כיתה ג\'',
+        grade: 'ג',
+        teacher: 'מיכל אברהם',
+        students: 12,
+        activeStudents: 10,
+        lastActivity: '2024-01-14T16:45:00Z'
+      }
+    ];
+    
+    setClasses(mockClasses);
+    setLoading(false);
+  };
 
   const handleCreateClass = async (e) => {
     e.preventDefault();
@@ -52,6 +133,17 @@ export default function ClassManagement({
   const myClasses = classes.filter(c => c.teacherId === currentTeacherId);
   const otherClasses = classes.filter(c => c.teacherId !== currentTeacherId);
 
+  const filteredClasses = classes.filter(cls => {
+    const matchesSearch = cls.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         cls.teacher.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesGrade = filterGrade === 'all' || cls.grade === filterGrade;
+    return matchesSearch && matchesGrade;
+  });
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -71,6 +163,35 @@ export default function ClassManagement({
           צור כיתה חדשה
         </button>
       </div>
+
+      {/* Search and Filter */}
+      <Card>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="חיפוש כיתות או מורים..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <Filter className="w-4 h-4 text-gray-400" />
+            <select
+              value={filterGrade}
+              onChange={(e) => setFilterGrade(e.target.value)}
+              className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">כל הכיתות</option>
+              <option value="א">כיתה א'</option>
+              <option value="ב">כיתה ב'</option>
+              <option value="ג">כיתה ג'</option>
+            </select>
+          </div>
+        </div>
+      </Card>
 
       {/* Create Class Form */}
       {showCreateForm && (
@@ -284,6 +405,92 @@ export default function ClassManagement({
           </button>
         </div>
       )}
+
+      {/* Add/Edit Class Modal */}
+      {(showAddModal || editingClass) && (
+        <ClassModal
+          classData={editingClass}
+          onSave={editingClass ? onUpdateClass : onCreateClass}
+          onCancel={() => {
+            setShowAddModal(false);
+            setEditingClass(null);
+          }}
+        />
+      )}
     </div>
   );
 }
+
+// Class Modal Component
+const ClassModal = ({ classData, onSave, onCancel }) => {
+  const [formData, setFormData] = useState({
+    name: classData?.name || '',
+    grade: classData?.grade || 'א',
+    teacher: classData?.teacher || ''
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!formData.name || !formData.teacher) {
+      toast.error('נא למלא את כל השדות הנדרשים');
+      return;
+    }
+    onSave({ ...classData, ...formData });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <Card className="w-full max-w-md mx-4">
+        <h3 className="text-xl font-bold text-white mb-4">
+          {classData ? 'ערוך כיתה' : 'הוסף כיתה חדשה'}
+        </h3>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-gray-300 text-sm mb-2">שם הכיתה</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="כיתה א'"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-gray-300 text-sm mb-2">שכבה</label>
+            <select
+              value={formData.grade}
+              onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="א">א</option>
+              <option value="ב">ב</option>
+              <option value="ג">ג</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-gray-300 text-sm mb-2">מורה</label>
+            <input
+              type="text"
+              value={formData.teacher}
+              onChange={(e) => setFormData({ ...formData, teacher: e.target.value })}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="שם המורה"
+            />
+          </div>
+          
+          <div className="flex space-x-3 pt-4">
+            <Button type="submit" variant="primary" className="flex-1">
+              {classData ? 'עדכן' : 'הוסף'}
+            </Button>
+            <Button type="button" variant="secondary" onClick={onCancel} className="flex-1">
+              ביטול
+            </Button>
+          </div>
+        </form>
+      </Card>
+    </div>
+  );
+};

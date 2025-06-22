@@ -52,15 +52,16 @@ export const useAuthStatus = () => {
 /**
  * Custom hook for user profile information
  * 
- * @returns {Object} User profile information
+ * @returns {Object} User profile information including uid
  * 
  * @example
- * const { displayName, email, role, progress } = useUserProfile();
+ * const { displayName, email, role, progress, uid } = useUserProfile();
  */
 export const useUserProfile = () => {
   const { currentUser, userProfile } = useAuthContext();
   
   return {
+    uid: currentUser?.uid || userProfile?.uid || null,
     displayName: userProfile?.displayName || currentUser?.displayName || 'משתמש',
     email: userProfile?.email || currentUser?.email || '',
     role: userProfile?.role || 'student',
