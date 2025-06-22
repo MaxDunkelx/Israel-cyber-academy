@@ -1,62 +1,4 @@
 /**
-<<<<<<< HEAD
- * Security Utility - Israel Cyber Academy
- * 
- * Provides security logging and validation functions for the application.
- * Handles security event logging, input validation, and access control.
- * 
- * Features:
- * - Security event logging
- * - Input sanitization
- * - Access control validation
- * - Rate limiting utilities
- * - Security audit trail
- */
-
-/**
- * Log security events for audit and monitoring
- * @param {string} eventType - Type of security event
- * @param {Object} eventData - Event data and metadata
- */
-export const logSecurityEvent = (eventType, eventData = {}) => {
-  try {
-    const securityEvent = {
-      type: eventType,
-      timestamp: new Date().toISOString(),
-      userAgent: navigator.userAgent,
-      url: window.location.href,
-      ...eventData
-    };
-
-    // Log to console in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔒 Security Event:', securityEvent);
-    }
-
-    // In production, this would be sent to a security monitoring service
-    // For now, we'll store in localStorage for demo purposes
-    const existingLogs = JSON.parse(localStorage.getItem('security_logs') || '[]');
-    existingLogs.push(securityEvent);
-    
-    // Keep only last 1000 events
-    if (existingLogs.length > 1000) {
-      existingLogs.splice(0, existingLogs.length - 1000);
-    }
-    
-    localStorage.setItem('security_logs', JSON.stringify(existingLogs));
-
-    // Send to analytics service if available
-    if (window.gtag) {
-      window.gtag('event', 'security_event', {
-        event_category: 'security',
-        event_label: eventType,
-        value: 1
-      });
-    }
-
-  } catch (error) {
-    console.error('Error logging security event:', error);
-=======
  * Security Utilities - Israel Cyber Academy
  * 
  * Centralized security functions for authentication, authorization,
@@ -199,69 +141,40 @@ export const isAdmin = (user) => {
  * @returns {Object} Validation result with success status and message
  */
 export const validateTeacherAccess = (user, operation) => {
-  // Check if user exists
   if (!user) {
     return {
       success: false,
       message: 'User not authenticated',
-      code: 'UNAUTHENTICATED'
+      code: 'AUTH_REQUIRED'
     };
   }
-  
-  // Check if user has a role
+
   if (!user.role) {
     return {
       success: false,
       message: 'User role not defined',
-      code: 'NO_ROLE'
+      code: 'ROLE_MISSING'
     };
   }
-  
-  // Check if operation exists in permissions
-  if (!PERMISSIONS[operation]) {
+
+  if (!isTeacher(user)) {
     return {
       success: false,
-      message: 'Invalid operation',
-      code: 'INVALID_OPERATION'
-    };
-  }
-  
-  // Check if user has permission for operation
-  const permission = PERMISSIONS[operation];
-  if (!permission.roles.includes(user.role)) {
-    return {
-      success: false,
-      message: `Insufficient permissions for ${operation}`,
+      message: 'Teacher access required',
       code: 'INSUFFICIENT_PERMISSIONS'
     };
   }
-  
-  // Additional validation for specific operations
-  switch (operation) {
-    case 'teacher_dashboard_access':
-      if (!user.uid) {
-        return {
-          success: false,
-          message: 'Teacher ID not found',
-          code: 'NO_TEACHER_ID'
-        };
-      }
-      break;
-      
-    case 'class_management':
-      if (!user.uid) {
-        return {
-          success: false,
-          message: 'Teacher ID required for class management',
-          code: 'NO_TEACHER_ID'
-        };
-      }
-      break;
-      
-    default:
-      break;
+
+  // Check specific operation permissions
+  const permission = PERMISSIONS[operation];
+  if (permission && !permission.roles.includes(user.role)) {
+    return {
+      success: false,
+      message: `Operation '${operation}' not allowed for role '${user.role}'`,
+      code: 'OPERATION_NOT_ALLOWED'
+    };
   }
-  
+
   return {
     success: true,
     message: 'Access granted',
@@ -270,308 +183,168 @@ export const validateTeacherAccess = (user, operation) => {
 };
 
 /**
- * Log security events to Firestore
- * Creates audit trail for security monitoring
+ * Log security events for audit and monitoring
+ * Enhanced version with Firebase integration
  * 
  * @param {string} eventType - Type of security event
- * @param {Object} eventData - Additional event data
- * @param {Object} metadata - Optional metadata for the event
- * @returns {Promise<void>}
+ * @param {Object} eventData - Event data and metadata
+ * @param {Object} metadata - Additional metadata
  */
 export const logSecurityEvent = async (eventType, eventData = {}, metadata = {}) => {
   try {
     const securityEvent = {
-      eventType,
-      eventData,
-      metadata,
-      timestamp: serverTimestamp(),
+      type: eventType,
+      timestamp: new Date().toISOString(),
       userAgent: navigator.userAgent,
       url: window.location.href,
-      referrer: document.referrer
+      ...eventData,
+      metadata: {
+        ...metadata,
+        timestamp: serverTimestamp()
+      }
     };
-    
-    // Add to security logs collection
-    await addDoc(collection(db, 'securityLogs'), securityEvent);
-    
+
     // Log to console in development
     if (process.env.NODE_ENV === 'development') {
-      console.log('🔒 Security Event:', {
-        type: eventType,
-        data: eventData,
-        timestamp: new Date().toISOString()
-      });
+      console.log('🔒 Security Event:', securityEvent);
+    }
+
+    // Store in Firebase for production
+    try {
+      await addDoc(collection(db, 'security_logs'), securityEvent);
+    } catch (firebaseError) {
+      console.warn('Failed to log to Firebase:', firebaseError);
+    }
+
+    // Fallback to localStorage
+    const existingLogs = JSON.parse(localStorage.getItem('security_logs') || '[]');
+    existingLogs.push(securityEvent);
+    
+    // Keep only last 1000 events
+    if (existingLogs.length > 1000) {
+      existingLogs.splice(0, existingLogs.length - 1000);
     }
     
+    localStorage.setItem('security_logs', JSON.stringify(existingLogs));
+
+    // Send to analytics service if available
+    if (window.gtag) {
+      window.gtag('event', 'security_event', {
+        event_category: 'security',
+        event_label: eventType,
+        value: 1
+      });
+    }
+
   } catch (error) {
     console.error('Error logging security event:', error);
-    
-    // Fallback to console logging if Firestore fails
-    console.error('🔒 Security Event (Fallback):', {
-      type: eventType,
-      data: eventData,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
->>>>>>> a251aaca0ea6b5a7c1e7ab50859cc0fcdef93781
   }
 };
 
 /**
  * Sanitize user input to prevent XSS attacks
-<<<<<<< HEAD
-=======
- * Removes potentially dangerous HTML and script tags
+ * Basic input sanitization for security
  * 
->>>>>>> a251aaca0ea6b5a7c1e7ab50859cc0fcdef93781
  * @param {string} input - User input to sanitize
  * @returns {string} Sanitized input
  */
 export const sanitizeInput = (input) => {
-<<<<<<< HEAD
-  if (typeof input !== 'string') return input;
-  
-  return input
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;');
-=======
   if (typeof input !== 'string') {
     return input;
   }
-  
-  return input
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-    .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')
-    .replace(/<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi, '')
-    .replace(/javascript:/gi, '')
-    .replace(/on\w+\s*=/gi, '')
-    .trim();
->>>>>>> a251aaca0ea6b5a7c1e7ab50859cc0fcdef93781
-};
 
-/**
- * Validate email format
-<<<<<<< HEAD
- * @param {string} email - Email to validate
- * @returns {boolean} True if valid email
- */
-export const validateEmail = (email) => {
-=======
- * Checks if email follows proper format
- * 
- * @param {string} email - Email to validate
- * @returns {boolean} True if email is valid
- */
-export const validateEmail = (email) => {
-  if (!email || typeof email !== 'string') {
-    return false;
-  }
-  
->>>>>>> a251aaca0ea6b5a7c1e7ab50859cc0fcdef93781
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  return input
+    .replace(/[<>]/g, '') // Remove angle brackets
+    .replace(/javascript:/gi, '') // Remove javascript: protocol
+    .replace(/on\w+=/gi, '') // Remove event handlers
+    .trim();
 };
 
 /**
  * Validate password strength
-<<<<<<< HEAD
+ * Comprehensive password validation
+ * 
  * @param {string} password - Password to validate
  * @returns {Object} Validation result with score and feedback
  */
 export const validatePasswordStrength = (password) => {
-  const result = {
-    score: 0,
-    feedback: [],
-    isValid: false
-  };
-
   if (!password) {
-    result.feedback.push('סיסמה נדרשת');
-    return result;
+    return {
+      score: 0,
+      valid: false,
+      feedback: 'Password is required'
+    };
   }
+
+  let score = 0;
+  const feedback = [];
 
   // Length check
   if (password.length >= 8) {
-    result.score += 1;
+    score += 1;
   } else {
-    result.feedback.push('סיסמה חייבת להכיל לפחות 8 תווים');
+    feedback.push('At least 8 characters');
   }
 
   // Uppercase check
   if (/[A-Z]/.test(password)) {
-    result.score += 1;
+    score += 1;
   } else {
-    result.feedback.push('סיסמה חייבת להכיל אות גדולה');
+    feedback.push('At least one uppercase letter');
   }
 
   // Lowercase check
   if (/[a-z]/.test(password)) {
-    result.score += 1;
+    score += 1;
   } else {
-    result.feedback.push('סיסמה חייבת להכיל אות קטנה');
+    feedback.push('At least one lowercase letter');
   }
 
   // Number check
   if (/\d/.test(password)) {
-    result.score += 1;
+    score += 1;
   } else {
-    result.feedback.push('סיסמה חייבת להכיל מספר');
+    feedback.push('At least one number');
   }
 
   // Special character check
   if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-    result.score += 1;
+    score += 1;
   } else {
-    result.feedback.push('סיסמה חייבת להכיל תו מיוחד');
+    feedback.push('At least one special character');
   }
 
-  result.isValid = result.score >= 4;
-  return result;
+  return {
+    score,
+    valid: score >= 4,
+    feedback: feedback.length > 0 ? feedback : ['Strong password']
+  };
 };
 
 /**
- * Check if user has required permissions
+ * Check if user has permission for specific roles
+ * Role-based permission checking
+ * 
  * @param {string} userRole - User's role
- * @param {Array} requiredRoles - Required roles for access
- * @returns {boolean} True if user has access
+ * @param {Array} requiredRoles - Array of required roles
+ * @returns {boolean} True if user has permission
  */
 export const hasPermission = (userRole, requiredRoles) => {
-  if (!userRole || !requiredRoles) return false;
-  
+  if (!userRole || !requiredRoles) {
+    return false;
+  }
+
   if (Array.isArray(requiredRoles)) {
     return requiredRoles.includes(userRole);
   }
-  
+
   return userRole === requiredRoles;
 };
 
 /**
- * Rate limiting utility
- * @param {string} key - Rate limit key
- * @param {number} maxAttempts - Maximum attempts allowed
- * @param {number} windowMs - Time window in milliseconds
- * @returns {boolean} True if request is allowed
- */
-export const checkRateLimit = (key, maxAttempts = 5, windowMs = 60000) => {
-  try {
-    const now = Date.now();
-    const rateLimitKey = `rate_limit_${key}`;
-    const attempts = JSON.parse(localStorage.getItem(rateLimitKey) || '[]');
-    
-    // Remove old attempts outside the time window
-    const validAttempts = attempts.filter(timestamp => now - timestamp < windowMs);
-    
-    if (validAttempts.length >= maxAttempts) {
-      return false;
-    }
-    
-    // Add current attempt
-    validAttempts.push(now);
-    localStorage.setItem(rateLimitKey, JSON.stringify(validAttempts));
-    
-    return true;
-  } catch (error) {
-    console.error('Rate limit check error:', error);
-    return true; // Allow request if rate limiting fails
-  }
-=======
- * Checks password against security requirements
+ * Validate file upload for security
+ * File type and size validation
  * 
- * @param {string} password - Password to validate
- * @returns {Object} Validation result with score and feedback
- */
-export const validatePassword = (password) => {
-  if (!password || typeof password !== 'string') {
-    return {
-      isValid: false,
-      score: 0,
-      feedback: 'Password is required'
-    };
-  }
-  
-  const minLength = 8;
-  const hasUpperCase = /[A-Z]/.test(password);
-  const hasLowerCase = /[a-z]/.test(password);
-  const hasNumbers = /\d/.test(password);
-  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-  
-  let score = 0;
-  const feedback = [];
-  
-  if (password.length >= minLength) {
-    score += 1;
-  } else {
-    feedback.push(`Password must be at least ${minLength} characters long`);
-  }
-  
-  if (hasUpperCase) score += 1;
-  else feedback.push('Password must contain at least one uppercase letter');
-  
-  if (hasLowerCase) score += 1;
-  else feedback.push('Password must contain at least one lowercase letter');
-  
-  if (hasNumbers) score += 1;
-  else feedback.push('Password must contain at least one number');
-  
-  if (hasSpecialChar) score += 1;
-  else feedback.push('Password must contain at least one special character');
-  
-  const isValid = score >= 4;
-  
-  return {
-    isValid,
-    score,
-    feedback: feedback.length > 0 ? feedback : ['Password meets all requirements']
-  };
->>>>>>> a251aaca0ea6b5a7c1e7ab50859cc0fcdef93781
-};
-
-/**
- * Generate secure random token
-<<<<<<< HEAD
- * @param {number} length - Token length
- * @returns {string} Random token
-=======
- * Creates cryptographically secure random string
- * 
- * @param {number} length - Length of token to generate
- * @returns {string} Secure random token
->>>>>>> a251aaca0ea6b5a7c1e7ab50859cc0fcdef93781
- */
-export const generateSecureToken = (length = 32) => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  
-<<<<<<< HEAD
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-=======
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    // Use crypto API if available
-    const array = new Uint8Array(length);
-    crypto.getRandomValues(array);
-    
-    for (let i = 0; i < length; i++) {
-      result += chars[array[i] % chars.length];
-    }
-  } else {
-    // Fallback to Math.random (less secure)
-    for (let i = 0; i < length; i++) {
-      result += chars[Math.floor(Math.random() * chars.length)];
-    }
->>>>>>> a251aaca0ea6b5a7c1e7ab50859cc0fcdef93781
-  }
-  
-  return result;
-};
-
-/**
-<<<<<<< HEAD
- * Validate file upload
  * @param {File} file - File to validate
  * @param {Object} options - Validation options
  * @returns {Object} Validation result
@@ -583,45 +356,67 @@ export const validateFileUpload = (file, options = {}) => {
     allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.pdf']
   } = options;
 
-  const result = {
-    isValid: true,
-    errors: []
-  };
+  if (!file) {
+    return {
+      valid: false,
+      error: 'No file provided'
+    };
+  }
 
   // Check file size
   if (file.size > maxSize) {
-    result.isValid = false;
-    result.errors.push(`קובץ גדול מדי. גודל מקסימלי: ${Math.round(maxSize / 1024 / 1024)}MB`);
+    return {
+      valid: false,
+      error: `File size exceeds ${Math.round(maxSize / 1024 / 1024)}MB limit`
+    };
   }
 
   // Check file type
   if (!allowedTypes.includes(file.type)) {
-    result.isValid = false;
-    result.errors.push('סוג קובץ לא נתמך');
+    return {
+      valid: false,
+      error: 'File type not allowed'
+    };
   }
 
   // Check file extension
   const fileName = file.name.toLowerCase();
-  const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
+  const hasValidExtension = allowedExtensions.some(ext => 
+    fileName.endsWith(ext)
+  );
+
   if (!hasValidExtension) {
-    result.isValid = false;
-    result.errors.push('סיומת קובץ לא נתמכת');
+    return {
+      valid: false,
+      error: 'File extension not allowed'
+    };
   }
 
-  return result;
+  return {
+    valid: true,
+    error: null
+  };
 };
 
 /**
- * Encrypt sensitive data (basic implementation)
+ * Simple encryption for sensitive data
+ * Note: This is a basic implementation for demo purposes
+ * In production, use proper encryption libraries
+ * 
  * @param {string} data - Data to encrypt
  * @param {string} key - Encryption key
  * @returns {string} Encrypted data
  */
 export const encryptData = (data, key) => {
   try {
-    // This is a basic implementation - in production, use proper encryption
-    const encoded = btoa(encodeURIComponent(data));
-    return encoded;
+    // Simple XOR encryption (for demo purposes only)
+    let encrypted = '';
+    for (let i = 0; i < data.length; i++) {
+      encrypted += String.fromCharCode(
+        data.charCodeAt(i) ^ key.charCodeAt(i % key.length)
+      );
+    }
+    return btoa(encrypted);
   } catch (error) {
     console.error('Encryption error:', error);
     return data;
@@ -629,16 +424,24 @@ export const encryptData = (data, key) => {
 };
 
 /**
- * Decrypt sensitive data (basic implementation)
- * @param {string} encryptedData - Encrypted data
+ * Simple decryption for sensitive data
+ * Note: This is a basic implementation for demo purposes
+ * In production, use proper decryption libraries
+ * 
+ * @param {string} encryptedData - Data to decrypt
  * @param {string} key - Decryption key
  * @returns {string} Decrypted data
  */
 export const decryptData = (encryptedData, key) => {
   try {
-    // This is a basic implementation - in production, use proper decryption
-    const decoded = decodeURIComponent(atob(encryptedData));
-    return decoded;
+    const decoded = atob(encryptedData);
+    let decrypted = '';
+    for (let i = 0; i < decoded.length; i++) {
+      decrypted += String.fromCharCode(
+        decoded.charCodeAt(i) ^ key.charCodeAt(i % key.length)
+      );
+    }
+    return decrypted;
   } catch (error) {
     console.error('Decryption error:', error);
     return encryptedData;
@@ -646,7 +449,9 @@ export const decryptData = (encryptedData, key) => {
 };
 
 /**
- * Get security logs (for admin purposes)
+ * Get security logs from localStorage
+ * Retrieves stored security events
+ * 
  * @returns {Array} Array of security events
  */
 export const getSecurityLogs = () => {
@@ -659,7 +464,8 @@ export const getSecurityLogs = () => {
 };
 
 /**
- * Clear security logs
+ * Clear security logs from localStorage
+ * Removes all stored security events
  */
 export const clearSecurityLogs = () => {
   try {
@@ -672,67 +478,43 @@ export const clearSecurityLogs = () => {
 
 /**
  * Validate CSRF token
+ * Basic CSRF token validation
+ * 
  * @param {string} token - Token to validate
- * @returns {boolean} True if valid
+ * @returns {boolean} True if token is valid
  */
 export const validateCSRFToken = (token) => {
-  try {
-    const storedToken = localStorage.getItem('csrf_token');
-    return token === storedToken;
-  } catch (error) {
-    console.error('CSRF validation error:', error);
-    return false;
-  }
+  const storedToken = localStorage.getItem('csrf_token');
+  return token === storedToken;
 };
 
 /**
  * Generate CSRF token
- * @returns {string} CSRF token
+ * Creates a new CSRF token
+ * 
+ * @returns {string} Generated CSRF token
  */
 export const generateCSRFToken = () => {
-  const token = generateSecureToken(32);
+  const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
   localStorage.setItem('csrf_token', token);
   return token;
 };
 
-export default {
-  logSecurityEvent,
-  sanitizeInput,
-  validateEmail,
-  validatePasswordStrength,
-  hasPermission,
-  checkRateLimit,
-  generateSecureToken,
-  validateFileUpload,
-  encryptData,
-  decryptData,
-  getSecurityLogs,
-  clearSecurityLogs,
-  validateCSRFToken,
-  generateCSRFToken
-=======
+/**
  * Rate limiting utility
- * Prevents abuse by limiting request frequency
+ * Simple rate limiting for API calls
  * 
- * @param {string} key - Unique key for rate limiting
+ * @param {string} key - Rate limit key
  * @param {number} maxRequests - Maximum requests allowed
  * @param {number} windowMs - Time window in milliseconds
  * @returns {boolean} True if request is allowed
  */
-const rateLimitStore = new Map();
-
 export const checkRateLimit = (key, maxRequests = 10, windowMs = 60000) => {
   const now = Date.now();
-  const windowStart = now - windowMs;
-  
-  if (!rateLimitStore.has(key)) {
-    rateLimitStore.set(key, []);
-  }
-  
-  const requests = rateLimitStore.get(key);
+  const requests = JSON.parse(localStorage.getItem(`rate_limit_${key}`) || '[]');
   
   // Remove old requests outside the window
-  const validRequests = requests.filter(timestamp => timestamp > windowStart);
+  const validRequests = requests.filter(time => now - time < windowMs);
   
   if (validRequests.length >= maxRequests) {
     return false;
@@ -740,22 +522,81 @@ export const checkRateLimit = (key, maxRequests = 10, windowMs = 60000) => {
   
   // Add current request
   validRequests.push(now);
-  rateLimitStore.set(key, validRequests);
+  localStorage.setItem(`rate_limit_${key}`, JSON.stringify(validRequests));
   
   return true;
 };
 
 /**
- * Clear rate limiting data
- * Removes stored rate limiting information
+ * Clear rate limit for a specific key
+ * Resets rate limiting for the given key
  * 
- * @param {string} key - Key to clear (optional, clears all if not provided)
+ * @param {string} key - Rate limit key to clear
  */
-export const clearRateLimit = (key = null) => {
-  if (key) {
-    rateLimitStore.delete(key);
-  } else {
-    rateLimitStore.clear();
+export const clearRateLimit = (key) => {
+  localStorage.removeItem(`rate_limit_${key}`);
+};
+
+/**
+ * Validate email format
+ * Basic email validation
+ * 
+ * @param {string} email - Email to validate
+ * @returns {boolean} True if email is valid
+ */
+export const validateEmail = (email) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+/**
+ * Validate phone number format
+ * Basic phone number validation
+ * 
+ * @param {string} phone - Phone number to validate
+ * @returns {boolean} True if phone number is valid
+ */
+export const validatePhone = (phone) => {
+  const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+  return phoneRegex.test(phone.replace(/[\s\-\(\)]/g, ''));
+};
+
+/**
+ * Generate secure random string
+ * Creates a cryptographically secure random string
+ * 
+ * @param {number} length - Length of the string
+ * @returns {string} Random string
+ */
+export const generateSecureRandomString = (length = 32) => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+  
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(array[i] % chars.length);
   }
->>>>>>> a251aaca0ea6b5a7c1e7ab50859cc0fcdef93781
+  
+  return result;
+};
+
+/**
+ * Hash sensitive data
+ * Simple hash function for sensitive data
+ * 
+ * @param {string} data - Data to hash
+ * @returns {string} Hashed data
+ */
+export const hashData = async (data) => {
+  try {
+    const encoder = new TextEncoder();
+    const dataBuffer = encoder.encode(data);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  } catch (error) {
+    console.error('Hashing error:', error);
+    return data;
+  }
 }; 
