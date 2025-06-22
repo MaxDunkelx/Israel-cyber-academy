@@ -34,6 +34,59 @@ import {
 import { db } from './firebase-config';
 
 /**
+ * Student Management Operations
+ */
+
+/**
+ * Get all available students (non-teacher users) from the database
+ * @returns {Promise<Array>} Array of available student objects
+ */
+export const getAllAvailableStudents = async () => {
+  try {
+    const usersRef = collection(db, 'users');
+    
+    // Get all users first
+    const querySnapshot = await getDocs(usersRef);
+    const allUsers = [];
+    
+    querySnapshot.forEach((doc) => {
+      allUsers.push({
+        uid: doc.id,
+        ...doc.data()
+      });
+    });
+    
+    // Filter out teachers and return all other users as available students
+    const availableStudents = allUsers.filter(user => 
+      user.role !== 'teacher' && user.role !== 'instructor' && user.role !== 'admin'
+    );
+    
+    // Sort by display name
+    availableStudents.sort((a, b) => {
+      const nameA = (a.displayName || a.email || '').toLowerCase();
+      const nameB = (b.displayName || b.email || '').toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+    
+    console.log('✅ Available students fetched successfully:', availableStudents.length);
+    console.log('📊 Total users:', allUsers.length, 'Teachers:', allUsers.filter(u => u.role === 'teacher').length, 'Available students:', availableStudents.length);
+    
+    return availableStudents;
+  } catch (error) {
+    console.error('❌ Error fetching available students:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get all students from the database (legacy function - now uses getAllAvailableStudents)
+ * @returns {Promise<Array>} Array of student objects
+ */
+export const getStudents = async () => {
+  return getAllAvailableStudents();
+};
+
+/**
  * Class Management Operations
  */
 
@@ -77,8 +130,7 @@ export const getTeacherClasses = async (teacherId) => {
     const q = query(
       collection(db, 'classes'),
       where('teacherId', '==', teacherId),
-      where('isActive', '==', true),
-      orderBy('createdAt', 'desc')
+      where('isActive', '==', true)
     );
     
     const querySnapshot = await getDocs(q);
@@ -89,6 +141,13 @@ export const getTeacherClasses = async (teacherId) => {
         id: doc.id,
         ...doc.data()
       });
+    });
+    
+    // Sort in JavaScript instead of Firestore
+    classes.sort((a, b) => {
+      const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt) || new Date(0);
+      const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt) || new Date(0);
+      return dateB - dateA; // Descending order
     });
     
     return classes;
@@ -174,38 +233,29 @@ export const deleteClass = async (classId) => {
  */
 export const assignStudentToClass = async (studentId, classId, teacherId) => {
   try {
-    const batch = writeBatch(db);
-    
-    // Add student to class
-    const classStudentRef = doc(collection(db, 'classStudents'));
-    batch.set(classStudentRef, {
-      studentId,
-      classId,
-      teacherId,
-      assignedAt: serverTimestamp(),
-      isActive: true
-    });
-    
-    // Update class student count
+    // Get current class data
     const classRef = doc(db, 'classes', classId);
     const classDoc = await getDoc(classRef);
-    if (classDoc.exists()) {
-      const currentCount = classDoc.data().studentCount || 0;
-      batch.update(classRef, {
-        studentCount: currentCount + 1,
-        updatedAt: serverTimestamp()
-      });
+    
+    if (!classDoc.exists()) {
+      throw new Error('Class not found');
     }
     
-    // Update user profile with class assignment
-    const userRef = doc(db, 'users', studentId);
-    batch.update(userRef, {
-      classId,
-      teacherId,
+    const classData = classDoc.data();
+    const currentStudents = classData.students || [];
+    
+    // Check if student is already assigned
+    if (currentStudents.includes(studentId)) {
+      console.log('⚠️ Student already assigned to this class');
+      return;
+    }
+    
+    // Add student to class
+    await updateDoc(classRef, {
+      students: [...currentStudents, studentId],
       updatedAt: serverTimestamp()
     });
     
-    await batch.commit();
     console.log('✅ Student assigned to class successfully');
   } catch (error) {
     console.error('❌ Error assigning student to class:', error);
@@ -221,44 +271,25 @@ export const assignStudentToClass = async (studentId, classId, teacherId) => {
  */
 export const removeStudentFromClass = async (studentId, classId) => {
   try {
-    const batch = writeBatch(db);
-    
-    // Remove student from class (soft delete)
-    const q = query(
-      collection(db, 'classStudents'),
-      where('studentId', '==', studentId),
-      where('classId', '==', classId),
-      where('isActive', '==', true)
-    );
-    
-    const querySnapshot = await getDocs(q);
-    querySnapshot.forEach((doc) => {
-      batch.update(doc.ref, {
-        isActive: false,
-        removedAt: serverTimestamp()
-      });
-    });
-    
-    // Update class student count
+    // Get current class data
     const classRef = doc(db, 'classes', classId);
     const classDoc = await getDoc(classRef);
-    if (classDoc.exists()) {
-      const currentCount = classDoc.data().studentCount || 0;
-      batch.update(classRef, {
-        studentCount: Math.max(0, currentCount - 1),
-        updatedAt: serverTimestamp()
-      });
+    
+    if (!classDoc.exists()) {
+      throw new Error('Class not found');
     }
     
-    // Remove class assignment from user profile
-    const userRef = doc(db, 'users', studentId);
-    batch.update(userRef, {
-      classId: null,
-      teacherId: null,
+    const classData = classDoc.data();
+    const currentStudents = classData.students || [];
+    
+    // Remove student from class
+    const updatedStudents = currentStudents.filter(id => id !== studentId);
+    
+    await updateDoc(classRef, {
+      students: updatedStudents,
       updatedAt: serverTimestamp()
     });
     
-    await batch.commit();
     console.log('✅ Student removed from class successfully');
   } catch (error) {
     console.error('❌ Error removing student from class:', error);
@@ -267,9 +298,9 @@ export const removeStudentFromClass = async (studentId, classId) => {
 };
 
 /**
- * Get all students in a class
+ * Get all students in a specific class
  * @param {string} classId - Class ID
- * @returns {Promise<Array>} Array of students
+ * @returns {Promise<Array>} Array of student objects
  */
 export const getClassStudents = async (classId) => {
   try {
@@ -280,17 +311,17 @@ export const getClassStudents = async (classId) => {
     );
     
     const querySnapshot = await getDocs(q);
-    const students = [];
+    const studentIds = querySnapshot.docs.map(doc => doc.data().studentId);
     
-    for (const doc of querySnapshot.docs) {
-      const studentData = doc.data();
-      const userDoc = await getDoc(doc(db, 'users', studentData.studentId));
-      
-      if (userDoc.exists()) {
+    // Fetch student details
+    const students = [];
+    for (const studentId of studentIds) {
+      const studentRef = doc(db, 'users', studentId);
+      const studentDoc = await getDoc(studentRef);
+      if (studentDoc.exists()) {
         students.push({
-          id: userDoc.id,
-          ...userDoc.data(),
-          assignedAt: studentData.assignedAt
+          uid: studentDoc.id,
+          ...studentDoc.data()
         });
       }
     }
@@ -303,9 +334,9 @@ export const getClassStudents = async (classId) => {
 };
 
 /**
- * Get all students for a teacher
+ * Get all students assigned to a teacher
  * @param {string} teacherId - Teacher's user ID
- * @returns {Promise<Array>} Array of students
+ * @returns {Promise<Array>} Array of student objects
  */
 export const getTeacherStudents = async (teacherId) => {
   try {
@@ -316,18 +347,17 @@ export const getTeacherStudents = async (teacherId) => {
     );
     
     const querySnapshot = await getDocs(q);
-    const students = [];
+    const studentIds = [...new Set(querySnapshot.docs.map(doc => doc.data().studentId))];
     
-    for (const doc of querySnapshot.docs) {
-      const studentData = doc.data();
-      const userDoc = await getDoc(doc(db, 'users', studentData.studentId));
-      
-      if (userDoc.exists()) {
+    // Fetch student details
+    const students = [];
+    for (const studentId of studentIds) {
+      const studentRef = doc(db, 'users', studentId);
+      const studentDoc = await getDoc(studentRef);
+      if (studentDoc.exists()) {
         students.push({
-          id: userDoc.id,
-          ...userDoc.data(),
-          classId: studentData.classId,
-          assignedAt: studentData.assignedAt
+          uid: studentDoc.id,
+          ...studentDoc.data()
         });
       }
     }

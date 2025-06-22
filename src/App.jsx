@@ -19,7 +19,7 @@
  */
 
 import React from 'react';
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './hooks/useAuth';
 import { useUserProfile } from './hooks/useAuth';
@@ -32,10 +32,19 @@ import EnhancedLogin from './components/EnhancedLogin';
 import Roadmap from './components/Roadmap';
 import InteractiveLesson from './components/InteractiveLesson';
 import Profile from './components/Profile';
-import TeacherDashboard from './components/TeacherDashboard';
+import TeacherDashboard from './components/teacher/TeacherDashboard';
 import Navigation from './components/Navigation';
 import FirebaseDiagnostic from './components/FirebaseDiagnostic';
 import DataTest from './components/DataTest';
+import CheckTeacherRole from './components/CheckTeacherRole';
+import FixTeacherRole from './components/FixTeacherRole';
+import UpdateToTeacher from './components/UpdateToTeacher';
+import StudentManagement from './components/teacher/StudentManagement';
+import ClassManagement from './components/teacher/ClassManagement';
+import StudentAnalytics from './components/teacher/StudentAnalytics';
+import LessonPreview from './components/teacher/LessonPreview';
+import TeacherNotes from './components/teacher/TeacherNotes';
+import TeacherComments from './components/teacher/TeacherComments';
 
 /**
  * Protected Route Component
@@ -106,10 +115,10 @@ const AppContent = () => {
   }
 
   return (
-    <Router>
+    <Router basename="/Israel-cyber-academy">
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
-        {/* Navigation - only show when authenticated */}
-        {currentUser && <Navigation />}
+        {/* Navigation - only show for students, teachers have their own navigation */}
+        {currentUser && role !== 'teacher' && <Navigation />}
         
         {/* Main Routes */}
         <Routes>
@@ -117,13 +126,26 @@ const AppContent = () => {
           <Route 
             path="/" 
             element={
-              currentUser ? <Navigate to="/roadmap" replace /> : <EnhancedLogin />
+              currentUser ? (
+                role === 'teacher' ? 
+                  <Navigate to="/instructor/dashboard" replace /> : 
+                  <Navigate to="/student/roadmap" replace />
+              ) : <EnhancedLogin />
             } 
           />
           
-          {/* Protected Routes */}
+          {/* Student Routes */}
           <Route
-            path="/roadmap"
+            path="/student"
+            element={
+              <ProtectedRoute>
+                <Navigate to="/student/roadmap" replace />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/student/roadmap"
             element={
               <ProtectedRoute>
                 <Roadmap />
@@ -132,7 +154,7 @@ const AppContent = () => {
           />
           
           <Route
-            path="/interactive-lesson/:lessonId"
+            path="/student/lesson/:lessonId"
             element={
               <ProtectedRoute>
                 <InteractiveLesson />
@@ -141,7 +163,7 @@ const AppContent = () => {
           />
           
           <Route
-            path="/profile"
+            path="/student/profile"
             element={
               <ProtectedRoute>
                 <Profile />
@@ -149,29 +171,128 @@ const AppContent = () => {
             }
           />
           
-          {/* Data Test Route - Development Only */}
-          {process.env.NODE_ENV === 'development' && (
-            <Route
-              path="/data-test"
-              element={
-                <ProtectedRoute>
-                  <div className="container mx-auto px-4 py-8">
-                    <DataTest />
-                  </div>
-                </ProtectedRoute>
-              }
-            />
-          )}
-          
-          {/* Teacher Routes */}
+          {/* Instructor Routes */}
           <Route
-            path="/teacher"
+            path="/instructor"
+            element={
+              <TeacherRoute>
+                <Navigate to="/instructor/dashboard" replace />
+              </TeacherRoute>
+            }
+          />
+          
+          <Route
+            path="/instructor/dashboard"
             element={
               <TeacherRoute>
                 <TeacherDashboard />
               </TeacherRoute>
             }
           />
+          
+          <Route
+            path="/instructor/profile"
+            element={
+              <TeacherRoute>
+                <Profile />
+              </TeacherRoute>
+            }
+          />
+          
+          {/* Legacy Routes - Redirect to new structure */}
+          <Route
+            path="/roadmap"
+            element={
+              <ProtectedRoute>
+                <Navigate to="/student/roadmap" replace />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/interactive-lesson/:lessonId"
+            element={
+              <ProtectedRoute>
+                <Navigate to="/student/lesson/:lessonId" replace />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Navigate to="/student/profile" replace />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/teacher"
+            element={
+              <TeacherRoute>
+                <Navigate to="/instructor/dashboard" replace />
+              </TeacherRoute>
+            }
+          />
+          
+          <Route
+            path="/teacher/dashboard"
+            element={
+              <TeacherRoute>
+                <Navigate to="/instructor/dashboard" replace />
+              </TeacherRoute>
+            }
+          />
+          
+          {/* Development Routes */}
+          {process.env.NODE_ENV === 'development' && (
+            <>
+              <Route
+                path="/data-test"
+                element={
+                  <ProtectedRoute>
+                    <div className="container mx-auto px-4 py-8">
+                      <DataTest />
+                    </div>
+                  </ProtectedRoute>
+                }
+              />
+              
+              <Route
+                path="/check-teacher-role"
+                element={
+                  <ProtectedRoute>
+                    <div className="container mx-auto px-4 py-8">
+                      <CheckTeacherRole />
+                    </div>
+                  </ProtectedRoute>
+                }
+              />
+              
+              <Route
+                path="/fix-teacher-role"
+                element={
+                  <ProtectedRoute>
+                    <div className="container mx-auto px-4 py-8">
+                      <FixTeacherRole />
+                    </div>
+                  </ProtectedRoute>
+                }
+              />
+              
+              <Route
+                path="/update-to-teacher"
+                element={
+                  <ProtectedRoute>
+                    <div className="container mx-auto px-4 py-8">
+                      <UpdateToTeacher />
+                    </div>
+                  </ProtectedRoute>
+                }
+              />
+            </>
+          )}
           
           {/* Fallback Route */}
           <Route path="*" element={<Navigate to="/" replace />} />

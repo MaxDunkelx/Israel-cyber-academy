@@ -59,13 +59,13 @@ const Navigation = () => {
   // Navigation items based on user role
   const getNavItems = () => {
     const baseItems = [
-      { name: 'דף הבית', path: '/roadmap', icon: Home }
+      { name: 'דף הבית', path: '/student/roadmap', icon: Home }
     ];
 
     if (role === 'teacher') {
       return [
         ...baseItems,
-        { name: 'ניהול כיתה', path: '/teacher', icon: Shield }
+        { name: 'לוח בקרה למורה', path: '/instructor/dashboard', icon: Shield }
       ];
     }
 
@@ -85,7 +85,7 @@ const Navigation = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo and Brand */}
           <div className="flex items-center">
-            <Link to="/roadmap" className="flex items-center space-x-3">
+            <Link to={role === 'teacher' ? '/instructor/dashboard' : '/student/roadmap'} className="flex items-center space-x-3">
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                 <Shield className="w-5 h-5 text-white" />
               </div>
@@ -145,7 +145,7 @@ const Navigation = () => {
                   </div>
                   
                   <Link
-                    to="/profile"
+                    to={role === 'teacher' ? '/instructor/profile' : '/student/profile'}
                     className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 transition-colors w-full text-right"
                     onClick={() => setIsUserMenuOpen(false)}
                   >

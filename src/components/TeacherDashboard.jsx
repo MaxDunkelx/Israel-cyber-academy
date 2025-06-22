@@ -1,340 +1,258 @@
-import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { lessons } from '../data/lessons';
-import ClassManagement from './teacher/ClassManagement';
-import StudentManagement from './teacher/StudentManagement';
-import LessonPreview from './teacher/LessonPreview';
-import TeacherAnalytics from './teacher/TeacherAnalytics';
-import TeacherComments from './teacher/TeacherComments';
+/**
+ * TeacherDashboard Component - Israel Cyber Academy
+ * 
+ * Main dashboard for teachers with three essential tabs:
+ * 1. StudentPool - Manage student assignments to classes
+ * 2. Students - View analytics and progress for assigned students
+ * 3. Notes - Preview lessons and add teaching notes
+ * 
+ * Features:
+ * - Clean, spacious dark theme UI
+ * - Role-based access control
+ * - Real-time data from Firebase
+ * - Responsive design
+ * - Security logging
+ * 
+ * @component
+ */
+
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-hot-toast';
 import { 
-  Building, 
   Users, 
-  BookOpen, 
   BarChart3, 
-  MessageSquare,
-  LogOut,
-  User,
-  Home
+  BookOpen, 
+  Shield,
+  AlertCircle,
+  CheckCircle
 } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import { useUserProfile } from '../hooks/useAuth';
+import { logSecurityEvent } from '../utils/security';
+import TeacherNavigation from './teacher/TeacherNavigation';
+import StudentPool from './teacher/StudentPool';
+import StudentAnalytics from './teacher/StudentAnalytics';
+import TeacherNotes from './teacher/TeacherNotes';
+import LoadingSpinner from './common/LoadingSpinner';
 
-export default function TeacherDashboard() {
-  const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('students'); // Start with students tab
-  const [showDashboard, setShowDashboard] = useState(true);
+const TeacherDashboard = () => {
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const { role, loading: profileLoading } = useUserProfile();
+  
+  // UI State Management
+  const [activeTab, setActiveTab] = useState('studentPool');
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data - replace with real data from Firebase
-  const [classes, setClasses] = useState([
-    {
-      id: '1',
-      name: 'כיתה א\'',
-      description: 'כיתה מתחילים',
-      maxStudents: 25,
-      schedule: 'ימי שני ורביעי, 14:00-16:00',
-      teacherId: user?.uid || 'teacher1'
-    },
-    {
-      id: '2', 
-      name: 'כיתה ב\'',
-      description: 'כיתה מתקדמים',
-      maxStudents: 20,
-      schedule: 'ימי שלישי וחמישי, 16:00-18:00',
-      teacherId: 'teacher2'
-    }
-  ]);
-
-  const [students, setStudents] = useState([
-    {
-      id: '1',
-      displayName: 'יוסי כהן',
-      email: 'yossi@example.com',
-      classId: '1',
-      teacherId: user?.uid || 'teacher1',
-      lastLogin: new Date(),
-      progress: 75
-    },
-    {
-      id: '2',
-      displayName: 'שרה לוי',
-      email: 'sara@example.com',
-      classId: '1',
-      teacherId: user?.uid || 'teacher1',
-      lastLogin: new Date(),
-      progress: 60
-    },
-    {
-      id: '3',
-      displayName: 'דוד ישראלי',
-      email: 'david@example.com',
-      classId: '2',
-      teacherId: 'teacher2',
-      lastLogin: new Date(),
-      progress: 85
-    },
-    {
-      id: '4',
-      displayName: 'מיכל רוזן',
-      email: 'michal@example.com',
-      classId: null,
-      teacherId: null,
-      lastLogin: new Date(),
-      progress: 0
-    },
-    {
-      id: '5',
-      displayName: 'עמית כהן',
-      email: 'amit@example.com',
-      classId: null,
-      teacherId: null,
-      lastLogin: new Date(),
-      progress: 0
-    }
-  ]);
-
-  const [comments, setComments] = useState([]);
-
-  // Mock functions - replace with real Firebase operations
-  const onCreateClass = async (classData) => {
-    const newClass = {
-      id: Date.now().toString(),
-      ...classData,
-      teacherId: user?.uid,
-      createdAt: new Date()
-    };
-    setClasses([...classes, newClass]);
-  };
-
-  const onUpdateClass = async (classId, classData) => {
-    setClasses(classes.map(c => c.id === classId ? { ...c, ...classData } : c));
-  };
-
-  const onDeleteClass = async (classId) => {
-    setClasses(classes.filter(c => c.id !== classId));
-  };
-
-  const onAssignStudent = async (studentId, classId, teacherId = user?.uid) => {
-    setStudents(students.map(s => 
-      s.id === studentId ? { ...s, classId, teacherId } : s
-    ));
-  };
-
-  const onUnassignStudent = async (studentId) => {
-    setStudents(students.map(s => 
-      s.id === studentId ? { ...s, classId: null, teacherId: null } : s
-    ));
-  };
-
-  const onUnlockLesson = async (lessonId, classId) => {
-    console.log('Unlocking lesson', lessonId, 'for class', classId);
-  };
-
-  const onAddComment = async (lessonId, slideIndex, text, type = 'note') => {
-    const newComment = {
-      id: Date.now().toString(),
-      lessonId,
-      slideIndex,
-      text,
-      type,
-      teacherId: user?.uid,
-      createdAt: new Date()
-    };
-    setComments([...comments, newComment]);
-  };
-
-  const onUpdateComment = async (commentId, text, type) => {
-    setComments(comments.map(c => 
-      c.id === commentId ? { ...c, text, type } : c
-    ));
-  };
-
-  const onDeleteComment = async (commentId) => {
-    setComments(comments.filter(c => c.id !== commentId));
-  };
-
-  const getClassProgress = (classData) => {
-    const classStudents = students.filter(s => s.classId === classData.id);
-    if (classStudents.length === 0) return 0;
-    
-    const totalProgress = classStudents.reduce((sum, s) => sum + (s.progress || 0), 0);
-    return Math.round(totalProgress / classStudents.length);
-  };
-
-  const getStudentProgress = (student) => {
-    return student.progress || 0;
-  };
-
-  const getLessonProgress = (lessonId, classId) => {
-    return Math.floor(Math.random() * 100);
-  };
-
-  const getMyStudents = () => {
-    return students.filter(s => s.teacherId === user?.uid);
-  };
-
-  const getUnassignedStudents = () => {
-    return students.filter(s => !s.teacherId);
-  };
-
-  const getOtherTeachersStudents = () => {
-    return students.filter(s => s.teacherId && s.teacherId !== user?.uid);
-  };
-
+  /**
+   * Available dashboard tabs with their configurations
+   */
   const tabs = [
-    { id: 'students', label: 'ניהול תלמידים', icon: Users },
-    { id: 'classes', label: 'ניהול כיתות', icon: Building },
-    { id: 'lessons', label: 'תצוגה מקדימה', icon: BookOpen },
-    { id: 'analytics', label: 'אנליטיקה', icon: BarChart3 },
-    { id: 'comments', label: 'הערות', icon: MessageSquare }
+    {
+      id: 'studentPool',
+      label: 'בריכת תלמידים',
+      icon: Users,
+      description: 'ניהול הקצאת תלמידים לכיתות',
+      color: 'blue'
+    },
+    {
+      id: 'students',
+      label: 'תלמידים',
+      icon: BarChart3,
+      description: 'ניתוח התקדמות וסטטיסטיקות',
+      color: 'green'
+    },
+    {
+      id: 'notes',
+      label: 'הערות',
+      icon: BookOpen,
+      description: 'תצוגה מקדימה של שיעורים והוספת הערות',
+      color: 'purple'
+    }
   ];
 
-  const renderActiveTab = () => {
-    switch (activeTab) {
-      case 'students':
-        return (
-          <StudentManagement
-            students={students}
-            classes={classes}
-            currentTeacherId={user?.uid}
-            onAssignStudent={onAssignStudent}
-            onUnassignStudent={onUnassignStudent}
-            getStudentProgress={getStudentProgress}
-            getMyStudents={getMyStudents}
-            getUnassignedStudents={getUnassignedStudents}
-            getOtherTeachersStudents={getOtherTeachersStudents}
-          />
-        );
-      case 'classes':
-        return (
-          <ClassManagement
-            classes={classes}
-            students={students}
-            currentTeacherId={user?.uid}
-            onCreateClass={onCreateClass}
-            onUpdateClass={onUpdateClass}
-            onDeleteClass={onDeleteClass}
-            onAssignStudent={onAssignStudent}
-            selectedClass={null}
-            onSelectClass={() => {}}
-            getClassProgress={getClassProgress}
-          />
-        );
-      case 'lessons':
-        return (
-          <LessonPreview
-            lesson={null}
-            selectedClass={null}
-            onUnlockLesson={onUnlockLesson}
-            onAddComment={onAddComment}
-            getLessonProgress={getLessonProgress}
-          />
-        );
-      case 'analytics':
-        return (
-          <TeacherAnalytics
-            classes={classes}
-            students={students}
-            lessons={lessons}
-            currentTeacherId={user?.uid}
-            getClassProgress={getClassProgress}
-            getStudentProgress={getStudentProgress}
-          />
-        );
-      case 'comments':
-        return (
-          <TeacherComments
-            lessons={lessons}
-            comments={comments}
-            onAddComment={onAddComment}
-            onUpdateComment={onUpdateComment}
-            onDeleteComment={onDeleteComment}
-          />
-        );
-      default:
-        return <div>בחר לשונית</div>;
-    }
+  /**
+   * Authentication and authorization check
+   * Redirects non-teachers and handles loading states
+   */
+  useEffect(() => {
+    const checkAccess = async () => {
+      try {
+        // Wait for authentication to complete
+        if (authLoading || profileLoading) {
+          return;
+        }
+
+        // Check if user is authenticated
+        if (!user) {
+          logSecurityEvent('UNAUTHORIZED_ACCESS_ATTEMPT', { 
+            path: '/teacher/dashboard',
+            timestamp: new Date().toISOString()
+          });
+          toast.error('יש להתחבר כדי לגשת לאזור המורה');
+          navigate('/login');
+          return;
+        }
+
+        // Check if user has teacher role
+        if (role !== 'teacher') {
+          logSecurityEvent('INSUFFICIENT_PERMISSIONS', { 
+            uid: user.uid,
+            role,
+            requiredRole: 'teacher',
+            path: '/teacher/dashboard'
+          });
+          toast.error('אין לך הרשאות לגשת לאזור המורה');
+          navigate('/');
+          return;
+        }
+
+        // Log successful access
+        logSecurityEvent('TEACHER_DASHBOARD_ACCESS', { 
+          uid: user.uid,
+          role,
+          timestamp: new Date().toISOString()
+        });
+
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Access check error:', error);
+        toast.error('אירעה שגיאה בבדיקת הרשאות');
+        navigate('/login');
+      }
+    };
+
+    checkAccess();
+  }, [user, role, authLoading, profileLoading, navigate]);
+
+  /**
+   * Handle tab switching with smooth transitions
+   * @param {string} tabId - The ID of the tab to switch to
+   */
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    
+    // Log tab switch for analytics
+    logSecurityEvent('TEACHER_TAB_SWITCH', {
+      uid: user?.uid,
+      fromTab: activeTab,
+      toTab: tabId,
+      timestamp: new Date().toISOString()
+    });
   };
 
-  if (!showDashboard) {
+  /**
+   * Render the active tab content with smooth animations
+   */
+  const renderActiveTab = () => {
+    const tabVariants = {
+      initial: { opacity: 0, x: 20 },
+      animate: { opacity: 1, x: 0 },
+      exit: { opacity: 0, x: -20 }
+    };
+
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-800 mb-4">לוח בקרה למורה</h1>
-          <p className="text-gray-600 mb-8">ברוך הבא למערכת ניהול התלמידים</p>
-          <button
-            onClick={() => setShowDashboard(true)}
-            className="btn-primary flex items-center mx-auto"
-          >
-            <User className="h-5 w-5 ml-2" />
-            כניסה ללוח הבקרה
-          </button>
-        </div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          variants={tabVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          transition={{ duration: 0.3, ease: 'easeInOut' }}
+          className="flex-1"
+        >
+          {activeTab === 'studentPool' && <StudentPool />}
+          {activeTab === 'students' && <StudentAnalytics />}
+          {activeTab === 'notes' && <TeacherNotes />}
+        </motion.div>
+      </AnimatePresence>
+    );
+  };
+
+  // Show loading spinner while checking access
+  if (isLoading || authLoading || profileLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">לוח בקרה למורה</h1>
+    <div className="min-h-screen bg-gray-900 text-gray-100">
+      {/* Navigation Header */}
+      <TeacherNavigation />
+
+      {/* Main Dashboard Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        {/* Dashboard Header */}
+        <div className="mb-8">
+          <div className="flex items-center space-x-4 mb-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+              <Shield className="w-6 h-6 text-gray-100" />
             </div>
-            <div className="flex items-center space-x-4 space-x-reverse">
-              <div className="text-right">
-                <div className="text-sm font-medium text-gray-900">
-                  {user?.displayName || user?.email}
-                </div>
-                <div className="text-sm text-gray-500">מורה</div>
-              </div>
-              <button
-                onClick={() => setShowDashboard(false)}
-                className="btn-secondary flex items-center"
-              >
-                <Home className="h-4 w-4 ml-2" />
-                דף הבית
-              </button>
-              <button
-                onClick={logout}
-                className="btn-secondary flex items-center"
-              >
-                <LogOut className="h-4 w-4 ml-2" />
-                התנתק
-              </button>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-100">לוח בקרה למורה</h1>
+              <p className="text-gray-400 mt-1">ניהול כיתות, תלמידים והערות הוראה</p>
             </div>
           </div>
+          
+          {/* Access Status Indicator */}
+          <div className="flex items-center space-x-2 text-sm text-green-400">
+            <CheckCircle className="w-4 h-4" />
+            <span>מורה מורשה - גישה מלאה למערכת</span>
+          </div>
         </div>
-      </div>
 
-      {/* Navigation Tabs */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-8 space-x-reverse">
+        {/* Tab Navigation */}
+        <div className="mb-8">
+          <div className="flex space-x-1 bg-gray-800/50 p-1 rounded-xl">
             {tabs.map((tab) => {
               const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
-                    activeTab === tab.id
-                      ? 'border-cyber-blue text-cyber-blue'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  onClick={() => handleTabChange(tab.id)}
+                  className={`flex-1 flex items-center justify-center space-x-2 px-6 py-4 rounded-lg font-medium transition-all duration-200 ${
+                    isActive
+                      ? `bg-${tab.color}-600 text-gray-100 shadow-lg`
+                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
                   }`}
                 >
-                  <Icon className="h-5 w-5 ml-2" />
-                  {tab.label}
+                  <Icon className="w-5 h-5" />
+                  <span>{tab.label}</span>
                 </button>
               );
             })}
-          </nav>
+          </div>
+          
+          {/* Tab Description */}
+          <div className="mt-4 p-4 bg-gray-800/30 rounded-lg border border-gray-700">
+            <p className="text-gray-300 text-sm">
+              {tabs.find(tab => tab.id === activeTab)?.description}
+            </p>
+          </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {renderActiveTab()}
+        {/* Tab Content */}
+        <div className="bg-gray-800/30 rounded-xl border border-gray-700 p-6 min-h-[600px]">
+          {renderActiveTab()}
+        </div>
+
+        {/* Footer Information */}
+        <div className="mt-8 text-center text-gray-500 text-sm">
+          <p>Israel Cyber Academy - מערכת ניהול מורים</p>
+          <p className="mt-1">גרסה 1.0.0 | תמיכה טכנית: support@israelcyber.academy</p>
+        </div>
       </div>
     </div>
   );
-}
+};
+
+export default TeacherDashboard;

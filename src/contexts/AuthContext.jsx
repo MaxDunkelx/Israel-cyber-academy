@@ -812,7 +812,7 @@ export const AuthProvider = ({ children }) => {
               uid: user.uid,
               email: user.email,
               displayName: user.displayName || 'לוחם סייבר',
-              role: 'student',
+              role: user.email.includes('teacher') || user.displayName?.includes('מורה') ? 'teacher' : 'student',
               // Default user credentials
               firstName: '',
               lastName: '',

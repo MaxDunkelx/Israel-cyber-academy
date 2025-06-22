@@ -60,6 +60,21 @@ export const useAuthStatus = () => {
 export const useUserProfile = () => {
   const { currentUser, userProfile } = useAuthContext();
   
+  // If no current user, return null values
+  if (!currentUser) {
+    return {
+      displayName: null,
+      email: null,
+      role: null,
+      progress: {},
+      completedLessons: [],
+      currentLesson: 1,
+      totalTimeSpent: 0,
+      totalPagesEngaged: 0,
+      achievements: []
+    };
+  }
+  
   return {
     displayName: userProfile?.displayName || currentUser?.displayName || 'משתמש',
     email: userProfile?.email || currentUser?.email || '',
