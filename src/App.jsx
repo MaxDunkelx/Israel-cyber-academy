@@ -20,6 +20,7 @@
 
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './hooks/useAuth';
 import { useUserProfile } from './hooks/useAuth';
@@ -34,22 +35,15 @@ import InteractiveLesson from './components/InteractiveLesson';
 import Profile from './components/Profile';
 
 // Teacher Components
-import TeacherLogin from './components/teacher/TeacherLogin';
 import TeacherNavigation from './components/teacher/TeacherNavigation';
 import TeacherDashboard from './components/teacher/TeacherDashboard';
 import ClassManagement from './components/teacher/ClassManagement';
 import StudentManagement from './components/teacher/StudentManagement';
 import TeacherAnalytics from './components/teacher/TeacherAnalytics';
 import TeacherComments from './components/teacher/TeacherComments';
-import LessonPreview from './components/teacher/LessonPreview';
 import SessionHosting from './components/teacher/SessionHosting';
 import StudentMonitor from './components/teacher/StudentMonitor';
 import LessonController from './components/teacher/LessonController';
-
-// Development Components
-import FirebaseDiagnostic from './components/FirebaseDiagnostic';
-import DataTest from './components/DataTest';
-import DebugAuth from './components/DebugAuth';
 
 /**
  * Protected Route Component
@@ -75,13 +69,11 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
   }
 
   if (!currentUser) {
-    console.log('🚫 ProtectedRoute: No user, redirecting to /');
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   if (requiredRole && role !== requiredRole) {
-    console.log(`🚫 ProtectedRoute: Role mismatch. Required: ${requiredRole}, Current: ${role}`);
-    return <Navigate to="/roadmap" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return children;
@@ -91,7 +83,7 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
  * Teacher Route Component
  * 
  * Wraps routes that require teacher role.
- * Redirects to teacher login if user is not a teacher.
+ * Redirects to login if user is not a teacher.
  * 
  * @param {Object} props - Component props
  * @param {React.ReactNode} props.children - Child components to render
@@ -101,12 +93,7 @@ const TeacherRoute = ({ children }) => {
   const { currentUser, loading } = useAuth();
   const { role } = useUserProfile();
 
-  console.log('🔍 TeacherRoute - Current user:', currentUser?.email);
-  console.log('🔍 TeacherRoute - User role:', role);
-  console.log('🔍 TeacherRoute - Loading:', loading);
-
   if (loading) {
-    console.log('⏳ TeacherRoute: Loading...');
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center">
         <LoadingSpinner size="lg" />
@@ -115,17 +102,13 @@ const TeacherRoute = ({ children }) => {
   }
 
   if (!currentUser) {
-    console.log('🚫 TeacherRoute: No user, redirecting to /teacher/login');
-    return <Navigate to="/teacher/login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   if (role !== 'teacher') {
-    console.log('🚫 TeacherRoute: Access denied. User role is', role, 'but teacher role required');
-    console.log('🚫 TeacherRoute: Redirecting to /teacher/login');
-    return <Navigate to="/teacher/login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
-  console.log('✅ TeacherRoute: Access granted for teacher');
   return children;
 };
 
@@ -133,7 +116,7 @@ const TeacherRoute = ({ children }) => {
  * Student Route Component
  * 
  * Wraps routes that require student role.
- * Redirects to student login if user is not a student.
+ * Redirects to login if user is not a student.
  * 
  * @param {Object} props - Component props
  * @param {React.ReactNode} props.children - Child components to render
@@ -143,12 +126,7 @@ const StudentRoute = ({ children }) => {
   const { currentUser, loading } = useAuth();
   const { role } = useUserProfile();
 
-  console.log('🔍 StudentRoute - Current user:', currentUser?.email);
-  console.log('🔍 StudentRoute - User role:', role);
-  console.log('🔍 StudentRoute - Loading:', loading);
-
   if (loading) {
-    console.log('⏳ StudentRoute: Loading...');
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center">
         <LoadingSpinner size="lg" />
@@ -157,17 +135,13 @@ const StudentRoute = ({ children }) => {
   }
 
   if (!currentUser) {
-    console.log('🚫 StudentRoute: No user, redirecting to /');
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   if (role !== 'student') {
-    console.log('🚫 StudentRoute: Access denied. User role is', role, 'but student role required');
-    console.log('🚫 StudentRoute: Redirecting to /');
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
-  console.log('✅ StudentRoute: Access granted for student');
   return children;
 };
 
@@ -183,13 +157,7 @@ const AppContent = () => {
   const { currentUser, loading } = useAuth();
   const { role } = useUserProfile();
 
-  // Debug logging
-  console.log('🔍 AppContent - Current user:', currentUser?.email);
-  console.log('🔍 AppContent - User role:', role);
-  console.log('🔍 AppContent - Loading:', loading);
-
   if (loading) {
-    console.log('⏳ AppContent: Loading authentication state...');
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center">
         <LoadingSpinner size="lg" />
@@ -200,30 +168,23 @@ const AppContent = () => {
   // Determine the correct redirect based on user state and role
   const getMainRouteRedirect = () => {
     if (!currentUser) {
-      console.log('🔀 Main route: No user, showing login');
-      return <EnhancedLogin />;
+      return <Navigate to="/login" replace />;
     }
     
     if (role === 'teacher') {
-      console.log('🔀 Main route: Teacher detected, redirecting to /teacher/dashboard');
       return <Navigate to="/teacher/dashboard" replace />;
     }
     
     if (role === 'student') {
-      console.log('🔀 Main route: Student detected, redirecting to /roadmap');
-      return <Navigate to="/roadmap" replace />;
+      return <Navigate to="/student/roadmap" replace />;
     }
     
-    console.log('🔀 Main route: Unknown role, defaulting to student login');
-    return <EnhancedLogin />;
+    return <Navigate to="/login" replace />;
   };
 
   return (
     <Router basename="/Israel-cyber-academy">
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
-        {/* Debug Component - Development Only */}
-        {process.env.NODE_ENV === 'development' && <DebugAuth />}
-        
         {/* Navigation - only show when authenticated */}
         {currentUser && role === 'student' && <Navigation />}
         {currentUser && role === 'teacher' && <TeacherNavigation />}
@@ -234,6 +195,18 @@ const AppContent = () => {
           <Route 
             path="/" 
             element={getMainRouteRedirect()}
+          />
+          
+          <Route
+            path="/login"
+            element={
+              currentUser ? 
+                (role === 'teacher' ? 
+                  <Navigate to="/teacher/dashboard" replace /> : 
+                  <Navigate to="/student/roadmap" replace />
+                ) : 
+                <EnhancedLogin />
+            }
           />
           
           {/* Student Routes */}
@@ -274,15 +247,6 @@ const AppContent = () => {
           />
           
           {/* Teacher Routes */}
-          <Route
-            path="/teacher/login"
-            element={
-              currentUser && role === 'teacher' ? 
-                <Navigate to="/teacher/dashboard" replace /> : 
-                <TeacherLogin />
-            }
-          />
-          
           <Route
             path="/teacher/dashboard"
             element={
@@ -329,15 +293,6 @@ const AppContent = () => {
           />
           
           <Route
-            path="/teacher/lessons"
-            element={
-              <TeacherRoute>
-                <LessonPreview />
-              </TeacherRoute>
-            }
-          />
-          
-          <Route
             path="/teacher/session/:sessionId"
             element={
               <TeacherRoute>
@@ -363,20 +318,6 @@ const AppContent = () => {
               </TeacherRoute>
             }
           />
-          
-          {/* Data Test Route - Development Only */}
-          {process.env.NODE_ENV === 'development' && (
-            <Route
-              path="/data-test"
-              element={
-                <ProtectedRoute>
-                  <div className="container mx-auto px-4 py-8">
-                    <DataTest />
-                  </div>
-                </ProtectedRoute>
-              }
-            />
-          )}
           
           {/* Fallback Route */}
           <Route path="*" element={<Navigate to="/" replace />} />
@@ -412,9 +353,6 @@ const AppContent = () => {
             },
           }}
         />
-        
-        {/* Firebase Diagnostic Tool - Development Only */}
-        {process.env.NODE_ENV === 'development' && <FirebaseDiagnostic />}
       </div>
     </Router>
   );

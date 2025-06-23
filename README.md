@@ -1,224 +1,151 @@
-# 🛡️ Israel Cyber Academy
+# Israel Cyber Academy
 
-A comprehensive e-learning platform focused on cybersecurity education, built with React, Firebase, and modern web technologies.
+A comprehensive cyber security learning platform designed for students aged 10-13, featuring interactive lessons, real-time progress tracking, and a teacher management system.
 
-## 🌟 Features
+## 🚀 Features
 
-### 🎓 Student Features
-- **Interactive Lessons**: 9 comprehensive cybersecurity lessons with multimedia content
-- **Real-time Progress Tracking**: Monitor learning progress across all lessons
-- **Interactive Exercises**: Hands-on simulations and exercises for practical learning
-- **Responsive Design**: Optimized for desktop, tablet, and mobile devices
-- **Hebrew Language Support**: Full RTL support and Hebrew interface
+### Student Platform
+- **Interactive Lessons**: 9 comprehensive cyber security lessons with slides, exercises, and simulations
+- **Progress Tracking**: Real-time progress monitoring and achievement system
+- **Interactive Exercises**: Drag & drop, matching, multiple choice, and simulator exercises
+- **Responsive Design**: Mobile-friendly interface with Hebrew RTL support
+- **Achievement System**: Badges and progress indicators
 
-### 👨‍🏫 Teacher Features
-- **Student Pool Management**: Drag-and-drop student assignment to classes
-- **Class Management**: Create, manage, and delete classes with lesson assignments
-- **Student Analytics**: Comprehensive progress tracking and performance analytics
-- **Teaching Notes**: Preview lessons and add slide-specific teaching notes
-- **Real-time Monitoring**: Track student activity and engagement
+### Teacher Platform
+- **Student Management**: Assign students to classes and monitor progress
+- **Analytics Dashboard**: View student progress and lesson completion statistics
+- **Session Hosting**: Real-time lesson control and student monitoring
+- **Comments System**: Add teaching notes and feedback
 
-### 🔐 Security Features
-- **Role-based Access Control**: Secure teacher and student separation
-- **Firebase Authentication**: Enterprise-grade user authentication
-- **Security Event Logging**: Comprehensive audit trail for all actions
-- **Input Validation**: XSS protection and data sanitization
-- **Rate Limiting**: Protection against abuse and attacks
+## 📁 Project Structure
 
-## 🚀 Technology Stack
+```
+src/
+├── components/           # React components
+│   ├── common/          # Shared components (LoadingSpinner, ErrorBoundary)
+│   ├── exercises/       # Interactive exercise components
+│   ├── slides/          # Slide type components
+│   ├── teacher/         # Teacher-specific components
+│   └── ui/              # Reusable UI components
+├── contexts/            # React contexts (AuthContext)
+├── data/                # Lesson data and content
+│   └── lessons/         # Individual lesson files and slides
+├── firebase/            # Firebase configuration and services
+├── hooks/               # Custom React hooks
+└── utils/               # Utility functions and helpers
+```
+
+## 🎯 Lesson Content
+
+The platform includes 9 comprehensive lessons:
+
+1. **מבוא לעולם הסייבר** - Introduction to Cyber Security
+2. **יסודות המחשב** - Computer Fundamentals
+3. **מערכת ההפעלה Windows** - Windows Operating System
+4. **מערכת ההפעלה Linux** - Linux Operating System
+5. **יסודות הרשת** - Network Fundamentals
+6. **פרוטוקולי תקשורת** - Communication Protocols
+7. **פיתוח אתרים** - Web Development
+8. **יסודות מסדי נתונים** - Database Fundamentals
+9. **דפדפנים ואבטחה** - Browsers and Security
+
+## 🛠️ Technology Stack
 
 - **Frontend**: React 18, Vite, Tailwind CSS
-- **Backend**: Firebase (Authentication, Firestore, Hosting)
-- **State Management**: React Context API, Custom Hooks
-- **UI Components**: Lucide React Icons, Framer Motion
-- **Security**: Custom security utilities, role-based access control
-- **Development**: ESLint, PostCSS, Hot Reload
+- **Backend**: Firebase (Authentication, Firestore)
+- **Animations**: Framer Motion
+- **Icons**: Lucide React
+- **Notifications**: React Hot Toast
 
-## 📦 Installation
+## 🚀 Getting Started
 
 ### Prerequisites
 - Node.js 18+ 
 - npm or yarn
-- Firebase project setup
 
-### Setup Instructions
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/your-username/Israel-cyber-academy.git
-   cd Israel-cyber-academy
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Firebase Configuration**
-   - Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
-   - Enable Authentication (Email/Password)
-   - Create Firestore database
-   - Download your Firebase config and update `src/firebase/firebase-config.js`
-
-4. **Environment Variables**
-   Create a `.env` file in the root directory:
-   ```env
-   VITE_FIREBASE_API_KEY=your_api_key
-   VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
-   VITE_FIREBASE_PROJECT_ID=your_project_id
-   VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
-   VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-   VITE_FIREBASE_APP_ID=your_app_id
-   ```
-
-5. **Start development server**
-   ```bash
-   npm run dev
-   ```
-
-6. **Build for production**
-   ```bash
-   npm run build
-   ```
-
-## 🏗️ Project Structure
-
-```
-Israel-cyber-academy/
-├── public/                 # Static assets
-├── src/
-│   ├── components/         # React components
-│   │   ├── common/         # Shared components
-│   │   ├── exercises/      # Interactive exercise components
-│   │   ├── slides/         # Lesson slide components
-│   │   ├── teacher/        # Teacher-specific components
-│   │   └── ui/             # UI component library
-│   ├── contexts/           # React contexts
-│   ├── data/               # Lesson data and content
-│   ├── firebase/           # Firebase configuration and services
-│   ├── hooks/              # Custom React hooks
-│   ├── utils/              # Utility functions
-│   └── main.jsx           # Application entry point
-├── scripts/               # Database setup and utility scripts
-└── docs/                  # Documentation files
-```
-
-## 📚 Lesson Content
-
-The platform includes 9 comprehensive cybersecurity lessons:
-
-1. **מבוא לאבטחת סייבר** - Introduction to Cybersecurity
-2. **רכיבי המחשב** - Computer Components
-3. **מערכת ההפעלה Windows** - Windows Operating System
-4. **מערכת ההפעלה Linux** - Linux Operating System
-5. **רשתות תקשורת** - Computer Networks
-6. **פרוטוקולי תקשורת** - Communication Protocols
-7. **פיתוח אתרים** - Web Development
-8. **מסדי נתונים** - Databases
-9. **כלי פיתוח** - Development Tools
-
-Each lesson includes:
-- Interactive slides with multimedia content
-- Hands-on exercises and simulations
-- Progress tracking and assessments
-- Real-world examples and case studies
-
-## 👨‍🏫 Teacher Console
-
-### Student Pool Management
-- View all available students
-- Create classes with lesson assignments
-- Drag-and-drop student assignment
-- Class capacity management
-- Real-time updates
-
-### Student Analytics
-- Individual student progress tracking
-- Class performance overview
-- Engagement metrics
-- Progress visualization
-- Filtering and search capabilities
-
-### Teaching Notes
-- Preview all lesson content
-- Add slide-specific notes
-- Organize teaching materials
-- Share notes with other teachers
-- Export functionality
-
-## 🔐 Security Implementation
-
-### Authentication & Authorization
-- Firebase Authentication integration
-- Role-based access control (Student/Teacher/Admin)
-- Secure route protection
-- Session management
-
-### Data Security
-- Firestore security rules
-- Input validation and sanitization
-- XSS protection
-- CSRF protection
-
-### Audit Trail
-- Comprehensive security event logging
-- User action tracking
-- Access attempt monitoring
-- Performance metrics
-
-## 🚀 Deployment
-
-### Firebase Hosting
+### Installation
 ```bash
-npm run build
-firebase deploy
+# Clone the repository
+git clone <repository-url>
+cd Israel-cyber-academy
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
 ```
 
-### Environment Configuration
-- Production Firebase project
-- Custom domain setup
-- SSL certificate configuration
-- CDN optimization
+### Environment Setup
+Create a `.env` file in the root directory with your Firebase configuration:
+```env
+VITE_FIREBASE_API_KEY=your_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+```
 
-## 📊 Performance
+## 📚 Available Scripts
 
-- **Lighthouse Score**: 95+ across all metrics
-- **Bundle Size**: Optimized with Vite
-- **Loading Speed**: < 2 seconds initial load
-- **Mobile Performance**: Optimized for all devices
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `npm run lint` - Run ESLint
+- `npm run deploy` - Deploy to GitHub Pages
+
+## 🔧 Development Scripts
+
+The `scripts/` directory contains utility scripts for:
+- Database setup and migration
+- Teacher user creation
+- Role management
+- Firebase configuration
+
+## 🎨 Design System
+
+The platform uses a consistent design system with:
+- Dark theme with cyber security aesthetic
+- Hebrew RTL support
+- Responsive design patterns
+- Accessibility features
+- Loading states and error handling
+
+## 🔐 Security Features
+
+- Role-based access control (Student/Teacher)
+- Firebase Authentication
+- Secure Firestore rules
+- Input validation and sanitization
+- Security event logging
+
+## 📱 Responsive Design
+
+The platform is fully responsive and works on:
+- Desktop computers
+- Tablets
+- Mobile phones
+- Touch devices
+
+## 🌐 Internationalization
+
+- Hebrew language support
+- RTL (Right-to-Left) text direction
+- Cultural adaptations for Israeli students
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
-### Development Guidelines
-- Follow ESLint configuration
-- Write comprehensive comments
-- Add unit tests for new features
-- Update documentation
-- Follow security best practices
+## 📄 License
 
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License.
 
 ## 🆘 Support
 
-- **Technical Support**: support@israelcyber.academy
-- **Documentation**: [Wiki](https://github.com/your-username/Israel-cyber-academy/wiki)
-- **Issues**: [GitHub Issues](https://github.com/your-username/Israel-cyber-academy/issues)
-
-## 🙏 Acknowledgments
-
-- Firebase team for the excellent backend services
-- React team for the amazing frontend framework
-- Tailwind CSS for the utility-first CSS framework
-- All contributors and beta testers
-
----
-
-**Built with ❤️ for cybersecurity education in Israel** 
+For support and questions, please contact the development team. 

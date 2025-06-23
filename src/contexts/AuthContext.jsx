@@ -594,7 +594,7 @@ export const AuthProvider = ({ children }) => {
       console.log('✅ User logged out successfully');
       
       // Force redirect to login page
-      window.location.href = '/';
+      window.location.href = '/Israel-cyber-academy/login';
       
     } catch (error) {
       console.error('❌ Error during logout:', error);
@@ -604,7 +604,7 @@ export const AuthProvider = ({ children }) => {
       setUserProfile(null);
       
       // Force redirect to login page
-      window.location.href = '/';
+      window.location.href = '/Israel-cyber-academy/login';
     }
   };
 

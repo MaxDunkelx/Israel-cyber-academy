@@ -1,5 +1,5 @@
 /**
- * TeacherDashboard Component - Israel Cyber Academy
+ * TeacherDashboard Component - Israel Cyber Academy Teacher Console
  * 
  * Main dashboard for teachers with essential tabs:
  * 1. StudentPool - Manage student assignments to classes
@@ -26,35 +26,56 @@ import {
   BookOpen, 
   Shield,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  Settings,
+  Calendar,
+  MessageSquare,
+  FileText,
+  Monitor,
+  Play,
+  Clock,
+  Star,
+  Trophy,
+  Target,
+  TrendingUp,
+  Activity
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { useUserProfile } from '../../hooks/useAuth';
 import { logSecurityEvent } from '../../utils/security';
 import StudentPool from './StudentPool';
-import StudentAnalytics from './StudentAnalytics';
-import TeacherNotes from './TeacherNotes';
 import LoadingSpinner from '../common/LoadingSpinner';
 
 const TeacherDashboard = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
-  const { role, loading: profileLoading } = useUserProfile();
+  const { currentUser, loading: authLoading, role } = useAuth();
   
   // UI State Management
-  const [activeTab, setActiveTab] = useState('studentPool');
+  const [activeTab, setActiveTab] = useState('overview');
   const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    activeClasses: 0,
+    completedLessons: 0,
+    averageProgress: 0
+  });
 
   /**
    * Available dashboard tabs with their configurations
    */
   const tabs = [
     {
+      id: 'overview',
+      label: 'סקירה כללית',
+      icon: Activity,
+      description: 'סקירה כללית של הפעילות והסטטיסטיקות',
+      color: 'blue'
+    },
+    {
       id: 'studentPool',
       label: 'בריכת תלמידים',
       icon: Users,
       description: 'ניהול הקצאת תלמידים לכיתות',
-      color: 'blue'
+      color: 'green'
     },
     {
       id: 'analytics',
@@ -64,11 +85,25 @@ const TeacherDashboard = () => {
       color: 'yellow'
     },
     {
-      id: 'notes',
-      label: 'הערות הוראה',
+      id: 'lessons',
+      label: 'שיעורים',
       icon: BookOpen,
-      description: 'תצוגה מקדימה של שיעורים והערות',
+      description: 'ניהול שיעורים ותכנים',
+      color: 'purple'
+    },
+    {
+      id: 'classes',
+      label: 'כיתות',
+      icon: Target,
+      description: 'ניהול כיתות ופעילויות',
       color: 'indigo'
+    },
+    {
+      id: 'communications',
+      label: 'תקשורת',
+      icon: MessageSquare,
+      description: 'הודעות ותקשורת עם תלמידים',
+      color: 'pink'
     }
   ];
 
@@ -79,23 +114,22 @@ const TeacherDashboard = () => {
     const checkAccess = async () => {
       try {
         console.log('🔍 Checking teacher access...', { 
-          user: !!user, 
+          currentUser: !!currentUser, 
           authLoading, 
-          role, 
-          profileLoading 
+          role
         });
         
         // Wait for auth to complete
-        if (authLoading || profileLoading) {
+        if (authLoading) {
           console.log('⏳ Auth still loading...');
           return;
         }
 
         // Check if user is authenticated
-        if (!user) {
+        if (!currentUser) {
           console.log('❌ No user found, redirecting to login');
           toast.error('יש להתחבר כדי לגשת לאזור המורה');
-          navigate('/');
+          navigate('/login');
           return;
         }
 
@@ -103,16 +137,24 @@ const TeacherDashboard = () => {
         if (role !== 'teacher') {
           console.log('❌ User is not a teacher, role:', role);
           toast.error('אין לך הרשאות לגשת לאזור המורה');
-          navigate('/');
+          navigate('/login');
           return;
         }
 
         // Access granted - log security event
         console.log('✅ Teacher access granted!');
         await logSecurityEvent('teacher_dashboard_access', {
-          userId: user.uid,
+          userId: currentUser.uid,
           role: role,
           timestamp: new Date().toISOString()
+        });
+        
+        // Load mock stats for demo
+        setStats({
+          totalStudents: 45,
+          activeClasses: 3,
+          completedLessons: 127,
+          averageProgress: 78
         });
         
         setIsLoading(false);
@@ -120,15 +162,15 @@ const TeacherDashboard = () => {
       } catch (error) {
         console.error('❌ Access check error:', error);
         toast.error('אירעה שגיאה בבדיקת הרשאות');
-        navigate('/');
+        navigate('/login');
       }
     };
 
     // Only run the check if we have authentication data
-    if (!authLoading && !profileLoading) {
+    if (!authLoading) {
       checkAccess();
     }
-  }, [user, role, authLoading, profileLoading, navigate]);
+  }, [currentUser, role, authLoading, navigate]);
 
   /**
    * Handle tab switching with animation
@@ -138,7 +180,7 @@ const TeacherDashboard = () => {
     
     // Log tab change for analytics
     logSecurityEvent('teacher_tab_change', {
-      userId: user?.uid,
+      userId: currentUser?.uid,
       fromTab: activeTab,
       toTab: tabId,
       timestamp: new Date().toISOString()
@@ -150,14 +192,147 @@ const TeacherDashboard = () => {
    */
   const renderTabContent = () => {
     switch (activeTab) {
+      case 'overview':
+        return (
+          <div className="space-y-6">
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-blue-100 text-sm">סה"כ תלמידים</p>
+                    <p className="text-white text-2xl font-bold">{stats.totalStudents}</p>
+                  </div>
+                  <Users className="w-8 h-8 text-blue-100" />
+                </div>
+              </div>
+              
+              <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-green-100 text-sm">כיתות פעילות</p>
+                    <p className="text-white text-2xl font-bold">{stats.activeClasses}</p>
+                  </div>
+                  <Target className="w-8 h-8 text-green-100" />
+                </div>
+              </div>
+              
+              <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 p-6 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-yellow-100 text-sm">שיעורים שהושלמו</p>
+                    <p className="text-white text-2xl font-bold">{stats.completedLessons}</p>
+                  </div>
+                  <Trophy className="w-8 h-8 text-yellow-100" />
+                </div>
+              </div>
+              
+              <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-purple-100 text-sm">התקדמות ממוצעת</p>
+                    <p className="text-white text-2xl font-bold">{stats.averageProgress}%</p>
+                  </div>
+                  <TrendingUp className="w-8 h-8 text-purple-100" />
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="bg-gray-800 rounded-xl p-6">
+              <h3 className="text-xl font-semibold text-white mb-4">פעולות מהירות</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button 
+                  onClick={() => handleTabChange('studentPool')}
+                  className="flex items-center space-x-3 p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                >
+                  <Users className="w-6 h-6 text-blue-400" />
+                  <span className="text-white">ניהול תלמידים</span>
+                </button>
+                
+                <button 
+                  onClick={() => handleTabChange('lessons')}
+                  className="flex items-center space-x-3 p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                >
+                  <BookOpen className="w-6 h-6 text-purple-400" />
+                  <span className="text-white">ניהול שיעורים</span>
+                </button>
+                
+                <button 
+                  onClick={() => handleTabChange('analytics')}
+                  className="flex items-center space-x-3 p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                >
+                  <BarChart3 className="w-6 h-6 text-yellow-400" />
+                  <span className="text-white">צפייה באנליטיקה</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Recent Activity */}
+            <div className="bg-gray-800 rounded-xl p-6">
+              <h3 className="text-xl font-semibold text-white mb-4">פעילות אחרונה</h3>
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3 p-3 bg-gray-700 rounded-lg">
+                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                  <span className="text-gray-300">תלמיד חדש הצטרף לכיתה א'</span>
+                  <span className="text-gray-500 text-sm">לפני 5 דקות</span>
+                </div>
+                <div className="flex items-center space-x-3 p-3 bg-gray-700 rounded-lg">
+                  <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                  <span className="text-gray-300">שיעור "מבוא לסייבר" הושלם על ידי 15 תלמידים</span>
+                  <span className="text-gray-500 text-sm">לפני שעה</span>
+                </div>
+                <div className="flex items-center space-x-3 p-3 bg-gray-700 rounded-lg">
+                  <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
+                  <span className="text-gray-300">עדכון תוכן לשיעור "רכיבי מחשב"</span>
+                  <span className="text-gray-500 text-sm">לפני 3 שעות</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
       case 'studentPool':
         return <StudentPool />;
       case 'analytics':
-        return <StudentAnalytics />;
-      case 'notes':
-        return <TeacherNotes />;
+        return (
+          <div className="text-center py-12">
+            <BarChart3 className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+            <h3 className="text-xl font-semibold text-gray-300 mb-2">אנליטיקת תלמידים</h3>
+            <p className="text-gray-400">תכונה זו תהיה זמינה בקרוב</p>
+          </div>
+        );
+      case 'lessons':
+        return (
+          <div className="text-center py-12">
+            <BookOpen className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+            <h3 className="text-xl font-semibold text-gray-300 mb-2">ניהול שיעורים</h3>
+            <p className="text-gray-400">תכונה זו תהיה זמינה בקרוב</p>
+          </div>
+        );
+      case 'classes':
+        return (
+          <div className="text-center py-12">
+            <Target className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+            <h3 className="text-xl font-semibold text-gray-300 mb-2">ניהול כיתות</h3>
+            <p className="text-gray-400">תכונה זו תהיה זמינה בקרוב</p>
+          </div>
+        );
+      case 'communications':
+        return (
+          <div className="text-center py-12">
+            <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+            <h3 className="text-xl font-semibold text-gray-300 mb-2">תקשורת</h3>
+            <p className="text-gray-400">תכונה זו תהיה זמינה בקרוב</p>
+          </div>
+        );
       default:
-        return <StudentPool />;
+        return (
+          <div className="text-center py-12">
+            <Activity className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+            <h3 className="text-xl font-semibold text-gray-300 mb-2">סקירה כללית</h3>
+            <p className="text-gray-400">ברוכים הבאים ללוח הבקרה</p>
+          </div>
+        );
     }
   };
 
@@ -167,14 +342,17 @@ const TeacherDashboard = () => {
   const getTabColorClasses = (color) => {
     const colorMap = {
       blue: 'border-blue-500 bg-blue-500/10 text-blue-400',
+      green: 'border-green-500 bg-green-500/10 text-green-400',
       yellow: 'border-yellow-500 bg-yellow-500/10 text-yellow-400',
-      indigo: 'border-indigo-500 bg-indigo-500/10 text-indigo-400'
+      purple: 'border-purple-500 bg-purple-500/10 text-purple-400',
+      indigo: 'border-indigo-500 bg-indigo-500/10 text-indigo-400',
+      pink: 'border-pink-500 bg-pink-500/10 text-pink-400'
     };
     return colorMap[color] || colorMap.blue;
   };
 
   // Show loading spinner while checking access
-  if (isLoading || authLoading || profileLoading) {
+  if (isLoading || authLoading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <LoadingSpinner size="lg" />
@@ -192,7 +370,7 @@ const TeacherDashboard = () => {
               <Shield className="h-8 w-8 text-blue-400" />
               <div>
                 <h1 className="text-2xl font-bold text-white">ישראל אקדמיה לסייבר</h1>
-                <p className="text-gray-400">אזור המורה</p>
+                <p className="text-gray-400">לוח בקרה למורה</p>
               </div>
             </div>
             
@@ -217,7 +395,7 @@ const TeacherDashboard = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Tab Navigation */}
         <div className="mb-8">
-          <div className="flex space-x-1 bg-gray-800 p-1 rounded-lg">
+          <div className="flex flex-wrap gap-2 bg-gray-800 p-2 rounded-lg">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -226,7 +404,7 @@ const TeacherDashboard = () => {
                 <button
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id)}
-                  className={`flex-1 flex items-center justify-center space-x-2 px-4 py-3 rounded-md transition-all duration-200 ${
+                  className={`flex items-center space-x-2 px-4 py-3 rounded-md transition-all duration-200 ${
                     isActive 
                       ? `${getTabColorClasses(tab.color)} border-2` 
                       : 'text-gray-400 hover:text-white hover:bg-gray-700'

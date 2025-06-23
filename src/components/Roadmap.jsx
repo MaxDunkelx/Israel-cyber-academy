@@ -174,6 +174,21 @@ const Roadmap = () => {
     });
   }, []);
 
+  // Debug user profile
+  useEffect(() => {
+    console.log('👤 Roadmap: User profile state:', {
+      userProfile: userProfile ? {
+        displayName: userProfile.displayName,
+        role: userProfile.role,
+        currentLesson: userProfile.currentLesson,
+        completedLessons: userProfile.completedLessons,
+        progress: userProfile.progress ? Object.keys(userProfile.progress) : null
+      } : null,
+      hasUserProfile: !!userProfile,
+      profileKeys: userProfile ? Object.keys(userProfile) : []
+    });
+  }, [userProfile]);
+
   /**
    * Find the last lesson with progress for resume functionality
    * Analyzes user progress to determine the most recent incomplete lesson
@@ -205,10 +220,16 @@ const Roadmap = () => {
    * @returns {string} Lesson status: 'locked', 'available', or 'completed'
    */
   const getLessonStatus = useCallback((lessonId) => {
+    // TEMPORARY: Make all lessons available for testing
+    console.log(`🔍 Lesson ${lessonId} status check - TEMPORARILY AVAILABLE`);
+    return 'available';
+    
+    // Original logic (commented out for testing)
+    /*
     if (!userProfile) return 'locked';
     
     const completedLessons = userProfile.completedLessons || [];
-    const currentLesson = userProfile.currentLesson || 1;
+    const currentLesson = userProfile.currentLesson || 1; // Default to lesson 1 if missing
     
     // Debug logging for lesson status
     if (lessonId <= 3) { // Only log for first 3 lessons to avoid spam
@@ -234,6 +255,7 @@ const Roadmap = () => {
     } else {
       return 'locked';
     }
+    */
   }, [userProfile]);
 
   /**
@@ -290,7 +312,7 @@ const Roadmap = () => {
     }
     const status = getLessonStatus(lesson.id);
     if (status !== 'locked') {
-      navigate(`/interactive-lesson/${lesson.id}`);
+      navigate(`/student/lesson/${lesson.id}`);
     }
   }, [navigate, getLessonStatus]);
 
@@ -300,7 +322,7 @@ const Roadmap = () => {
    */
   const handleContinueLastLesson = useCallback(() => {
     if (lastLesson) {
-      navigate(`/interactive-lesson/${lastLesson.lesson.id}`);
+      navigate(`/student/lesson/${lastLesson.lesson.id}`);
       toast.success(`ממשיך בשיעור: ${lastLesson.lesson.title}`);
     }
   }, [lastLesson, navigate]);

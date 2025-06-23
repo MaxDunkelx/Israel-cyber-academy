@@ -914,4 +914,3 @@ export const updateTeacherProfile = async (teacherId, updateData) => {
     throw error;
   }
 }; 
-}; 

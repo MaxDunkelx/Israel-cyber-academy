@@ -427,27 +427,10 @@ const EnhancedLogin = () => {
 
     try {
       if (isLogin) {
-        const userCredential = await login(formData.email, formData.password);
+        await login(formData.email, formData.password);
         
-        // Get user profile to determine redirect
-        const { getFirestore, doc, getDoc } = await import('firebase/firestore');
-        const db = getFirestore();
-        const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
-        
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          
-          if (userData.role === 'teacher') {
-            toast.success('ברוך הבא למורה! מעביר אותך ללוח הבקרה...');
-            // Redirect to instructor console
-            window.location.href = '/Israel-cyber-academy/instructor/dashboard';
-          } else {
-            toast.success('התחברת בהצלחה!');
-            // Students will be redirected by the App.jsx routing
-          }
-        } else {
-          toast.success('התחברת בהצלחה!');
-        }
+        // Let the App.jsx routing handle the redirect based on user role
+        toast.success('התחברת בהצלחה!');
       } else {
         const credentials = {
           firstName: formData.firstName,
