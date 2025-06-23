@@ -64,6 +64,7 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import cyberLogo from '../assets/cyber-logo.png';
 import Confetti from 'react-confetti';
+import LiveSessionNotification from './student/LiveSessionNotification';
 
 /**
  * Matrix Code Animation Component
@@ -365,8 +366,11 @@ const Roadmap = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
-      {/* Matrix Code Animation Background */}
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden">
+      {/* Live Session Notification */}
+      <LiveSessionNotification />
+      
+      {/* Matrix Code Animation */}
       <MatrixCode />
       
       {/* Animated Grid Background */}

@@ -20,6 +20,7 @@ import { PresentationSlide, PollSlide, VideoSlide, InteractiveSlide, BreakSlide,
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
+import LiveSessionNotification from './LiveSessionNotification';
 
 const StudentSession = () => {
   const { sessionId } = useParams();
@@ -189,6 +190,9 @@ const StudentSession = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
+      {/* Live Session Notification */}
+      <LiveSessionNotification />
+      
       {/* Header */}
       <div className="bg-gray-800/50 border-b border-gray-700 p-4">
         <div className="flex items-center justify-between">

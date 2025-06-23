@@ -11,7 +11,8 @@ import {
   orderBy, 
   onSnapshot,
   serverTimestamp,
-  addDoc
+  addDoc,
+  limit
 } from 'firebase/firestore';
 import { db } from './firebase-config';
 import { logSecurityEvent } from '../utils/security';
@@ -420,4 +421,74 @@ export const addTeacherNote = async (sessionId, slideIndex, note) => {
     console.error('Error adding teacher note:', error);
     throw new Error('Failed to add teacher note');
   }
+};
+
+/**
+ * Get current active session for a student's class
+ * @param {string} studentId - Student ID
+ * @returns {Promise<Object|null>} Current active session or null
+ */
+export const getCurrentActiveSessionForStudent = async (studentId) => {
+  try {
+    const sessionsRef = collection(db, 'sessions');
+    const q = query(
+      sessionsRef,
+      where('status', '==', 'active'),
+      orderBy('startTime', 'desc'),
+      limit(1)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    for (const doc of querySnapshot.docs) {
+      const sessionData = doc.data();
+      // Check if student is enrolled in this session
+      if (sessionData.studentIds && sessionData.studentIds.includes(studentId)) {
+        return {
+          id: doc.id,
+          ...sessionData
+        };
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error getting current active session for student:', error);
+    throw new Error('Failed to get current active session');
+  }
+};
+
+/**
+ * Listen to current active session for a student
+ * @param {string} studentId - Student ID
+ * @param {Function} callback - Callback function for updates
+ * @returns {Function} Unsubscribe function
+ */
+export const listenToCurrentActiveSession = (studentId, callback) => {
+  const sessionsRef = collection(db, 'sessions');
+  const q = query(
+    sessionsRef,
+    where('status', '==', 'active'),
+    orderBy('startTime', 'desc')
+  );
+  
+  return onSnapshot(q, (querySnapshot) => {
+    let currentSession = null;
+    
+    for (const doc of querySnapshot.docs) {
+      const sessionData = doc.data();
+      // Check if student is enrolled in this session
+      if (sessionData.studentIds && sessionData.studentIds.includes(studentId)) {
+        currentSession = {
+          id: doc.id,
+          ...sessionData
+        };
+        break;
+      }
+    }
+    
+    callback(currentSession);
+  }, (error) => {
+    console.error('Error listening to current active session:', error);
+  });
 }; 

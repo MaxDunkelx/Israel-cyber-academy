@@ -27,6 +27,7 @@ import { toast } from 'react-hot-toast';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebase-config';
 import { updateProfile } from 'firebase/auth';
+import LiveSessionNotification from './student/LiveSessionNotification';
 
 const emojiOptions = ['😀','😎','🤓','🦸‍♂️','🦸‍♀️','🧑‍💻','👩‍🏫','👨‍🏫','🧑‍🎓','👽','🤖','🦄','🐱','🐶','🐼','🐧','🐸'];
 
@@ -690,94 +691,100 @@ const Profile = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cyber-blue to-cyber-purple p-4">
-      <div className="max-w-2xl mx-auto">
-        {/* Go back to home button */}
-        <div className="mb-4 flex justify-end">
-          <button
-            onClick={() => navigate('/roadmap')}
-            className="btn-secondary flex items-center"
-          >
-            <Home className="h-5 w-5 ml-2" />
-            חזור למסך הבית
-          </button>
-        </div>
-        {/* Logo at the top */}
-        <div className="flex flex-col items-center mb-6">
-          <img src={logo} alt="Logo" className="h-40 w-40 mb-4 rounded-2xl drop-shadow-2xl border-4 border-cyber-blue" />
-        </div>
-        {/* Profile Card */}
-        <div className="bg-gray-800 rounded-2xl shadow-lg p-8 flex flex-col items-center mb-8 border border-gray-700">
-          {/* Round profile emoji */}
-          <div className="relative mb-4">
-            <span className="text-7xl rounded-full border-4 border-cyber-blue bg-gray-700 shadow-lg flex items-center justify-center w-28 h-28 cursor-pointer" title="בחר אייקון">
-              {selectedEmoji}
-            </span>
-            <div className="flex flex-wrap justify-center gap-2 mt-2">
-              {emojiOptions.map((emoji) => (
-                <button
-                  key={emoji}
-                  className={`text-xl p-1 rounded-full border-2 ${selectedEmoji === emoji ? 'border-cyber-blue bg-cyber-blue/20' : 'border-transparent'}`}
-                  onClick={() => setSelectedEmoji(emoji)}
-                  aria-label={`בחר ${emoji}`}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-            <span className="text-xs text-gray-400 block mt-1">בחר אייקון לפרופיל שלך</span>
-          </div>
-          {/* User info and settings */}
-          <div className="w-full max-w-md mx-auto mt-4">
-            <div className="flex flex-col items-center mb-4">
-              <h2 className="text-2xl font-bold text-white mb-2">{getCurrentDisplayName()}</h2>
-              <div className="flex items-center text-gray-300 mb-2">
-                <Mail className="h-5 w-5 ml-2" />
-                <span>{userProfile.email}</span>
-              </div>
-              <div className="flex items-center text-gray-300">
-                <User className="h-5 w-5 ml-2" />
-                <span>{userProfile.role === 'teacher' ? 'מורה' : userProfile.role === 'student' ? 'תלמיד' : 'אורח'}</span>
-              </div>
-            </div>
-            {/* Settings: Change password */}
-            <div className="flex flex-col items-center mt-4">
-              <button
-                className="btn-secondary flex items-center text-sm mb-2"
-                onClick={() => setShowReset(!showReset)}
-              >
-                <KeyRound className="h-4 w-4 ml-2" />
-                שנה/אפס סיסמה
-              </button>
-              {showReset && (
-                <form onSubmit={handlePasswordReset} className="w-full max-w-xs mx-auto mt-2">
-                  <input
-                    type="email"
-                    value={resetEmail}
-                    onChange={e => setResetEmail(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-600 rounded-lg mb-2 bg-gray-700 text-white"
-                    placeholder="האימייל שלך"
-                    required
-                  />
-                  <button type="submit" className="btn-primary w-full">שלח קישור איפוס</button>
-                  {resetSent && <div className="text-green-400 mt-2">קישור איפוס נשלח!</div>}
-                </form>
-              )}
-            </div>
-          </div>
-        </div>
-        {/* Progress Bar */}
-        <div className="bg-gray-800 rounded-2xl shadow-lg p-6 flex flex-col items-center border border-gray-700">
-          <h3 className="text-lg font-bold text-white mb-2">התקדמות בקורס</h3>
-          <div className="w-full bg-gray-700 rounded-full h-6 mb-2">
-            <div
-              className="bg-gradient-to-r from-cyber-green to-cyber-blue h-6 rounded-full flex items-center justify-end pr-4 text-white font-bold text-lg transition-all duration-700"
-              style={{ width: `${getProgressPercentage()}%` }}
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
+      {/* Live Session Notification */}
+      <LiveSessionNotification />
+      
+      {/* Header */}
+      <div className="bg-gray-800/50 border-b border-gray-700 p-4">
+        <div className="max-w-2xl mx-auto">
+          {/* Go back to home button */}
+          <div className="mb-4 flex justify-end">
+            <button
+              onClick={() => navigate('/roadmap')}
+              className="btn-secondary flex items-center"
             >
-              {getProgressPercentage()}%
+              <Home className="h-5 w-5 ml-2" />
+              חזור למסך הבית
+            </button>
+          </div>
+          {/* Logo at the top */}
+          <div className="flex flex-col items-center mb-6">
+            <img src={logo} alt="Logo" className="h-40 w-40 mb-4 rounded-2xl drop-shadow-2xl border-4 border-cyber-blue" />
+          </div>
+          {/* Profile Card */}
+          <div className="bg-gray-800 rounded-2xl shadow-lg p-8 flex flex-col items-center mb-8 border border-gray-700">
+            {/* Round profile emoji */}
+            <div className="relative mb-4">
+              <span className="text-7xl rounded-full border-4 border-cyber-blue bg-gray-700 shadow-lg flex items-center justify-center w-28 h-28 cursor-pointer" title="בחר אייקון">
+                {selectedEmoji}
+              </span>
+              <div className="flex flex-wrap justify-center gap-2 mt-2">
+                {emojiOptions.map((emoji) => (
+                  <button
+                    key={emoji}
+                    className={`text-xl p-1 rounded-full border-2 ${selectedEmoji === emoji ? 'border-cyber-blue bg-cyber-blue/20' : 'border-transparent'}`}
+                    onClick={() => setSelectedEmoji(emoji)}
+                    aria-label={`בחר ${emoji}`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+              <span className="text-xs text-gray-400 block mt-1">בחר אייקון לפרופיל שלך</span>
+            </div>
+            {/* User info and settings */}
+            <div className="w-full max-w-md mx-auto mt-4">
+              <div className="flex flex-col items-center mb-4">
+                <h2 className="text-2xl font-bold text-white mb-2">{getCurrentDisplayName()}</h2>
+                <div className="flex items-center text-gray-300 mb-2">
+                  <Mail className="h-5 w-5 ml-2" />
+                  <span>{userProfile.email}</span>
+                </div>
+                <div className="flex items-center text-gray-300">
+                  <User className="h-5 w-5 ml-2" />
+                  <span>{userProfile.role === 'teacher' ? 'מורה' : userProfile.role === 'student' ? 'תלמיד' : 'אורח'}</span>
+                </div>
+              </div>
+              {/* Settings: Change password */}
+              <div className="flex flex-col items-center mt-4">
+                <button
+                  className="btn-secondary flex items-center text-sm mb-2"
+                  onClick={() => setShowReset(!showReset)}
+                >
+                  <KeyRound className="h-4 w-4 ml-2" />
+                  שנה/אפס סיסמה
+                </button>
+                {showReset && (
+                  <form onSubmit={handlePasswordReset} className="w-full max-w-xs mx-auto mt-2">
+                    <input
+                      type="email"
+                      value={resetEmail}
+                      onChange={e => setResetEmail(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-600 rounded-lg mb-2 bg-gray-700 text-white"
+                      placeholder="האימייל שלך"
+                      required
+                    />
+                    <button type="submit" className="btn-primary w-full">שלח קישור איפוס</button>
+                    {resetSent && <div className="text-green-400 mt-2">קישור איפוס נשלח!</div>}
+                  </form>
+                )}
+              </div>
             </div>
           </div>
-          <span className="text-sm text-gray-400">{userProfile.completedLessons?.length || 0} מתוך {lessons.length} שיעורים הושלמו</span>
+          {/* Progress Bar */}
+          <div className="bg-gray-800 rounded-2xl shadow-lg p-6 flex flex-col items-center border border-gray-700">
+            <h3 className="text-lg font-bold text-white mb-2">התקדמות בקורס</h3>
+            <div className="w-full bg-gray-700 rounded-full h-6 mb-2">
+              <div
+                className="bg-gradient-to-r from-cyber-green to-cyber-blue h-6 rounded-full flex items-center justify-end pr-4 text-white font-bold text-lg transition-all duration-700"
+                style={{ width: `${getProgressPercentage()}%` }}
+              >
+                {getProgressPercentage()}%
+              </div>
+            </div>
+            <span className="text-sm text-gray-400">{userProfile.completedLessons?.length || 0} מתוך {lessons.length} שיעורים הושלמו</span>
+          </div>
         </div>
       </div>
     </div>

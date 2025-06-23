@@ -58,6 +58,7 @@ import {
   logLessonCompletion,
   exportSessionData 
 } from '../utils/helpers';
+import LiveSessionNotification from './student/LiveSessionNotification';
 
 /**
  * Interactive Lesson Component - Main learning interface
@@ -503,7 +504,21 @@ const InteractiveLesson = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
+      {/* Live Session Notification */}
+      <LiveSessionNotification />
+      
+      {/* Confetti for lesson completion */}
+      {showConfetti && (
+        <Confetti
+          width={windowDimensions.width}
+          height={windowDimensions.height}
+          recycle={false}
+          numberOfPieces={200}
+          colors={['#00ff00', '#00ffff', '#ff00ff', '#ffff00', '#ff0000']}
+        />
+      )}
+
       {/* Enhanced Confetti for completion */}
       {showConfetti && (
         <>
