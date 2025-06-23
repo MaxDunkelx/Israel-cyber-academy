@@ -1117,8 +1117,7 @@ export const getTeacherRecentActivities = async (teacherId, limit = 10) => {
     const activitiesRef = collection(db, 'teacherActivities');
     const q = query(
       activitiesRef,
-      where('teacherId', '==', teacherId),
-      orderBy('timestamp', 'desc')
+      where('teacherId', '==', teacherId)
     );
     
     const querySnapshot = await getDocs(q);
@@ -1139,5 +1138,183 @@ export const getTeacherRecentActivities = async (teacherId, limit = 10) => {
   } catch (error) {
     console.error('Error fetching teacher activities:', error);
     return [];
+  }
+};
+
+/**
+ * Get all lessons with their slides
+ */
+export const getAllLessons = async () => {
+  try {
+    const lessonsRef = collection(db, 'lessons');
+    const querySnapshot = await getDocs(lessonsRef);
+    const lessons = [];
+    
+    querySnapshot.forEach((doc) => {
+      lessons.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+    
+    return lessons;
+  } catch (error) {
+    console.error('Error fetching lessons:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get teacher notes for a specific slide
+ */
+export const getTeacherNotes = async (teacherId, lessonId, slideId) => {
+  try {
+    const notesRef = collection(db, 'teacherNotes');
+    const q = query(
+      notesRef,
+      where('teacherId', '==', teacherId),
+      where('lessonId', '==', lessonId),
+      where('slideId', '==', slideId)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      return null;
+    }
+    
+    const noteDoc = querySnapshot.docs[0];
+    return {
+      id: noteDoc.id,
+      ...noteDoc.data()
+    };
+  } catch (error) {
+    console.error('Error fetching teacher notes:', error);
+    throw error;
+  }
+};
+
+/**
+ * Save teacher notes for a slide
+ */
+export const saveTeacherNotes = async (teacherId, lessonId, slideId, notesData) => {
+  try {
+    const notesRef = collection(db, 'teacherNotes');
+    
+    // Check if notes already exist
+    const existingNotes = await getTeacherNotes(teacherId, lessonId, slideId);
+    
+    if (existingNotes) {
+      // Update existing notes
+      const noteRef = doc(db, 'teacherNotes', existingNotes.id);
+      await updateDoc(noteRef, {
+        content: notesData.content,
+        updatedAt: serverTimestamp()
+      });
+      
+      // Log activity
+      await logTeacherActivity(teacherId, {
+        type: 'notes_updated',
+        title: 'הערות עודכנו',
+        description: `הערות לשיעור ${lessonId}, שקופית ${slideId} עודכנו`,
+        metadata: {
+          lessonId: lessonId,
+          slideId: slideId,
+          contentLength: notesData.content.length
+        }
+      });
+      
+      return { id: existingNotes.id, ...notesData };
+    } else {
+      // Create new notes
+      const noteDoc = {
+        teacherId: teacherId,
+        lessonId: lessonId,
+        slideId: slideId,
+        content: notesData.content,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+      
+      const docRef = await addDoc(notesRef, noteDoc);
+      
+      // Log activity
+      await logTeacherActivity(teacherId, {
+        type: 'notes_created',
+        title: 'הערות נוצרו',
+        description: `הערות חדשות נוצרו לשיעור ${lessonId}, שקופית ${slideId}`,
+        metadata: {
+          lessonId: lessonId,
+          slideId: slideId,
+          contentLength: notesData.content.length
+        }
+      });
+      
+      return { id: docRef.id, ...noteDoc };
+    }
+  } catch (error) {
+    console.error('Error saving teacher notes:', error);
+    throw error;
+  }
+};
+
+/**
+ * Delete teacher notes for a slide
+ */
+export const deleteTeacherNotes = async (teacherId, lessonId, slideId) => {
+  try {
+    const existingNotes = await getTeacherNotes(teacherId, lessonId, slideId);
+    
+    if (!existingNotes) {
+      throw new Error('Notes not found');
+    }
+    
+    const noteRef = doc(db, 'teacherNotes', existingNotes.id);
+    await deleteDoc(noteRef);
+    
+    // Log activity
+    await logTeacherActivity(teacherId, {
+      type: 'notes_deleted',
+      title: 'הערות נמחקו',
+      description: `הערות לשיעור ${lessonId}, שקופית ${slideId} נמחקו`,
+      metadata: {
+        lessonId: lessonId,
+        slideId: slideId
+      }
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Error deleting teacher notes:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get all teacher notes for a lesson
+ */
+export const getTeacherNotesForLesson = async (teacherId, lessonId) => {
+  try {
+    const notesRef = collection(db, 'teacherNotes');
+    const q = query(
+      notesRef,
+      where('teacherId', '==', teacherId),
+      where('lessonId', '==', lessonId)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const notes = [];
+    
+    querySnapshot.forEach((doc) => {
+      notes.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+    
+    return notes;
+  } catch (error) {
+    console.error('Error fetching teacher notes for lesson:', error);
+    throw error;
   }
 }; 

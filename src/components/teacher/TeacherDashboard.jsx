@@ -45,9 +45,10 @@ import { logSecurityEvent } from '../../utils/security';
 import { getTeacherClasses, getTeacherStudents, getTeacherRecentActivities } from '../../firebase/teacher-service';
 import { formatTimestamp } from '../../utils/helpers';
 import StudentPool from './StudentPool';
+import SlidePreviewManager from './SlidePreviewManager';
 import LoadingSpinner from '../common/LoadingSpinner';
-import { Card } from '../ui/Card';
-import { ErrorBoundary } from '../common/ErrorBoundary';
+import Card from '../ui/Card';
+import ErrorBoundary from '../common/ErrorBoundary';
 
 const TeacherDashboard = () => {
   const navigate = useNavigate();
@@ -84,6 +85,13 @@ const TeacherDashboard = () => {
       icon: Users,
       description: 'ניהול הקצאת תלמידים לכיתות',
       color: 'green'
+    },
+    {
+      id: 'slidePreview',
+      label: 'מנהל שקופיות',
+      icon: FileText,
+      description: 'צפייה וניהול שקופיות שיעורים עם הערות אישיות',
+      color: 'purple'
     },
     {
       id: 'analytics',
@@ -248,7 +256,7 @@ const TeacherDashboard = () => {
             {/* Quick Actions */}
             <div className="bg-gray-800 rounded-xl p-6">
               <h3 className="text-xl font-semibold text-white mb-4">פעולות מהירות</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <button 
                   onClick={() => handleTabChange('studentPool')}
                   className="flex items-center space-x-3 p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
@@ -258,10 +266,18 @@ const TeacherDashboard = () => {
                 </button>
                 
                 <button 
+                  onClick={() => handleTabChange('slidePreview')}
+                  className="flex items-center space-x-3 p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                >
+                  <FileText className="w-6 h-6 text-purple-400" />
+                  <span className="text-white">מנהל שקופיות</span>
+                </button>
+                
+                <button 
                   onClick={() => handleTabChange('lessons')}
                   className="flex items-center space-x-3 p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
                 >
-                  <BookOpen className="w-6 h-6 text-purple-400" />
+                  <BookOpen className="w-6 h-6 text-green-400" />
                   <span className="text-white">ניהול שיעורים</span>
                 </button>
                 
@@ -292,6 +308,9 @@ const TeacherDashboard = () => {
                         activity.type === 'student_added' ? 'bg-blue-400' :
                         activity.type === 'student_removed' ? 'bg-orange-400' :
                         activity.type === 'class_edited' ? 'bg-yellow-400' :
+                        activity.type === 'notes_created' ? 'bg-purple-400' :
+                        activity.type === 'notes_updated' ? 'bg-indigo-400' :
+                        activity.type === 'notes_deleted' ? 'bg-pink-400' :
                         'bg-gray-400'
                       }`}></div>
                       <span className="text-gray-300 flex-1 text-right">{activity.description}</span>
@@ -307,6 +326,8 @@ const TeacherDashboard = () => {
         );
       case 'studentPool':
         return <StudentPool />;
+      case 'slidePreview':
+        return <SlidePreviewManager />;
       case 'analytics':
         return (
           <div className="text-center py-12">

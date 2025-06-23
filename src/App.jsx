@@ -44,6 +44,7 @@ import TeacherComments from './components/teacher/TeacherComments';
 import SessionHosting from './components/teacher/SessionHosting';
 import StudentMonitor from './components/teacher/StudentMonitor';
 import LessonController from './components/teacher/LessonController';
+import SlidePreviewManager from './components/teacher/SlidePreviewManager';
 
 /**
  * Protected Route Component
@@ -315,6 +316,15 @@ const AppContent = () => {
             element={
               <TeacherRoute>
                 <LessonController />
+              </TeacherRoute>
+            }
+          />
+          
+          <Route
+            path="/teacher/slides"
+            element={
+              <TeacherRoute>
+                <SlidePreviewManager />
               </TeacherRoute>
             }
           />

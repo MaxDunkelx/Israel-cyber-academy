@@ -25,7 +25,8 @@ import {
   Home,
   Clock,
   Activity,
-  Play
+  Play,
+  FileText
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
@@ -217,6 +218,15 @@ const TeacherNavigation = () => {
                   >
                     <Home className="w-4 h-4" />
                     <span>דף הבית</span>
+                  </Link>
+                  
+                  <Link
+                    to="/teacher/slides"
+                    className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 transition-colors w-full text-right"
+                    onClick={() => setIsUserMenuOpen(false)}
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>מנהל שקופיות</span>
                   </Link>
                   
                   <div className="border-t border-gray-600 my-1"></div>
