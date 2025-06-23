@@ -52,6 +52,7 @@ const SessionHosting = () => {
   const [showControls, setShowControls] = useState(true);
   const [teacherNotes, setTeacherNotes] = useState({});
   const [sessionDuration, setSessionDuration] = useState(0);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     // Security check - ensure only teachers can access this component
@@ -105,30 +106,40 @@ const SessionHosting = () => {
   const loadSessionData = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
+      console.log('🔄 Loading session data for session ID:', sessionId);
+      
+      // Get session data
       const sessionData = await getSession(sessionId);
-      setSession(sessionData);
+      console.log('✅ Session data loaded:', sessionData);
       
-      // Find the lesson data
-      const lessonData = getLessonById(sessionData.lessonId);
-      setLesson(lessonData);
-      
-      setCurrentSlide(sessionData.currentSlide || 0);
-      
-      // Load teacher notes for this lesson
-      if (currentUser?.uid) {
-        const notes = await getTeacherNotesForLesson(currentUser.uid, sessionData.lessonId.toString());
-        const notesMap = {};
-        notes.forEach(note => {
-          notesMap[note.slideIndex] = note.content;
-        });
-        setTeacherNotes(notesMap);
+      // Get lesson data
+      const lessonData = lessons.find(lesson => lesson.id === sessionData.lessonId);
+      if (!lessonData) {
+        throw new Error(`Lesson ${sessionData.lessonId} not found`);
       }
       
+      console.log('✅ Lesson data loaded:', lessonData);
+      
+      // Load teacher notes for this lesson
+      const notesData = await getTeacherNotesForLesson(currentUser.uid, sessionData.lessonId);
+      const notesMap = {};
+      notesData.forEach(note => {
+        notesMap[note.slideIndex] = note.content;
+      });
+      
+      setSession(sessionData);
+      setLesson(lessonData);
+      setTeacherNotes(notesMap);
+      setCurrentSlide(sessionData.currentSlide || 0);
       setLoading(false);
+      
+      console.log('✅ Session data loaded successfully');
     } catch (error) {
-      console.error('Error loading session:', error);
-      toast.error('אירעה שגיאה בטעינת השיעור');
-      navigate('/teacher/dashboard');
+      console.error('❌ Error loading session:', error);
+      setError(error.message);
+      setLoading(false);
     }
   };
 
@@ -242,6 +253,42 @@ const SessionHosting = () => {
     return `${minutes} דקות`;
   };
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-8">
+          <div className="text-6xl mb-6">❌</div>
+          <h1 className="text-2xl font-bold text-white mb-4">השיעור לא נמצא</h1>
+          <p className="text-gray-400 mb-6">
+            {error.includes('Session not found') 
+              ? 'השיעור לא קיים או נמחק. ייתכן שהקישור לא תקין.'
+              : error
+            }
+          </p>
+          <div className="space-y-4">
+            <Button
+              onClick={() => navigate('/teacher/session/create')}
+              variant="primary"
+              size="lg"
+              className="w-full"
+            >
+              <Play className="w-5 h-5 mr-2" />
+              צור שיעור חדש
+            </Button>
+            <Button
+              onClick={() => navigate('/teacher/dashboard')}
+              variant="secondary"
+              size="lg"
+              className="w-full"
+            >
+              חזור ללוח הבקרה
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -252,8 +299,15 @@ const SessionHosting = () => {
 
   if (!session || !lesson) {
     return (
-      <div className="text-center py-8">
-        <p className="text-red-400">השיעור לא נמצא</p>
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-8">
+          <div className="text-6xl mb-6">⚠️</div>
+          <h1 className="text-2xl font-bold text-white mb-4">טוען נתונים...</h1>
+          <p className="text-gray-400 mb-6">
+            אנא המתן בזמן טעינת נתוני השיעור
+          </p>
+          <LoadingSpinner size="lg" />
+        </div>
       </div>
     );
   }
@@ -323,11 +377,9 @@ const SessionHosting = () => {
             <div className="w-full max-w-4xl">
               <TeacherLessonPreview
                 lesson={lesson}
-                currentSlide={currentSlide}
+                currentSlideIndex={currentSlide}
                 onSlideChange={handleSlideSelect}
-                isStudent={false}
-                canNavigate={true}
-                sessionStatus="active"
+                isPreviewMode={false}
               />
             </div>
 

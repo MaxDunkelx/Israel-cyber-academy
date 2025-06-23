@@ -13,7 +13,11 @@ const TeacherLessonPreview = ({ lesson, currentSlideIndex, onSlideChange, isPrev
   const [completedSlides, setCompletedSlides] = useState({});
 
   useEffect(() => {
-    setCurrentSlide(currentSlideIndex || 0);
+    if (typeof currentSlideIndex === 'number' && currentSlideIndex >= 0) {
+      setCurrentSlide(currentSlideIndex);
+    } else {
+      setCurrentSlide(0);
+    }
   }, [currentSlideIndex]);
 
   const handleNextSlide = () => {
@@ -43,23 +47,46 @@ const TeacherLessonPreview = ({ lesson, currentSlideIndex, onSlideChange, isPrev
   };
 
   const renderSlide = (slide) => {
-    switch (slide.type) {
-      case 'presentation':
-        return <PresentationSlide slide={slide} />;
-      case 'poll':
-        return <PollSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
-      case 'quiz':
-        return <QuizSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
-      case 'video':
-        return <VideoSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
-      case 'interactive':
-        return <InteractiveSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
-      case 'break':
-        return <BreakSlide slide={slide} />;
-      case 'reflection':
-        return <ReflectionSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
-      default:
-        return <PresentationSlide slide={slide} />;
+    if (!slide || !slide.type) {
+      console.warn('Invalid slide data:', slide);
+      return (
+        <div className="text-center text-white p-8">
+          <div className="text-4xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-semibold mb-2">Invalid Slide</h2>
+          <p className="text-gray-400">This slide could not be loaded</p>
+        </div>
+      );
+    }
+
+    try {
+      switch (slide.type) {
+        case 'presentation':
+          return <PresentationSlide slide={slide} />;
+        case 'poll':
+          return <PollSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
+        case 'quiz':
+          return <QuizSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
+        case 'video':
+          return <VideoSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
+        case 'interactive':
+          return <InteractiveSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
+        case 'break':
+          return <BreakSlide slide={slide} />;
+        case 'reflection':
+          return <ReflectionSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
+        default:
+          console.warn('Unknown slide type:', slide.type);
+          return <PresentationSlide slide={slide} />;
+      }
+    } catch (error) {
+      console.error('Error rendering slide:', error, slide);
+      return (
+        <div className="text-center text-white p-8">
+          <div className="text-4xl mb-4">❌</div>
+          <h2 className="text-2xl font-semibold mb-2">Error Loading Slide</h2>
+          <p className="text-gray-400">There was an error rendering this slide</p>
+        </div>
+      );
     }
   };
 
@@ -76,7 +103,28 @@ const TeacherLessonPreview = ({ lesson, currentSlideIndex, onSlideChange, isPrev
   }
 
   const slides = lesson.content.slides;
-  const currentSlideData = slides[currentSlide];
+  
+  // Safety check for slides array
+  if (!Array.isArray(slides) || slides.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full bg-gray-900 text-white">
+        <div className="text-center">
+          <div className="text-4xl mb-4">📚</div>
+          <h2 className="text-2xl font-semibold mb-2">No Slides Available</h2>
+          <p className="text-gray-400">This lesson has no slides to display</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Safety check for current slide index
+  const safeCurrentSlide = Math.max(0, Math.min(currentSlide, slides.length - 1));
+  const currentSlideData = slides[safeCurrentSlide];
+
+  // If current slide is out of bounds, reset to 0
+  if (safeCurrentSlide !== currentSlide) {
+    setCurrentSlide(safeCurrentSlide);
+  }
 
   return (
     <div className="h-full bg-gray-900 flex flex-col">
