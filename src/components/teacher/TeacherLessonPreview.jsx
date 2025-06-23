@@ -37,36 +37,29 @@ const TeacherLessonPreview = ({ lesson, currentSlideIndex, onSlideChange, isPrev
     onSlideChange?.(slideIndex);
   };
 
-  const handleAnswerSubmit = (slideId, answer) => {
+  const handleAnswer = (slideId, answer) => {
     setAnswers(prev => ({ ...prev, [slideId]: answer }));
     setCompletedSlides(prev => ({ ...prev, [slideId]: true }));
   };
 
   const renderSlide = (slide) => {
-    const slideProps = {
-      slide,
-      onComplete: () => handleAnswerSubmit(slide.id, true),
-      isPreviewMode,
-      teacherMode: true
-    };
-
     switch (slide.type) {
       case 'presentation':
-        return <PresentationSlide {...slideProps} />;
+        return <PresentationSlide slide={slide} />;
       case 'poll':
-        return <PollSlide {...slideProps} />;
+        return <PollSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
       case 'quiz':
-        return <QuizSlide {...slideProps} />;
+        return <QuizSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
       case 'video':
-        return <VideoSlide {...slideProps} />;
+        return <VideoSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
       case 'interactive':
-        return <InteractiveSlide {...slideProps} />;
+        return <InteractiveSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
       case 'break':
-        return <BreakSlide {...slideProps} />;
+        return <BreakSlide slide={slide} />;
       case 'reflection':
-        return <ReflectionSlide {...slideProps} />;
+        return <ReflectionSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
       default:
-        return <PresentationSlide {...slideProps} />;
+        return <PresentationSlide slide={slide} />;
     }
   };
 
@@ -115,25 +108,6 @@ const TeacherLessonPreview = ({ lesson, currentSlideIndex, onSlideChange, isPrev
           <div className="text-white text-sm">
             {currentSlideData?.title || `Slide ${currentSlide + 1}`}
           </div>
-        </div>
-      </div>
-
-      {/* Slide Thumbnails */}
-      <div className="bg-gray-800 border-b border-gray-700 p-2 overflow-x-auto">
-        <div className="flex space-x-2">
-          {slides.map((slide, index) => (
-            <button
-              key={index}
-              onClick={() => handleSlideClick(index)}
-              className={`flex-shrink-0 p-2 rounded-lg text-xs font-medium transition-colors ${
-                currentSlide === index
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
-              }`}
-            >
-              {index + 1}
-            </button>
-          ))}
         </div>
       </div>
 

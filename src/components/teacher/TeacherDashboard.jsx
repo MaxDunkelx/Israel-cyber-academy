@@ -224,31 +224,31 @@ const TeacherDashboard = () => {
           <div className="space-y-6">
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="bg-blue-50 border-blue-200">
+              <Card variant="outlined" className="!bg-gray-800 !border-gray-700">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600">{stats.totalStudents}</div>
-                  <div className="text-sm text-blue-700">סה"כ תלמידים</div>
+                  <div className="text-3xl font-bold text-blue-400">{stats.totalStudents}</div>
+                  <div className="text-sm text-gray-300">סה"כ תלמידים</div>
                 </div>
               </Card>
               
-              <Card className="bg-green-50 border-green-200">
+              <Card variant="outlined" className="!bg-gray-800 !border-gray-700">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-green-600">{stats.activeClasses}</div>
-                  <div className="text-sm text-green-700">כיתות פעילות</div>
+                  <div className="text-3xl font-bold text-green-400">{stats.activeClasses}</div>
+                  <div className="text-sm text-gray-300">כיתות פעילות</div>
                 </div>
               </Card>
               
-              <Card className="bg-purple-50 border-purple-200">
+              <Card variant="outlined" className="!bg-gray-800 !border-gray-700">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-purple-600">{stats.completedLessons}</div>
-                  <div className="text-sm text-purple-700">שיעורים שהושלמו</div>
+                  <div className="text-3xl font-bold text-purple-400">{stats.completedLessons}</div>
+                  <div className="text-sm text-gray-300">שיעורים שהושלמו</div>
                 </div>
               </Card>
               
-              <Card className="bg-orange-50 border-orange-200">
+              <Card variant="outlined" className="!bg-gray-800 !border-gray-700">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-orange-600">{stats.averageProgress}%</div>
-                  <div className="text-sm text-orange-700">התקדמות ממוצעת</div>
+                  <div className="text-3xl font-bold text-orange-400">{stats.averageProgress}%</div>
+                  <div className="text-sm text-gray-300">התקדמות ממוצעת</div>
                 </div>
               </Card>
             </div>
@@ -257,6 +257,14 @@ const TeacherDashboard = () => {
             <div className="bg-gray-800 rounded-xl p-6">
               <h3 className="text-xl font-semibold text-white mb-4">פעולות מהירות</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <button 
+                  onClick={() => navigate('/teacher/session/create')}
+                  className="flex items-center space-x-3 p-4 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors"
+                >
+                  <Play className="w-6 h-6 text-white" />
+                  <span className="text-white">התחל שיעור חדש</span>
+                </button>
+                
                 <button 
                   onClick={() => handleTabChange('studentPool')}
                   className="flex items-center space-x-3 p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
@@ -271,14 +279,6 @@ const TeacherDashboard = () => {
                 >
                   <FileText className="w-6 h-6 text-purple-400" />
                   <span className="text-white">מנהל שקופיות</span>
-                </button>
-                
-                <button 
-                  onClick={() => handleTabChange('lessons')}
-                  className="flex items-center space-x-3 p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                >
-                  <BookOpen className="w-6 h-6 text-green-400" />
-                  <span className="text-white">ניהול שיעורים</span>
                 </button>
                 
                 <button 

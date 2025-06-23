@@ -888,6 +888,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     currentUser,
     userProfile,
+    role: userProfile?.role || null,
     signup,
     login,
     logout,

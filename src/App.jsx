@@ -18,11 +18,10 @@
  * 4. Provide navigation context
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { AuthProvider } from './contexts/AuthContext';
-import { useAuth } from './hooks/useAuth';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useUserProfile } from './hooks/useAuth';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import ErrorBoundary from './components/common/ErrorBoundary';
@@ -33,6 +32,7 @@ import Navigation from './components/Navigation';
 import Roadmap from './components/Roadmap';
 import InteractiveLesson from './components/InteractiveLesson';
 import Profile from './components/Profile';
+import StudentDashboard from './components/student/StudentDashboard';
 
 // Teacher Components
 import TeacherNavigation from './components/teacher/TeacherNavigation';
@@ -42,29 +42,31 @@ import StudentManagement from './components/teacher/StudentManagement';
 import TeacherAnalytics from './components/teacher/TeacherAnalytics';
 import TeacherComments from './components/teacher/TeacherComments';
 import SessionHosting from './components/teacher/SessionHosting';
+import SessionCreation from './components/teacher/SessionCreation';
 import StudentMonitor from './components/teacher/StudentMonitor';
 import LessonController from './components/teacher/LessonController';
 import SlidePreviewManager from './components/teacher/SlidePreviewManager';
+import StudentSession from './components/student/StudentSession';
+import './App.css';
 
 /**
  * Protected Route Component
  * 
- * Wraps routes that require authentication.
- * Redirects to login if user is not authenticated.
+ * Wraps routes that require authentication and optionally specific roles.
+ * Redirects to login if not authenticated or to appropriate dashboard if wrong role.
  * 
  * @param {Object} props - Component props
  * @param {React.ReactNode} props.children - Child components to render
- * @param {string} props.requiredRole - Required user role (optional)
+ * @param {string} props.requiredRole - Required role for access (optional)
  * @returns {JSX.Element} Protected route component
  */
 const ProtectedRoute = ({ children, requiredRole = null }) => {
-  const { currentUser, loading } = useAuth();
-  const { role } = useUserProfile();
+  const { currentUser, loading, role } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center">
-        <LoadingSpinner size="lg" />
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
       </div>
     );
   }
@@ -74,30 +76,29 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
   }
 
   if (requiredRole && role !== requiredRole) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
-  return children;
+  return <>{children}</>;
 };
 
 /**
  * Teacher Route Component
  * 
- * Wraps routes that require teacher role.
- * Redirects to login if user is not a teacher.
+ * Wraps routes that require teacher role authentication.
+ * Redirects to login if not authenticated or to student dashboard if wrong role.
  * 
  * @param {Object} props - Component props
  * @param {React.ReactNode} props.children - Child components to render
  * @returns {JSX.Element} Teacher route component
  */
 const TeacherRoute = ({ children }) => {
-  const { currentUser, loading } = useAuth();
-  const { role } = useUserProfile();
+  const { currentUser, loading, role } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center">
-        <LoadingSpinner size="lg" />
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
       </div>
     );
   }
@@ -107,30 +108,29 @@ const TeacherRoute = ({ children }) => {
   }
 
   if (role !== 'teacher') {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/student/roadmap" replace />;
   }
 
-  return children;
+  return <>{children}</>;
 };
 
 /**
  * Student Route Component
  * 
- * Wraps routes that require student role.
- * Redirects to login if user is not a student.
+ * Wraps routes that require student role authentication.
+ * Redirects to login if not authenticated or to teacher dashboard if wrong role.
  * 
  * @param {Object} props - Component props
  * @param {React.ReactNode} props.children - Child components to render
  * @returns {JSX.Element} Student route component
  */
 const StudentRoute = ({ children }) => {
-  const { currentUser, loading } = useAuth();
-  const { role } = useUserProfile();
+  const { currentUser, loading, role } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center">
-        <LoadingSpinner size="lg" />
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
       </div>
     );
   }
@@ -140,10 +140,10 @@ const StudentRoute = ({ children }) => {
   }
 
   if (role !== 'student') {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/teacher/dashboard" replace />;
   }
 
-  return children;
+  return <>{children}</>;
 };
 
 /**
@@ -155,19 +155,13 @@ const StudentRoute = ({ children }) => {
  * @returns {JSX.Element} Main app component
  */
 const AppContent = () => {
-  const { currentUser, loading } = useAuth();
-  const { role } = useUserProfile();
+  const { currentUser, role } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
-
-  // Determine the correct redirect based on user state and role
-  const getMainRouteRedirect = () => {
+  /**
+   * Determine main route redirect based on user authentication and role
+   * @returns {JSX.Element} Redirect component
+   */
+  const getMainRouteRedirect = useMemo(() => {
     if (!currentUser) {
       return <Navigate to="/login" replace />;
     }
@@ -176,12 +170,8 @@ const AppContent = () => {
       return <Navigate to="/teacher/dashboard" replace />;
     }
     
-    if (role === 'student') {
-      return <Navigate to="/student/roadmap" replace />;
-    }
-    
-    return <Navigate to="/login" replace />;
-  };
+    return <Navigate to="/student/roadmap" replace />;
+  }, [currentUser, role]);
 
   return (
     <Router basename="/Israel-cyber-academy">
@@ -195,18 +185,23 @@ const AppContent = () => {
           {/* Public Routes */}
           <Route 
             path="/" 
-            element={getMainRouteRedirect()}
+            element={getMainRouteRedirect}
           />
           
           <Route
             path="/login"
             element={
-              currentUser ? 
-                (role === 'teacher' ? 
-                  <Navigate to="/teacher/dashboard" replace /> : 
-                  <Navigate to="/student/roadmap" replace />
-                ) : 
-                <EnhancedLogin />
+              useMemo(() => {
+                if (currentUser) {
+                  if (role === 'teacher') {
+                    return <Navigate to="/teacher/dashboard" replace />;
+                  } else {
+                    return <Navigate to="/student/roadmap" replace />;
+                  }
+                } else {
+                  return <EnhancedLogin />;
+                }
+              }, [currentUser, role])
             }
           />
           
@@ -239,10 +234,28 @@ const AppContent = () => {
           />
           
           <Route
+            path="/student/session/:sessionId"
+            element={
+              <StudentRoute>
+                <StudentSession />
+              </StudentRoute>
+            }
+          />
+          
+          <Route
             path="/student/profile"
             element={
               <StudentRoute>
                 <Profile />
+              </StudentRoute>
+            }
+          />
+          
+          <Route
+            path="/student/dashboard"
+            element={
+              <StudentRoute>
+                <StudentDashboard />
               </StudentRoute>
             }
           />
@@ -253,6 +266,15 @@ const AppContent = () => {
             element={
               <TeacherRoute>
                 <TeacherDashboard />
+              </TeacherRoute>
+            }
+          />
+          
+          <Route
+            path="/teacher/session/create"
+            element={
+              <TeacherRoute>
+                <SessionCreation />
               </TeacherRoute>
             }
           />
