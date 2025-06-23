@@ -1199,6 +1199,8 @@ export const getTeacherNotes = async (teacherId, lessonId, slideId) => {
  */
 export const saveTeacherNotes = async (teacherId, lessonId, slideId, notesData) => {
   try {
+    console.log('Saving notes:', { teacherId, lessonId, slideId, notesData });
+    
     const notesRef = collection(db, 'teacherNotes');
     
     // Check if notes already exist
@@ -1209,8 +1211,11 @@ export const saveTeacherNotes = async (teacherId, lessonId, slideId, notesData) 
       const noteRef = doc(db, 'teacherNotes', existingNotes.id);
       await updateDoc(noteRef, {
         content: notesData.content,
+        slideIndex: notesData.slideIndex, // Ensure slideIndex is updated
         updatedAt: serverTimestamp()
       });
+      
+      console.log('Updated existing note:', existingNotes.id);
       
       // Log activity
       await logTeacherActivity(teacherId, {
@@ -1231,12 +1236,17 @@ export const saveTeacherNotes = async (teacherId, lessonId, slideId, notesData) 
         teacherId: teacherId,
         lessonId: lessonId,
         slideId: slideId,
+        slideIndex: notesData.slideIndex, // Ensure slideIndex is included
         content: notesData.content,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       };
       
+      console.log('Creating new note:', noteDoc);
+      
       const docRef = await addDoc(notesRef, noteDoc);
+      
+      console.log('Created note with ID:', docRef.id);
       
       // Log activity
       await logTeacherActivity(teacherId, {
@@ -1295,6 +1305,8 @@ export const deleteTeacherNotes = async (teacherId, lessonId, slideId) => {
  */
 export const getTeacherNotesForLesson = async (teacherId, lessonId) => {
   try {
+    console.log('Fetching notes for teacher:', teacherId, 'lesson:', lessonId);
+    
     const notesRef = collection(db, 'teacherNotes');
     const q = query(
       notesRef,
@@ -1306,12 +1318,20 @@ export const getTeacherNotesForLesson = async (teacherId, lessonId) => {
     const notes = [];
     
     querySnapshot.forEach((doc) => {
+      const data = doc.data();
       notes.push({
         id: doc.id,
-        ...doc.data()
+        teacherId: data.teacherId,
+        lessonId: data.lessonId,
+        slideId: data.slideId,
+        slideIndex: data.slideIndex || 0, // Ensure slideIndex is included
+        content: data.content,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt
       });
     });
     
+    console.log('Found notes:', notes);
     return notes;
   } catch (error) {
     console.error('Error fetching teacher notes for lesson:', error);
