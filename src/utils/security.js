@@ -1,5 +1,7 @@
 /**
- * Security Utilities - Israel Cyber Academy
+ * Security Utilities - Israel Cyber Campus
+ * 
+ * Provides security logging and validation functions for the platform
  * 
  * Centralized security functions for authentication, authorization,
  * and security event logging. Provides role-based access control

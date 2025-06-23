@@ -1,4 +1,4 @@
-# Session Management System - Israel Cyber Academy
+# Session Management System - Israel Cyber Campus
 
 ## Overview
 

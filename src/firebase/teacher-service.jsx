@@ -1,11 +1,12 @@
 /**
- * Teacher Service - Israel Cyber Academy
+ * Teacher Service - Israel Cyber Campus
  * 
- * Firebase service layer for teacher-specific operations including:
- * - Student management and assignment
- * - Class creation and management
- * - Teacher data operations
- * - Security logging and validation
+ * Comprehensive service for teacher-specific operations including:
+ * - Class management
+ * - Student assignment
+ * - Teacher notes and comments
+ * - Analytics and reporting
+ * - Activity logging
  * 
  * Features:
  * - Real-time Firestore operations

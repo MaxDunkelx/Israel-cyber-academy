@@ -1,6 +1,6 @@
 # Teacher Operations - Detailed Explanation
 
-This document explains all current teacher operations in the Israel Cyber Academy platform, including how each feature works, the code structure, and the logic behind the implementation.
+This document explains all current teacher operations in the Israel Cyber Campus platform, including how each feature works, the code structure, and the logic behind the implementation.
 
 ---
 

@@ -33,7 +33,8 @@ const Card = ({
     default: 'bg-white border border-gray-200',
     elevated: 'bg-white shadow-lg border border-gray-200',
     outlined: 'bg-transparent border-2 border-gray-300',
-    gradient: 'bg-gradient-to-br from-cyber-blue to-cyber-purple text-white border-0'
+    gradient: 'bg-gradient-to-br from-cyber-blue to-cyber-purple text-white border-0',
+    dark: 'bg-gray-800 border border-gray-700 text-white'
   };
   
   // Padding-specific classes

@@ -1,8 +1,8 @@
-# Israel Cyber Academy - Complete Learning Management System
+# Israel Cyber Campus - Complete Learning Management System
 
 ## 🎯 Overview
 
-Israel Cyber Academy is a comprehensive, real-time learning management system designed for cybersecurity education. The platform features synchronized live sessions, interactive lessons, student-teacher management, and advanced analytics.
+Israel Cyber Campus is a comprehensive, real-time learning management system designed for cybersecurity education. The platform features synchronized live sessions, interactive lessons, student-teacher management, and advanced analytics.
 
 ## ✨ Key Features
 
@@ -295,6 +295,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-**Israel Cyber Academy** - Empowering the next generation of cybersecurity professionals through interactive, real-time learning experiences.
+**Israel Cyber Campus** - Empowering the next generation of cybersecurity professionals through interactive, real-time learning experiences.
 
 *Built with ❤️ for the Israeli cybersecurity community* 

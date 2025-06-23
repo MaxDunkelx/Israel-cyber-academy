@@ -137,7 +137,7 @@ const SessionCreation = () => {
       <div className="p-6 max-w-6xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Class Selection */}
-          <Card className="bg-gray-800 border-gray-700">
+          <Card variant="dark" className="border-gray-700">
             <div className="p-6">
               <h2 className="text-lg font-bold text-white mb-4 flex items-center space-x-2">
                 <Users className="w-5 h-5" />
@@ -195,7 +195,7 @@ const SessionCreation = () => {
           </Card>
 
           {/* Lesson Selection */}
-          <Card className="bg-gray-800 border-gray-700">
+          <Card variant="dark" className="border-gray-700">
             <div className="p-6">
               <h2 className="text-lg font-bold text-white mb-4 flex items-center space-x-2">
                 <BookOpen className="w-5 h-5" />
@@ -237,7 +237,7 @@ const SessionCreation = () => {
 
         {/* Session Summary */}
         {(selectedClass || selectedLesson) && (
-          <Card className="bg-gray-800 border-gray-700 mt-8">
+          <Card variant="dark" className="border-gray-700 mt-8">
             <div className="p-6">
               <h2 className="text-lg font-bold text-white mb-4">סיכום השיעור</h2>
               

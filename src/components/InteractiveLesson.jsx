@@ -1,5 +1,5 @@
 /**
- * Interactive Lesson Component - Israel Cyber Academy
+ * Interactive Lesson Component - Israel Cyber Campus
  * 
  * This is the core learning interface where users engage with lesson content.
  * It handles slide navigation, progress tracking, exercise completion, and user engagement.

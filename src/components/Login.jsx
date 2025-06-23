@@ -1,22 +1,11 @@
 /**
- * Login Component - Israel Cyber Academy Landing Page
+ * Login Component - Israel Cyber Campus Landing Page
  * 
- * This is the main landing page and authentication interface for the application.
- * It serves as both a marketing page and login/signup form.
- * 
- * Key Features:
- * - Beautiful animated landing page with cyber security branding
- * - User registration and login forms
- * - Form validation and error handling
- * - Role-based user creation (student/teacher)
- * - Responsive design with Hebrew RTL support
- * 
- * Component Flow:
- * 1. User sees landing page with feature highlights
- * 2. User selects role (student/teacher)
- * 3. Form appears for login/signup
- * 4. Validation and authentication processing
- * 5. Redirect to main application on success
+ * Provides authentication interface with:
+ * - Email/password login
+ * - Role-based routing
+ * - Error handling
+ * - Responsive design
  */
 
 import React, { useState } from 'react';

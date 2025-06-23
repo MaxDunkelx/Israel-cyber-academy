@@ -130,28 +130,28 @@ const StudentDashboard = () => {
       <div className="p-6 max-w-7xl mx-auto">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card variant="outlined" className="!bg-gray-800 !border-gray-700">
+          <Card variant="dark">
             <div className="text-center">
               <div className="text-3xl font-bold text-blue-400">{stats.totalLessons}</div>
               <div className="text-sm text-gray-300">סה"כ שיעורים</div>
             </div>
           </Card>
           
-          <Card variant="outlined" className="!bg-gray-800 !border-gray-700">
+          <Card variant="dark">
             <div className="text-center">
               <div className="text-3xl font-bold text-green-400">{stats.completedLessons}</div>
               <div className="text-sm text-gray-300">שיעורים שהושלמו</div>
             </div>
           </Card>
           
-          <Card variant="outlined" className="!bg-gray-800 !border-gray-700">
+          <Card variant="dark">
             <div className="text-center">
               <div className="text-3xl font-bold text-purple-400">{stats.activeSessions}</div>
               <div className="text-sm text-gray-300">שיעורים פעילים</div>
             </div>
           </Card>
           
-          <Card variant="outlined" className="!bg-gray-800 !border-gray-700">
+          <Card variant="dark">
             <div className="text-center">
               <div className="text-3xl font-bold text-orange-400">{Math.floor(stats.totalTimeSpent / 60)}</div>
               <div className="text-sm text-gray-300">שעות למידה</div>
@@ -161,7 +161,7 @@ const StudentDashboard = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Available Sessions */}
-          <Card className="bg-gray-800 border-gray-700">
+          <Card variant="dark">
             <div className="p-6">
               <h2 className="text-lg font-bold text-white mb-4 flex items-center space-x-2">
                 <Play className="w-5 h-5" />
@@ -208,7 +208,7 @@ const StudentDashboard = () => {
           </Card>
 
           {/* Recent Activity */}
-          <Card className="bg-gray-800 border-gray-700">
+          <Card variant="dark">
             <div className="p-6">
               <h2 className="text-lg font-bold text-white mb-4 flex items-center space-x-2">
                 <CheckCircle className="w-5 h-5" />
@@ -260,7 +260,7 @@ const StudentDashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <Card className="bg-gray-800 border-gray-700 mt-8">
+        <Card variant="dark" className="mt-8">
           <div className="p-6">
             <h2 className="text-lg font-bold text-white mb-4">פעולות מהירות</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

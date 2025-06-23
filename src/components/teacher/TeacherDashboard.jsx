@@ -1,5 +1,5 @@
 /**
- * TeacherDashboard Component - Israel Cyber Academy Teacher Console
+ * TeacherDashboard Component - Israel Cyber Campus Teacher Console
  * 
  * Main dashboard for teachers with essential tabs:
  * 1. StudentPool - Manage student assignments to classes
@@ -224,28 +224,28 @@ const TeacherDashboard = () => {
           <div className="space-y-6">
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card variant="outlined" className="!bg-gray-800 !border-gray-700">
+              <Card variant="dark">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-blue-400">{stats.totalStudents}</div>
                   <div className="text-sm text-gray-300">סה"כ תלמידים</div>
                 </div>
               </Card>
               
-              <Card variant="outlined" className="!bg-gray-800 !border-gray-700">
+              <Card variant="dark">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-green-400">{stats.activeClasses}</div>
                   <div className="text-sm text-gray-300">כיתות פעילות</div>
                 </div>
               </Card>
               
-              <Card variant="outlined" className="!bg-gray-800 !border-gray-700">
+              <Card variant="dark">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-purple-400">{stats.completedLessons}</div>
                   <div className="text-sm text-gray-300">שיעורים שהושלמו</div>
                 </div>
               </Card>
               
-              <Card variant="outlined" className="!bg-gray-800 !border-gray-700">
+              <Card variant="dark">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-orange-400">{stats.averageProgress}%</div>
                   <div className="text-sm text-gray-300">התקדמות ממוצעת</div>
@@ -413,7 +413,7 @@ const TeacherDashboard = () => {
               <div className="flex items-center space-x-4">
                 <Shield className="h-8 w-8 text-blue-400" />
                 <div>
-                  <h1 className="text-2xl font-bold text-white">ישראל אקדמיה לסייבר</h1>
+                  <h1 className="text-2xl font-bold text-white">Israel Cyber Campus</h1>
                   <p className="text-gray-400">לוח בקרה למורה</p>
                 </div>
               </div>

@@ -407,10 +407,9 @@ export const isEmpty = (value) => {
 };
 
 /**
- * Helper Functions - Israel Cyber Academy
+ * Helper Functions - Israel Cyber Campus
  * 
- * Utility functions for data formatting, validation, and session monitoring.
- * Provides comprehensive logging and analytics support.
+ * Utility functions for common operations across the platform
  */
 
 /**

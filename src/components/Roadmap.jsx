@@ -1,8 +1,11 @@
 /**
- * Roadmap Component - Israel Cyber Academy Learning Dashboard
+ * Roadmap Component - Israel Cyber Campus Learning Dashboard
  * 
- * This is the main learning dashboard that displays all available lessons
- * and tracks user progress through the cyber security curriculum.
+ * Displays the learning roadmap for students with:
+ * - Available lessons
+ * - Progress tracking
+ * - Interactive navigation
+ * - Achievement system
  * 
  * Key Features:
  * - Visual lesson roadmap with progress indicators
