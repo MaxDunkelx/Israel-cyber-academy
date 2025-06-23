@@ -48,7 +48,7 @@ import StudentMonitor from './components/teacher/StudentMonitor';
 import LessonController from './components/teacher/LessonController';
 import SlidePreviewManager from './components/teacher/SlidePreviewManager';
 import StudentSession from './components/student/StudentSession';
-import './App.css';
+// import './App.css';
 
 /**
  * Protected Route Component
