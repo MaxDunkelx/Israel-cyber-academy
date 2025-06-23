@@ -5,7 +5,7 @@
  * must categorize items by dragging them to the correct categories.
  * 
  * Key Features:
- * - Drag and drop functionality using react-beautiful-dnd
+ * - Drag and drop functionality using @hello-pangea/dnd
  * - Real-time feedback and validation
  * - Visual feedback for correct/incorrect placements
  * - Reset functionality for retry attempts
@@ -20,7 +20,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { CheckCircle, XCircle, Shuffle, ArrowRight } from 'lucide-react';
 
 /**
