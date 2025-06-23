@@ -136,7 +136,7 @@ const StudentPool = () => {
         name: editingClass.name,
         description: editingClass.description,
         maxStudents: editingClass.maxStudents
-      });
+      }, currentUser.uid);
       
       setClasses(prev => prev.map(c => 
         c.id === editingClass.id ? { ...c, ...editingClass } : c

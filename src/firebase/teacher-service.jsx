@@ -139,6 +139,18 @@ export const createClass = async (classData, teacherId) => {
       });
     }
     
+    // Log activity
+    await logTeacherActivity(teacherId, {
+      type: 'class_created',
+      title: 'כיתה חדשה נוצרה',
+      description: `הכיתה "${classData.name}" נוצרה בהצלחה`,
+      metadata: {
+        classId: newClassRef.id,
+        className: classData.name,
+        maxStudents: classData.maxStudents || 30
+      }
+    });
+    
     return classDoc;
   } catch (error) {
     console.error('Error creating class:', error);
@@ -216,16 +228,51 @@ export const getClassById = async (classId) => {
  * @param {Object} updates - Updated class data
  * @returns {Promise<void>}
  */
-export const updateClass = async (classId, updates) => {
+export const updateClass = async (classId, updates, teacherId) => {
   try {
     const classRef = doc(db, 'classes', classId);
+    const classDoc = await getDoc(classRef);
     
+    if (!classDoc.exists()) {
+      throw new Error('Class not found');
+    }
+    
+    const originalData = classDoc.data();
+    
+    // Update the class
     await updateDoc(classRef, {
       ...updates,
       updatedAt: serverTimestamp()
     });
     
-    return { id: classId, ...updates };
+    // Log activity
+    const changes = [];
+    if (updates.name && updates.name !== originalData.name) {
+      changes.push(`שם הכיתה: "${originalData.name}" → "${updates.name}"`);
+    }
+    if (updates.description && updates.description !== originalData.description) {
+      changes.push('תיאור הכיתה עודכן');
+    }
+    if (updates.maxStudents && updates.maxStudents !== originalData.maxStudents) {
+      changes.push(`מספר מקסימלי של תלמידים: ${originalData.maxStudents} → ${updates.maxStudents}`);
+    }
+    
+    if (changes.length > 0) {
+      await logTeacherActivity(teacherId, {
+        type: 'class_edited',
+        title: 'כיתה עודכנה',
+        description: `הכיתה "${updates.name || originalData.name}" עודכנה: ${changes.join(', ')}`,
+        metadata: {
+          classId: classId,
+          className: updates.name || originalData.name,
+          changes: changes,
+          originalData: originalData,
+          updatedData: updates
+        }
+      });
+    }
+    
+    return true;
   } catch (error) {
     console.error('Error updating class:', error);
     throw error;
@@ -281,6 +328,18 @@ export const deleteClass = async (classId, teacherId) => {
     batch.delete(classRef);
     
     await batch.commit();
+    
+    // Log activity
+    await logTeacherActivity(teacherId, {
+      type: 'class_deleted',
+      title: 'כיתה נמחקה',
+      description: `הכיתה "${classData.name}" נמחקה. ${classData.studentIds?.length || 0} תלמידים הוסרו מהכיתה.`,
+      metadata: {
+        classId: classId,
+        className: classData.name,
+        studentsRemoved: classData.studentIds?.length || 0
+      }
+    });
     
     return true;
   } catch (error) {
@@ -987,9 +1046,98 @@ export const assignStudentsToClass = async (classId, studentIds, teacherId) => {
     
     await batch.commit();
     
+    // Log activity for student assignments
+    if (studentIds.length > currentStudentIds.length) {
+      const newlyAssigned = studentIds.filter(id => !currentStudentIds.includes(id));
+      if (newlyAssigned.length > 0) {
+        await logTeacherActivity(teacherId, {
+          type: 'student_added',
+          title: 'תלמידים נוספו לכיתה',
+          description: `${newlyAssigned.length} תלמידים נוספו לכיתה "${classData.name}"`,
+          metadata: {
+            classId: classId,
+            className: classData.name,
+            studentsAdded: newlyAssigned.length,
+            studentIds: newlyAssigned
+          }
+        });
+      }
+    }
+    
+    // Log activity for student removals
+    if (studentsToUnassign.length > 0) {
+      await logTeacherActivity(teacherId, {
+        type: 'student_removed',
+        title: 'תלמידים הוסרו מהכיתה',
+        description: `${studentsToUnassign.length} תלמידים הוסרו מהכיתה "${classData.name}"`,
+        metadata: {
+          classId: classId,
+          className: classData.name,
+          studentsRemoved: studentsToUnassign.length,
+          studentIds: studentsToUnassign
+        }
+      });
+    }
+    
     return true;
   } catch (error) {
     console.error('Error assigning students to class:', error);
     throw error;
+  }
+};
+
+/**
+ * Log teacher activity for dashboard display
+ */
+export const logTeacherActivity = async (teacherId, activityData) => {
+  try {
+    const activitiesRef = collection(db, 'teacherActivities');
+    const activityDoc = {
+      teacherId: teacherId,
+      type: activityData.type, // 'class_created', 'class_deleted', 'student_added', 'student_removed', 'class_edited'
+      title: activityData.title,
+      description: activityData.description,
+      metadata: activityData.metadata || {},
+      timestamp: serverTimestamp(),
+      read: false
+    };
+    
+    await addDoc(activitiesRef, activityDoc);
+  } catch (error) {
+    console.error('Error logging teacher activity:', error);
+    // Don't throw error - activity logging shouldn't break main functionality
+  }
+};
+
+/**
+ * Get recent teacher activities for dashboard
+ */
+export const getTeacherRecentActivities = async (teacherId, limit = 10) => {
+  try {
+    const activitiesRef = collection(db, 'teacherActivities');
+    const q = query(
+      activitiesRef,
+      where('teacherId', '==', teacherId),
+      orderBy('timestamp', 'desc')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const activities = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      activities.push({
+        id: doc.id,
+        ...data,
+        timestamp: data.timestamp?.toDate() || new Date()
+      });
+    });
+    
+    // Sort in JavaScript and limit
+    activities.sort((a, b) => b.timestamp - a.timestamp);
+    return activities.slice(0, limit);
+  } catch (error) {
+    console.error('Error fetching teacher activities:', error);
+    return [];
   }
 }; 

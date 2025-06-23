@@ -955,4 +955,22 @@ export const logLessonCompletion = (lessonId, totalScore, timeSpent) => {
  */
 export const exportSessionData = () => {
   return sessionMonitor.exportSessionData();
+};
+
+/**
+ * Format timestamp for display in Hebrew
+ * @param {Date|string} timestamp - The timestamp to format
+ * @returns {string} Formatted timestamp string
+ */
+export const formatTimestamp = (timestamp) => {
+  if (!timestamp) return 'לא ידוע';
+  
+  const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+  const now = new Date();
+  const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+  
+  if (diffInMinutes < 1) return 'עכשיו';
+  if (diffInMinutes < 60) return `לפני ${diffInMinutes} דקות`;
+  if (diffInMinutes < 1440) return `לפני ${Math.floor(diffInMinutes / 60)} שעות`;
+  return `לפני ${Math.floor(diffInMinutes / 1440)} ימים`;
 }; 

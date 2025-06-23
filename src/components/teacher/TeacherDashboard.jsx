@@ -42,9 +42,12 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { logSecurityEvent } from '../../utils/security';
-import { getTeacherClasses } from '../../firebase/teacher-service';
+import { getTeacherClasses, getTeacherStudents, getTeacherRecentActivities } from '../../firebase/teacher-service';
+import { formatTimestamp } from '../../utils/helpers';
 import StudentPool from './StudentPool';
 import LoadingSpinner from '../common/LoadingSpinner';
+import { Card } from '../ui/Card';
+import { ErrorBoundary } from '../common/ErrorBoundary';
 
 const TeacherDashboard = () => {
   const navigate = useNavigate();
@@ -59,6 +62,10 @@ const TeacherDashboard = () => {
     completedLessons: 0,
     averageProgress: 0
   });
+  const [classes, setClasses] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [recentActivities, setRecentActivities] = useState([]);
+  const [error, setError] = useState(null);
 
   /**
    * Available dashboard tabs with their configurations
@@ -149,16 +156,28 @@ const TeacherDashboard = () => {
 
         // Load real stats
         setIsLoading(true);
-        const classes = await getTeacherClasses(currentUser.uid);
-        const allStudentIds = classes.flatMap(cls => Array.isArray(cls.studentIds) ? cls.studentIds : []);
-        const uniqueStudentIds = Array.from(new Set(allStudentIds));
-        const activeClasses = classes.filter(cls => cls.isActive !== false).length;
+        const [classesData, studentsData, activitiesData] = await Promise.all([
+          getTeacherClasses(currentUser.uid),
+          getTeacherStudents(currentUser.uid),
+          getTeacherRecentActivities(currentUser.uid, 5)
+        ]);
+        setClasses(classesData);
+        setStudents(studentsData);
+        setRecentActivities(activitiesData);
+        
+        // Calculate real stats from the data
+        const totalStudents = studentsData.length;
+        const activeClasses = classesData.filter(c => c.isActive).length;
+        const totalClasses = classesData.length;
+        const unassignedStudents = studentsData.filter(s => !s.classId).length;
+        
         setStats({
-          totalStudents: uniqueStudentIds.length,
+          totalStudents: totalStudents,
           activeClasses: activeClasses,
-          completedLessons: 0, // Placeholder for future analytics
-          averageProgress: 0   // Placeholder for future analytics
+          completedLessons: totalClasses, // Using total classes as placeholder
+          averageProgress: unassignedStudents // Using unassigned students as placeholder
         });
+        
         setIsLoading(false);
       } catch (error) {
         console.error('❌ Access check or stats load error:', error);
@@ -197,45 +216,33 @@ const TeacherDashboard = () => {
           <div className="space-y-6">
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-xl">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-blue-100 text-sm">סה"כ תלמידים</p>
-                    <p className="text-white text-2xl font-bold">{stats.totalStudents}</p>
-                  </div>
-                  <Users className="w-8 h-8 text-blue-100" />
+              <Card className="bg-blue-50 border-blue-200">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-blue-600">{stats.totalStudents}</div>
+                  <div className="text-sm text-blue-700">סה"כ תלמידים</div>
                 </div>
-              </div>
+              </Card>
               
-              <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-xl">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-green-100 text-sm">כיתות פעילות</p>
-                    <p className="text-white text-2xl font-bold">{stats.activeClasses}</p>
-                  </div>
-                  <Target className="w-8 h-8 text-green-100" />
+              <Card className="bg-green-50 border-green-200">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-600">{stats.activeClasses}</div>
+                  <div className="text-sm text-green-700">כיתות פעילות</div>
                 </div>
-              </div>
+              </Card>
               
-              <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 p-6 rounded-xl">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-yellow-100 text-sm">שיעורים שהושלמו</p>
-                    <p className="text-white text-2xl font-bold">{stats.completedLessons}</p>
-                  </div>
-                  <Trophy className="w-8 h-8 text-yellow-100" />
+              <Card className="bg-purple-50 border-purple-200">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-purple-600">{stats.completedLessons}</div>
+                  <div className="text-sm text-purple-700">שיעורים שהושלמו</div>
                 </div>
-              </div>
+              </Card>
               
-              <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-xl">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-purple-100 text-sm">התקדמות ממוצעת</p>
-                    <p className="text-white text-2xl font-bold">{stats.averageProgress}%</p>
-                  </div>
-                  <TrendingUp className="w-8 h-8 text-purple-100" />
+              <Card className="bg-orange-50 border-orange-200">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-orange-600">{stats.averageProgress}%</div>
+                  <div className="text-sm text-orange-700">התקדמות ממוצעת</div>
                 </div>
-              </div>
+              </Card>
             </div>
 
             {/* Quick Actions */}
@@ -271,23 +278,30 @@ const TeacherDashboard = () => {
             {/* Recent Activity */}
             <div className="bg-gray-800 rounded-xl p-6">
               <h3 className="text-xl font-semibold text-white mb-4">פעילות אחרונה</h3>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-3 p-3 bg-gray-700 rounded-lg">
-                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                  <span className="text-gray-300">תלמיד חדש הצטרף לכיתה א'</span>
-                  <span className="text-gray-500 text-sm">לפני 5 דקות</span>
+              {recentActivities.length === 0 ? (
+                <div className="text-center text-gray-400 py-8">
+                  <p>אין פעילות להצגה</p>
                 </div>
-                <div className="flex items-center space-x-3 p-3 bg-gray-700 rounded-lg">
-                  <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                  <span className="text-gray-300">שיעור "מבוא לסייבר" הושלם על ידי 15 תלמידים</span>
-                  <span className="text-gray-500 text-sm">לפני שעה</span>
+              ) : (
+                <div className="space-y-3">
+                  {recentActivities.map((activity) => (
+                    <div key={activity.id} className="flex items-center space-x-3 p-3 bg-gray-700 rounded-lg">
+                      <div className={`w-2 h-2 rounded-full ${
+                        activity.type === 'class_created' ? 'bg-green-400' :
+                        activity.type === 'class_deleted' ? 'bg-red-400' :
+                        activity.type === 'student_added' ? 'bg-blue-400' :
+                        activity.type === 'student_removed' ? 'bg-orange-400' :
+                        activity.type === 'class_edited' ? 'bg-yellow-400' :
+                        'bg-gray-400'
+                      }`}></div>
+                      <span className="text-gray-300 flex-1 text-right">{activity.description}</span>
+                      <span className="text-gray-500 text-sm">
+                        {activity.timestamp ? formatTimestamp(activity.timestamp) : 'לא ידוע'}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-center space-x-3 p-3 bg-gray-700 rounded-lg">
-                  <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-                  <span className="text-gray-300">עדכון תוכן לשיעור "רכיבי מחשב"</span>
-                  <span className="text-gray-500 text-sm">לפני 3 שעות</span>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         );
@@ -360,86 +374,96 @@ const TeacherDashboard = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="text-center text-red-600 p-4">
+        <p>{error}</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      {/* Header */}
-      <header className="bg-gray-800 border-b border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <Shield className="h-8 w-8 text-blue-400" />
-              <div>
-                <h1 className="text-2xl font-bold text-white">ישראל אקדמיה לסייבר</h1>
-                <p className="text-gray-400">לוח בקרה למורה</p>
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gray-900 text-white">
+        {/* Header */}
+        <header className="bg-gray-800 border-b border-gray-700">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-4">
+              <div className="flex items-center space-x-4">
+                <Shield className="h-8 w-8 text-blue-400" />
+                <div>
+                  <h1 className="text-2xl font-bold text-white">ישראל אקדמיה לסייבר</h1>
+                  <p className="text-gray-400">לוח בקרה למורה</p>
+                </div>
               </div>
+              
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2 text-green-400">
+                  <CheckCircle className="h-5 w-5" />
+                  <span className="text-sm font-medium">מחובר</span>
+                </div>
+                
+                <button
+                  onClick={() => navigate('/')}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                >
+                  יציאה
+                </button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Tab Navigation */}
+          <div className="mb-8">
+            <div className="flex flex-wrap gap-2 bg-gray-800 p-2 rounded-lg">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleTabChange(tab.id)}
+                    className={`flex items-center space-x-2 px-4 py-3 rounded-md transition-all duration-200 ${
+                      isActive 
+                        ? `${getTabColorClasses(tab.color)} border-2` 
+                        : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                    }`}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span className="font-medium">{tab.label}</span>
+                  </button>
+                );
+              })}
             </div>
             
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 text-green-400">
-                <CheckCircle className="h-5 w-5" />
-                <span className="text-sm font-medium">מחובר</span>
-              </div>
-              
-              <button
-                onClick={() => navigate('/')}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-              >
-                יציאה
-              </button>
+            {/* Tab Description */}
+            <div className="mt-4 text-center">
+              <p className="text-gray-400">
+                {tabs.find(tab => tab.id === activeTab)?.description}
+              </p>
             </div>
           </div>
-        </div>
-      </header>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Tab Navigation */}
-        <div className="mb-8">
-          <div className="flex flex-wrap gap-2 bg-gray-800 p-2 rounded-lg">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => handleTabChange(tab.id)}
-                  className={`flex items-center space-x-2 px-4 py-3 rounded-md transition-all duration-200 ${
-                    isActive 
-                      ? `${getTabColorClasses(tab.color)} border-2` 
-                      : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                  }`}
-                >
-                  <Icon className="h-5 w-5" />
-                  <span className="font-medium">{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
-          
-          {/* Tab Description */}
-          <div className="mt-4 text-center">
-            <p className="text-gray-400">
-              {tabs.find(tab => tab.id === activeTab)?.description}
-            </p>
-          </div>
+          {/* Tab Content */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="bg-gray-800 rounded-lg p-6"
+            >
+              {renderTabContent()}
+            </motion.div>
+          </AnimatePresence>
         </div>
-
-        {/* Tab Content */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-            className="bg-gray-800 rounded-lg p-6"
-          >
-            {renderTabContent()}
-          </motion.div>
-        </AnimatePresence>
       </div>
-    </div>
+    </ErrorBoundary>
   );
 };
 
