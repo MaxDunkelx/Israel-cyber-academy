@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { logSecurityEvent } from '../../utils/security';
+import { getTeacherClasses } from '../../firebase/teacher-service';
 import StudentPool from './StudentPool';
 import LoadingSpinner from '../common/LoadingSpinner';
 
@@ -111,7 +112,7 @@ const TeacherDashboard = () => {
    * Access control and security logging
    */
   useEffect(() => {
-    const checkAccess = async () => {
+    const checkAccessAndLoadStats = async () => {
       try {
         console.log('🔍 Checking teacher access...', { 
           currentUser: !!currentUser, 
@@ -119,13 +120,11 @@ const TeacherDashboard = () => {
           role
         });
         
-        // Wait for auth to complete
         if (authLoading) {
           console.log('⏳ Auth still loading...');
           return;
         }
 
-        // Check if user is authenticated
         if (!currentUser) {
           console.log('❌ No user found, redirecting to login');
           toast.error('יש להתחבר כדי לגשת לאזור המורה');
@@ -133,7 +132,6 @@ const TeacherDashboard = () => {
           return;
         }
 
-        // Check if user has teacher role
         if (role !== 'teacher') {
           console.log('❌ User is not a teacher, role:', role);
           toast.error('אין לך הרשאות לגשת לאזור המורה');
@@ -148,27 +146,29 @@ const TeacherDashboard = () => {
           role: role,
           timestamp: new Date().toISOString()
         });
-        
-        // Load mock stats for demo
+
+        // Load real stats
+        setIsLoading(true);
+        const classes = await getTeacherClasses(currentUser.uid);
+        const allStudentIds = classes.flatMap(cls => Array.isArray(cls.studentIds) ? cls.studentIds : []);
+        const uniqueStudentIds = Array.from(new Set(allStudentIds));
+        const activeClasses = classes.filter(cls => cls.isActive !== false).length;
         setStats({
-          totalStudents: 45,
-          activeClasses: 3,
-          completedLessons: 127,
-          averageProgress: 78
+          totalStudents: uniqueStudentIds.length,
+          activeClasses: activeClasses,
+          completedLessons: 0, // Placeholder for future analytics
+          averageProgress: 0   // Placeholder for future analytics
         });
-        
         setIsLoading(false);
-        
       } catch (error) {
-        console.error('❌ Access check error:', error);
-        toast.error('אירעה שגיאה בבדיקת הרשאות');
+        console.error('❌ Access check or stats load error:', error);
+        toast.error('אירעה שגיאה בבדיקת הרשאות או בטעינת נתונים');
         navigate('/login');
       }
     };
 
-    // Only run the check if we have authentication data
     if (!authLoading) {
-      checkAccess();
+      checkAccessAndLoadStats();
     }
   }, [currentUser, role, authLoading, navigate]);
 

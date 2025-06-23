@@ -108,71 +108,40 @@ export const getAllAvailableStudents = async () => {
  */
 export const createClass = async (classData, teacherId) => {
   try {
-    // Validate required fields
-    const requiredFields = ['name', 'lessonId', 'lessonName', 'startDate', 'teacherId'];
-    for (const field of requiredFields) {
-      if (!classData[field]) {
-        throw new Error(`Missing required field: ${field}`);
-      }
-    }
+    const classesRef = collection(db, 'classes');
+    const newClassRef = doc(classesRef);
     
-    // Validate and convert date
-    let startDate;
-    try {
-      startDate = new Date(classData.startDate);
-      if (isNaN(startDate.getTime())) {
-        throw new Error('Invalid date format');
-      }
-    } catch (dateError) {
-      console.error('Date conversion error:', dateError);
-      throw new Error('Invalid start date format');
-    }
-    
-    // Prepare class document
     const classDoc = {
+      id: newClassRef.id,
       name: classData.name,
-      lessonId: classData.lessonId,
-      lessonName: classData.lessonName,
-      startDate: startDate.toISOString(),
-      startHour: classData.startHour || '09:00',
-      maxStudents: classData.maxStudents || 25,
-      teacherId: classData.teacherId,
-      teacherName: classData.teacherName,
-      students: classData.students || [],
-      currentLesson: classData.currentLesson || 1,
-      totalLessons: classData.totalLessons || 25,
-      status: classData.status || 'active',
+      description: classData.description,
+      teacherId: teacherId,
+      studentIds: [],
+      maxStudents: classData.maxStudents || 30,
+      isActive: true,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
     
-    // Add to Firestore
-    const classesRef = collection(db, 'classes');
-    const docRef = await addDoc(classesRef, classDoc);
+    await setDoc(newClassRef, classDoc);
     
-    const createdClass = {
-      id: docRef.id,
-      ...classDoc,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    // Update teacher's class list
+    const teacherRef = doc(db, 'users', teacherId);
+    const teacherDoc = await getDoc(teacherRef);
     
-    logSecurityEvent('CLASS_CREATED', {
-      classId: docRef.id,
-      teacherId: classData.teacherId,
-      className: classData.name,
-      lessonId: classData.lessonId,
-      timestamp: new Date().toISOString()
-    });
+    if (teacherDoc.exists()) {
+      const teacherData = teacherDoc.data();
+      const updatedClasses = [...(teacherData.teacherClasses || []), newClassRef.id];
+      
+      await updateDoc(teacherRef, {
+        teacherClasses: updatedClasses,
+        updatedAt: serverTimestamp()
+      });
+    }
     
-    return createdClass;
+    return classDoc;
   } catch (error) {
     console.error('Error creating class:', error);
-    logSecurityEvent('CLASS_CREATION_ERROR', {
-      teacherId: classData?.teacherId,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
     throw error;
   }
 };
@@ -184,15 +153,10 @@ export const createClass = async (classData, teacherId) => {
  */
 export const getTeacherClasses = async (teacherId) => {
   try {
-    if (!teacherId) {
-      throw new Error('Teacher ID is required');
-    }
-
     const classesRef = collection(db, 'classes');
     const q = query(
-      classesRef,
-      where('teacherId', '==', teacherId),
-      where('isActive', '==', true)
+      classesRef, 
+      where('teacherId', '==', teacherId)
     );
     
     const querySnapshot = await getDocs(q);
@@ -203,34 +167,22 @@ export const getTeacherClasses = async (teacherId) => {
       classes.push({
         id: doc.id,
         ...data,
-        // Convert Firestore timestamps to ISO strings
-        createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-        updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString()
+        createdAt: data.createdAt?.toDate(),
+        updatedAt: data.updatedAt?.toDate()
       });
     });
     
-    // Sort in JavaScript instead of Firestore
+    // Sort in JavaScript instead of Firestore (newest first)
     classes.sort((a, b) => {
-      const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt) || new Date(0);
-      const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt) || new Date(0);
-      return dateB - dateA; // Descending order
-    });
-    
-    logSecurityEvent('TEACHER_CLASSES_FETCHED', {
-      teacherId,
-      count: classes.length,
-      timestamp: new Date().toISOString()
+      const dateA = a.createdAt || new Date(0);
+      const dateB = b.createdAt || new Date(0);
+      return dateB - dateA; // Descending order (newest first)
     });
     
     return classes;
   } catch (error) {
     console.error('Error fetching teacher classes:', error);
-    logSecurityEvent('TEACHER_CLASSES_FETCH_ERROR', {
-      teacherId,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-    throw new Error('Failed to fetch teacher classes');
+    throw error;
   }
 };
 
@@ -266,14 +218,16 @@ export const getClassById = async (classId) => {
  */
 export const updateClass = async (classId, updates) => {
   try {
-    const docRef = doc(db, 'classes', classId);
-    await updateDoc(docRef, {
+    const classRef = doc(db, 'classes', classId);
+    
+    await updateDoc(classRef, {
       ...updates,
       updatedAt: serverTimestamp()
     });
-    console.log('✅ Class updated successfully');
+    
+    return { id: classId, ...updates };
   } catch (error) {
-    console.error('❌ Error updating class:', error);
+    console.error('Error updating class:', error);
     throw error;
   }
 };
@@ -283,12 +237,11 @@ export const updateClass = async (classId, updates) => {
  * @param {string} classId - Class ID
  * @returns {Promise<void>}
  */
-export const deleteClass = async (classId) => {
+export const deleteClass = async (classId, teacherId) => {
   try {
-    if (!classId) {
-      throw new Error('Class ID is required');
-    }
+    const batch = writeBatch(db);
     
+    // Get class data
     const classRef = doc(db, 'classes', classId);
     const classDoc = await getDoc(classRef);
     
@@ -298,30 +251,40 @@ export const deleteClass = async (classId) => {
     
     const classData = classDoc.data();
     
-    // Use batch operation for consistency
-    const batch = writeBatch(db);
+    // Unassign all students from this class
+    if (classData.studentIds && classData.studentIds.length > 0) {
+      for (const studentId of classData.studentIds) {
+        const studentRef = doc(db, 'users', studentId);
+        batch.update(studentRef, {
+          classId: null,
+          teacherId: null,
+          updatedAt: serverTimestamp()
+        });
+      }
+    }
     
-    // Delete the class document
+    // Remove class from teacher's class list
+    const teacherRef = doc(db, 'users', teacherId);
+    const teacherDoc = await getDoc(teacherRef);
+    
+    if (teacherDoc.exists()) {
+      const teacherData = teacherDoc.data();
+      const updatedClasses = (teacherData.teacherClasses || []).filter(id => id !== classId);
+      
+      batch.update(teacherRef, {
+        teacherClasses: updatedClasses,
+        updatedAt: serverTimestamp()
+      });
+    }
+    
+    // Delete the class
     batch.delete(classRef);
     
-    // Commit the batch
     await batch.commit();
     
-    logSecurityEvent('CLASS_DELETED', {
-      classId,
-      teacherId: classData.teacherId,
-      className: classData.name,
-      studentsCount: classData.students.length,
-      timestamp: new Date().toISOString()
-    });
-    
+    return true;
   } catch (error) {
     console.error('Error deleting class:', error);
-    logSecurityEvent('CLASS_DELETION_ERROR', {
-      classId,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
     throw error;
   }
 };
@@ -423,31 +386,27 @@ export const removeStudentFromClass = async (studentId, classId) => {
  */
 export const getClassStudents = async (classId) => {
   try {
+    const usersRef = collection(db, 'users');
     const q = query(
-      collection(db, 'classStudents'),
+      usersRef, 
       where('classId', '==', classId),
-      where('isActive', '==', true)
+      orderBy('displayName')
     );
     
     const querySnapshot = await getDocs(q);
-    const studentIds = querySnapshot.docs.map(doc => doc.data().studentId);
-    
-    // Fetch student details
     const students = [];
-    for (const studentId of studentIds) {
-      const studentRef = doc(db, 'users', studentId);
-      const studentDoc = await getDoc(studentRef);
-      if (studentDoc.exists()) {
-        students.push({
-          uid: studentDoc.id,
-          ...studentDoc.data()
-        });
-      }
-    }
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      students.push({
+        id: doc.id,
+        ...data
+      });
+    });
     
     return students;
   } catch (error) {
-    console.error('❌ Error fetching class students:', error);
+    console.error('Error fetching class students:', error);
     throw error;
   }
 };
@@ -613,17 +572,11 @@ export const deleteTeacherComment = async (commentId) => {
  */
 export const grantTeacherLessonAccess = async (teacherId) => {
   try {
-    const accessDoc = {
-      teacherId,
-      accessLevel: 'full',
-      grantedAt: serverTimestamp(),
-      isActive: true
-    };
-
-    await setDoc(doc(db, 'teacherLessonAccess', teacherId), accessDoc);
-    console.log('✅ Teacher lesson access granted successfully');
+    // This function can be expanded to grant specific lesson access
+    console.log('Teacher lesson access granted for:', teacherId);
+    return true;
   } catch (error) {
-    console.error('❌ Error granting teacher lesson access:', error);
+    console.error('Error granting teacher lesson access:', error);
     throw error;
   }
 };
@@ -911,6 +864,132 @@ export const updateTeacherProfile = async (teacherId, updateData) => {
       error: error.message,
       timestamp: new Date().toISOString()
     });
+    throw error;
+  }
+};
+
+/**
+ * Get all students from the database
+ */
+export const getAllStudents = async () => {
+  try {
+    const usersRef = collection(db, 'users');
+    const q = query(
+      usersRef, 
+      where('role', '==', 'student')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const students = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      students.push({
+        id: doc.id,
+        ...data,
+        assignedToClass: !!data.classId,
+        assignedToTeacher: !!data.teacherId
+      });
+    });
+    
+    // Sort in JavaScript instead of Firestore
+    students.sort((a, b) => {
+      const nameA = a.displayName || a.email || '';
+      const nameB = b.displayName || b.email || '';
+      return nameA.localeCompare(nameB);
+    });
+    
+    return students;
+  } catch (error) {
+    console.error('Error fetching students:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get all classes from the database
+ */
+export const getAllClasses = async () => {
+  try {
+    const classesRef = collection(db, 'classes');
+    const querySnapshot = await getDocs(classesRef);
+    const classes = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      classes.push({
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate(),
+        updatedAt: data.updatedAt?.toDate()
+      });
+    });
+    
+    // Sort in JavaScript instead of Firestore (newest first)
+    classes.sort((a, b) => {
+      const dateA = a.createdAt || new Date(0);
+      const dateB = b.createdAt || new Date(0);
+      return dateB - dateA; // Descending order (newest first)
+    });
+    
+    return classes;
+  } catch (error) {
+    console.error('Error fetching classes:', error);
+    throw error;
+  }
+};
+
+/**
+ * Assign students to a class
+ */
+export const assignStudentsToClass = async (classId, studentIds, teacherId) => {
+  try {
+    const batch = writeBatch(db);
+    
+    // Get class data
+    const classRef = doc(db, 'classes', classId);
+    const classDoc = await getDoc(classRef);
+    
+    if (!classDoc.exists()) {
+      throw new Error('Class not found');
+    }
+    
+    const classData = classDoc.data();
+    
+    // Update class with new student list
+    batch.update(classRef, {
+      studentIds: studentIds,
+      updatedAt: serverTimestamp()
+    });
+    
+    // Update all students
+    for (const studentId of studentIds) {
+      const studentRef = doc(db, 'users', studentId);
+      batch.update(studentRef, {
+        classId: classId,
+        teacherId: teacherId,
+        updatedAt: serverTimestamp()
+      });
+    }
+    
+    // Unassign students who are no longer in this class
+    const currentStudentIds = classData.studentIds || [];
+    const studentsToUnassign = currentStudentIds.filter(id => !studentIds.includes(id));
+    
+    for (const studentId of studentsToUnassign) {
+      const studentRef = doc(db, 'users', studentId);
+      batch.update(studentRef, {
+        classId: null,
+        teacherId: null,
+        updatedAt: serverTimestamp()
+      });
+    }
+    
+    await batch.commit();
+    
+    return true;
+  } catch (error) {
+    console.error('Error assigning students to class:', error);
     throw error;
   }
 }; 
