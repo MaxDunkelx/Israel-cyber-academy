@@ -15,16 +15,22 @@
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
+    "brace": "^0.11.1",
     "dotenv": "^16.5.0",
     "firebase": "^11.9.1",
     "firebase-admin": "^13.4.0",
-    "framer-motion": "^11.10.16",
+    "framer-motion": "^11.18.2",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
+    "react-ace": "^14.0.1",
+    "react-beautiful-dnd": "^13.1.1",
+    "react-color": "^2.19.3",
     "react-confetti": "^6.1.0",
     "react-dom": "^18.3.1",
+    "react-dropzone": "^14.3.8",
     "react-hot-toast": "^2.5.2",
-    "react-router-dom": "^6.28.0"
+    "react-router-dom": "^6.28.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",

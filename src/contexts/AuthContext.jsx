@@ -26,12 +26,15 @@ import {
   onAuthStateChanged,
   updateProfile 
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db, diagnoseFirestoreConnection } from '../firebase/firebase-config';
 import { grantTeacherLessonAccess } from '../firebase/teacher-service.jsx';
 
 // Create React context for authentication
 const AuthContext = createContext();
+
+// Add system manager email constant at the top
+const SYSTEM_MANAGER_EMAIL = 'maxibunnyshow@gmail.com';
 
 /**
  * Custom hook to access authentication context
@@ -79,14 +82,23 @@ export const AuthProvider = ({ children }) => {
    */
   const signup = async (email, password, displayName, role = 'student', credentials = {}) => {
     try {
+      // Check if this is the system manager
+      if (email === SYSTEM_MANAGER_EMAIL) {
+        role = 'system_manager';
+      }
+      
       // Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       
       // Set default display name based on sex if not provided
       let finalDisplayName = displayName;
       if (!finalDisplayName || finalDisplayName === 'משתמש חדש') {
-        const sex = credentials.sex || 'male';
-        finalDisplayName = sex === 'female' ? 'לוחמת סייבר' : 'לוחם סייבר';
+        if (role === 'system_manager') {
+          finalDisplayName = 'מנהל המערכת';
+        } else {
+          const sex = credentials.sex || 'male';
+          finalDisplayName = sex === 'female' ? 'לוחמת סייבר' : 'לוחם סייבר';
+        }
       }
       
       // Update Firebase Auth profile with display name
@@ -103,6 +115,25 @@ export const AuthProvider = ({ children }) => {
         lastName: credentials.lastName || '',
         age: credentials.age ? parseInt(credentials.age) : null,
         sex: credentials.sex || 'male',
+        // System manager specific fields
+        ...(role === 'system_manager' && {
+          systemManagerPermissions: [
+            'manage_users', 
+            'manage_content', 
+            'manage_system', 
+            'view_logs',
+            'import_data',
+            'export_data'
+          ],
+          systemManagerSettings: {
+            defaultLanguage: 'he',
+            notificationPreferences: {
+              emailNotifications: true,
+              systemAlerts: true,
+              userActivityReports: true
+            }
+          }
+        }),
         // Student-specific fields (only for students)
         ...(role === 'student' && {
           progress: {
@@ -188,6 +219,39 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      // Check if this is the system manager and update role if needed
+      if (email === SYSTEM_MANAGER_EMAIL) {
+        const userRef = doc(db, 'users', userCredential.user.uid);
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          if (userData.role !== 'system_manager') {
+            // Update role to system manager
+            await updateDoc(userRef, {
+              role: 'system_manager',
+              systemManagerPermissions: [
+                'manage_users', 
+                'manage_content', 
+                'manage_system', 
+                'view_logs',
+                'import_data',
+                'export_data'
+              ],
+              systemManagerSettings: {
+                defaultLanguage: 'he',
+                notificationPreferences: {
+                  emailNotifications: true,
+                  systemAlerts: true,
+                  userActivityReports: true
+                }
+              },
+              updatedAt: new Date()
+            });
+          }
+        }
+      }
       
       // Update last login timestamp in Firestore
       if (userCredential.user) {
@@ -888,12 +952,12 @@ export const AuthProvider = ({ children }) => {
   const memoizedSignup = useCallback(signup, []);
   const memoizedLogin = useCallback(login, []);
   const memoizedLogout = useCallback(logout, []);
-  const memoizedUpdateUserProgress = useCallback(updateUserProgress, [currentUser]);
-  const memoizedTrackSlideEngagement = useCallback(trackSlideEngagement, [currentUser]);
-  const memoizedSetLastLessonSlide = useCallback(setLastLessonSlide, [currentUser]);
+  const memoizedUpdateUserProgress = useCallback(updateUserProgress, []);
+  const memoizedTrackSlideEngagement = useCallback(trackSlideEngagement, []);
+  const memoizedSetLastLessonSlide = useCallback(setLastLessonSlide, []);
   const memoizedGetLastLessonSlide = useCallback(getLastLessonSlide, [userProfile]);
-  const memoizedUpdateDisplayName = useCallback(updateDisplayName, [currentUser]);
-  const memoizedRemoveTemporaryProgress = useCallback(removeTemporaryProgress, [currentUser]);
+  const memoizedUpdateDisplayName = useCallback(updateDisplayName, []);
+  const memoizedRemoveTemporaryProgress = useCallback(removeTemporaryProgress, []);
 
   // Context value containing all authentication state and methods - MEMOIZED to prevent infinite re-renders
   const value = useMemo(() => ({

@@ -47,6 +47,16 @@ import StudentMonitor from './components/teacher/StudentMonitor';
 import LessonController from './components/teacher/LessonController';
 import SlidePreviewManager from './components/teacher/SlidePreviewManager';
 import StudentSession from './components/student/StudentSession';
+
+// System Manager Components
+import SystemManagerDashboard from './components/system-manager/SystemManagerDashboard';
+import SystemManagerNavigation from './components/system-manager/SystemManagerNavigation';
+import UserManagement from './components/system-manager/UserManagement';
+import ContentManagement from './components/system-manager/ContentManagement';
+import ExcelImport from './components/system-manager/ExcelImport';
+import SystemSettings from './components/system-manager/SystemSettings';
+import SystemLogs from './components/system-manager/SystemLogs';
+
 // import './App.css';
 
 /**
@@ -86,7 +96,7 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
  * Teacher Route Component
  * 
  * Wraps routes that require teacher role authentication.
- * Redirects to login if not authenticated or to student dashboard if wrong role.
+ * Redirects to login if not authenticated or to appropriate dashboard if wrong role.
  * 
  * @param {Object} props - Component props
  * @param {React.ReactNode} props.children - Child components to render
@@ -108,7 +118,12 @@ const TeacherRoute = ({ children }) => {
   }
 
   if (role !== 'teacher') {
-    return <Navigate to="/student/roadmap" replace />;
+    // Redirect to appropriate dashboard based on role
+    if (role === 'system_manager') {
+      return <Navigate to="/system-manager/dashboard" replace />;
+    } else {
+      return <Navigate to="/student/roadmap" replace />;
+    }
   }
 
   return <>{children}</>;
@@ -118,7 +133,7 @@ const TeacherRoute = ({ children }) => {
  * Student Route Component
  * 
  * Wraps routes that require student role authentication.
- * Redirects to login if not authenticated or to teacher dashboard if wrong role.
+ * Redirects to login if not authenticated or to appropriate dashboard if wrong role.
  * 
  * @param {Object} props - Component props
  * @param {React.ReactNode} props.children - Child components to render
@@ -140,7 +155,51 @@ const StudentRoute = ({ children }) => {
   }
 
   if (role !== 'student') {
-    return <Navigate to="/teacher/dashboard" replace />;
+    // Redirect to appropriate dashboard based on role
+    if (role === 'system_manager') {
+      return <Navigate to="/system-manager/dashboard" replace />;
+    } else if (role === 'teacher') {
+      return <Navigate to="/teacher/dashboard" replace />;
+    } else {
+      return <Navigate to="/student/roadmap" replace />;
+    }
+  }
+
+  return <>{children}</>;
+};
+
+/**
+ * System Manager Route Component
+ * 
+ * Wraps routes that require system manager role authentication.
+ * Redirects to login if not authenticated or to appropriate dashboard if wrong role.
+ * 
+ * @param {Object} props - Component props
+ * @param {React.ReactNode} props.children - Child components to render
+ * @returns {JSX.Element} System manager route component
+ */
+const SystemManagerRoute = ({ children }) => {
+  const { currentUser, loading, role } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (role !== 'system_manager') {
+    // Redirect to appropriate dashboard based on role
+    if (role === 'teacher') {
+      return <Navigate to="/teacher/dashboard" replace />;
+    } else {
+      return <Navigate to="/student/roadmap" replace />;
+    }
   }
 
   return <>{children}</>;
@@ -157,26 +216,12 @@ const StudentRoute = ({ children }) => {
 const AppContent = () => {
   const { currentUser, role } = useAuth();
 
-  /**
-   * Determine main route redirect based on user authentication and role
-   * @returns {JSX.Element} Redirect component
-   */
-  const getMainRouteRedirect = useMemo(() => {
-    if (!currentUser) {
-      return <Navigate to="/login" replace />;
-    }
-    
-    if (role === 'teacher') {
-      return <Navigate to="/teacher/dashboard" replace />;
-    }
-    
-    return <Navigate to="/student/roadmap" replace />;
-  }, [currentUser, role]);
-
   // Memoize login route element to prevent infinite re-renders
   const loginRouteElement = useMemo(() => {
     if (currentUser) {
-      if (role === 'teacher') {
+      if (role === 'system_manager') {
+        return <Navigate to="/system-manager/dashboard" replace />;
+      } else if (role === 'teacher') {
         return <Navigate to="/teacher/dashboard" replace />;
       } else {
         return <Navigate to="/student/roadmap" replace />;
@@ -184,6 +229,23 @@ const AppContent = () => {
     } else {
       return <EnhancedLogin />;
     }
+  }, [currentUser, role]);
+
+  // Memoize main route redirect to prevent infinite re-renders
+  const mainRouteRedirect = useMemo(() => {
+    if (!currentUser) {
+      return <Navigate to="/login" replace />;
+    }
+    
+    if (role === 'system_manager') {
+      return <Navigate to="/system-manager/dashboard" replace />;
+    }
+    
+    if (role === 'teacher') {
+      return <Navigate to="/teacher/dashboard" replace />;
+    }
+    
+    return <Navigate to="/student/roadmap" replace />;
   }, [currentUser, role]);
 
   return (
@@ -195,13 +257,14 @@ const AppContent = () => {
         {/* Navigation - only show when authenticated */}
         {currentUser && role === 'student' && <Navigation />}
         {currentUser && role === 'teacher' && <TeacherNavigation />}
+        {currentUser && role === 'system_manager' && <SystemManagerNavigation />}
         
         {/* Main Routes */}
         <Routes>
           {/* Public Routes */}
           <Route 
             path="/" 
-            element={getMainRouteRedirect}
+            element={mainRouteRedirect}
           />
           
           <Route
@@ -352,6 +415,70 @@ const AppContent = () => {
               <TeacherRoute>
                 <SlidePreviewManager />
               </TeacherRoute>
+            }
+          />
+          
+          {/* System Manager Routes */}
+          <Route
+            path="/system-manager"
+            element={
+              <SystemManagerRoute>
+                <Navigate to="/system-manager/dashboard" replace />
+              </SystemManagerRoute>
+            }
+          />
+          
+          <Route
+            path="/system-manager/dashboard"
+            element={
+              <SystemManagerRoute>
+                <SystemManagerDashboard />
+              </SystemManagerRoute>
+            }
+          />
+          
+          <Route
+            path="/system-manager/users"
+            element={
+              <SystemManagerRoute>
+                <UserManagement />
+              </SystemManagerRoute>
+            }
+          />
+          
+          <Route
+            path="/system-manager/content"
+            element={
+              <SystemManagerRoute>
+                <ContentManagement />
+              </SystemManagerRoute>
+            }
+          />
+          
+          <Route
+            path="/system-manager/imports"
+            element={
+              <SystemManagerRoute>
+                <ExcelImport />
+              </SystemManagerRoute>
+            }
+          />
+          
+          <Route
+            path="/system-manager/settings"
+            element={
+              <SystemManagerRoute>
+                <SystemSettings />
+              </SystemManagerRoute>
+            }
+          />
+          
+          <Route
+            path="/system-manager/logs"
+            element={
+              <SystemManagerRoute>
+                <SystemLogs />
+              </SystemManagerRoute>
             }
           />
           

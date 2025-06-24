@@ -307,11 +307,11 @@ export const endSession = async (sessionId) => {
 export const getTeacherActiveSessions = async (teacherId) => {
   try {
     const sessionsRef = collection(db, 'sessions');
+    // Remove orderBy to avoid index requirement - we'll sort in memory
     const q = query(
       sessionsRef,
       where('teacherId', '==', teacherId),
-      where('status', '==', 'active'),
-      orderBy('startTime', 'desc')
+      where('status', '==', 'active')
     );
     
     const querySnapshot = await getDocs(q);
@@ -322,6 +322,13 @@ export const getTeacherActiveSessions = async (teacherId) => {
         id: doc.id,
         ...doc.data()
       });
+    });
+    
+    // Sort by startTime in memory
+    sessions.sort((a, b) => {
+      const timeA = a.startTime?.toDate?.() || a.startTime || new Date(0);
+      const timeB = b.startTime?.toDate?.() || b.startTime || new Date(0);
+      return timeB - timeA;
     });
     
     return sessions;
@@ -339,10 +346,10 @@ export const getTeacherActiveSessions = async (teacherId) => {
 export const getStudentAvailableSessions = async (studentId) => {
   try {
     const sessionsRef = collection(db, 'sessions');
+    // Remove orderBy to avoid index requirement - we'll sort in memory
     const q = query(
       sessionsRef,
-      where('status', '==', 'active'),
-      orderBy('startTime', 'desc')
+      where('status', '==', 'active')
     );
     
     const querySnapshot = await getDocs(q);
@@ -357,6 +364,13 @@ export const getStudentAvailableSessions = async (studentId) => {
           ...sessionData
         });
       }
+    });
+    
+    // Sort by startTime in memory
+    sessions.sort((a, b) => {
+      const timeA = a.startTime?.toDate?.() || a.startTime || new Date(0);
+      const timeB = b.startTime?.toDate?.() || b.startTime || new Date(0);
+      return timeB - timeA;
     });
     
     return sessions;
@@ -431,24 +445,34 @@ export const addTeacherNote = async (sessionId, slideIndex, note) => {
 export const getCurrentActiveSessionForStudent = async (studentId) => {
   try {
     const sessionsRef = collection(db, 'sessions');
+    // Remove orderBy to avoid index requirement - we'll sort in memory
     const q = query(
       sessionsRef,
-      where('status', '==', 'active'),
-      orderBy('startTime', 'desc'),
-      limit(1)
+      where('status', '==', 'active')
     );
     
     const querySnapshot = await getDocs(q);
+    const sessions = [];
     
-    for (const doc of querySnapshot.docs) {
+    // Collect all active sessions first
+    querySnapshot.forEach((doc) => {
       const sessionData = doc.data();
-      // Check if student is enrolled in this session
       if (sessionData.studentIds && sessionData.studentIds.includes(studentId)) {
-        return {
+        sessions.push({
           id: doc.id,
           ...sessionData
-        };
+        });
       }
+    });
+    
+    // Sort by startTime in memory and take the most recent
+    if (sessions.length > 0) {
+      sessions.sort((a, b) => {
+        const timeA = a.startTime?.toDate?.() || a.startTime || new Date(0);
+        const timeB = b.startTime?.toDate?.() || b.startTime || new Date(0);
+        return timeB - timeA;
+      });
+      return sessions[0];
     }
     
     return null;
@@ -466,25 +490,35 @@ export const getCurrentActiveSessionForStudent = async (studentId) => {
  */
 export const listenToCurrentActiveSession = (studentId, callback) => {
   const sessionsRef = collection(db, 'sessions');
+  // Remove orderBy to avoid index requirement - we'll sort in memory
   const q = query(
     sessionsRef,
-    where('status', '==', 'active'),
-    orderBy('startTime', 'desc')
+    where('status', '==', 'active')
   );
   
   return onSnapshot(q, (querySnapshot) => {
     let currentSession = null;
+    const sessions = [];
     
-    for (const doc of querySnapshot.docs) {
+    // Collect all active sessions first
+    querySnapshot.forEach((doc) => {
       const sessionData = doc.data();
-      // Check if student is enrolled in this session
       if (sessionData.studentIds && sessionData.studentIds.includes(studentId)) {
-        currentSession = {
+        sessions.push({
           id: doc.id,
           ...sessionData
-        };
-        break;
+        });
       }
+    });
+    
+    // Sort by startTime in memory and take the most recent
+    if (sessions.length > 0) {
+      sessions.sort((a, b) => {
+        const timeA = a.startTime?.toDate?.() || a.startTime || new Date(0);
+        const timeB = b.startTime?.toDate?.() || b.startTime || new Date(0);
+        return timeB - timeA;
+      });
+      currentSession = sessions[0];
     }
     
     callback(currentSession);

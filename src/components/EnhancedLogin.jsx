@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, GraduationCap, Zap, Target, Globe, Users, Award, Code, Lock, Star, TrendingUp, Clock, Brain, Rocket, ShieldCheck, Database, Network, Bug, UserCheck, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, GraduationCap, Zap, Target, Globe, Users, Award, Code, Lock, Star, TrendingUp, Clock, Brain, Rocket, ShieldCheck, Database, Network, Bug, UserCheck, ArrowRight, Shield } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { validateForm } from '../utils/validation';
 import toast from 'react-hot-toast';
@@ -669,7 +669,7 @@ const EnhancedLogin = () => {
           {/* Role Selection Cards */}
           <motion.div 
             variants={containerVariants}
-            className="grid grid-cols-1 lg:grid-cols-2 gap-12 w-full max-w-6xl mx-auto mb-20"
+            className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full max-w-7xl mx-auto mb-20"
           >
             <div className="flex justify-center">
               <RoleCard
@@ -693,7 +693,34 @@ const EnhancedLogin = () => {
                 isSelected={selectedRole === 'teacher'}
               />
             </div>
+            <div className="flex justify-center">
+              <RoleCard
+                role="system_manager"
+                icon={Shield}
+                title="מנהל מערכת"
+                description="גישה מלאה לניהול המערכת, משתמשים ותוכן. רק למנהלי המערכת המוסמכים."
+                buttonText="התחבר כמנהל"
+                onClick={() => handleRoleSelect('system_manager')}
+                isSelected={selectedRole === 'system_manager'}
+              />
+            </div>
           </motion.div>
+
+          {/* System Manager Login Note */}
+          {selectedRole === 'system_manager' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center mb-8"
+            >
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 max-w-md mx-auto">
+                <p className="text-yellow-400 text-sm">
+                  <Shield className="w-4 h-4 inline mr-2" />
+                  גישה למנהלי מערכת בלבד. השתמש באימייל המוסמך שלך.
+                </p>
+              </div>
+            </motion.div>
+          )}
 
           {/* Enhanced Login Form */}
           <AnimatePresence>
