@@ -18,7 +18,7 @@
  * 4. Real-time sync → Local state + Firestore
  */
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
@@ -884,22 +884,46 @@ export const AuthProvider = ({ children }) => {
     return unsubscribe;
   }, []);
 
-  // Context value containing all authentication state and methods
-  const value = {
+  // Memoize functions to prevent infinite re-renders
+  const memoizedSignup = useCallback(signup, []);
+  const memoizedLogin = useCallback(login, []);
+  const memoizedLogout = useCallback(logout, []);
+  const memoizedUpdateUserProgress = useCallback(updateUserProgress, [currentUser]);
+  const memoizedTrackSlideEngagement = useCallback(trackSlideEngagement, [currentUser]);
+  const memoizedSetLastLessonSlide = useCallback(setLastLessonSlide, [currentUser]);
+  const memoizedGetLastLessonSlide = useCallback(getLastLessonSlide, [userProfile]);
+  const memoizedUpdateDisplayName = useCallback(updateDisplayName, [currentUser]);
+  const memoizedRemoveTemporaryProgress = useCallback(removeTemporaryProgress, [currentUser]);
+
+  // Context value containing all authentication state and methods - MEMOIZED to prevent infinite re-renders
+  const value = useMemo(() => ({
     currentUser,
     userProfile,
     role: userProfile?.role || null,
-    signup,
-    login,
-    logout,
-    updateUserProgress,
-    setLastLessonSlide,
+    signup: memoizedSignup,
+    login: memoizedLogin,
+    logout: memoizedLogout,
+    updateUserProgress: memoizedUpdateUserProgress,
+    setLastLessonSlide: memoizedSetLastLessonSlide,
     loading,
-    removeTemporaryProgress,
-    trackSlideEngagement,
-    updateDisplayName,
-    getLastLessonSlide
-  };
+    removeTemporaryProgress: memoizedRemoveTemporaryProgress,
+    trackSlideEngagement: memoizedTrackSlideEngagement,
+    updateDisplayName: memoizedUpdateDisplayName,
+    getLastLessonSlide: memoizedGetLastLessonSlide
+  }), [
+    currentUser,
+    userProfile,
+    loading,
+    memoizedSignup,
+    memoizedLogin,
+    memoizedLogout,
+    memoizedUpdateUserProgress,
+    memoizedSetLastLessonSlide,
+    memoizedRemoveTemporaryProgress,
+    memoizedTrackSlideEngagement,
+    memoizedUpdateDisplayName,
+    memoizedGetLastLessonSlide
+  ]);
 
   return (
     <AuthContext.Provider value={value}>

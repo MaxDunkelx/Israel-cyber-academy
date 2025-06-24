@@ -174,6 +174,19 @@ const AppContent = () => {
     return <Navigate to="/student/roadmap" replace />;
   }, [currentUser, role]);
 
+  // Memoize login route element to prevent infinite re-renders
+  const loginRouteElement = useMemo(() => {
+    if (currentUser) {
+      if (role === 'teacher') {
+        return <Navigate to="/teacher/dashboard" replace />;
+      } else {
+        return <Navigate to="/student/roadmap" replace />;
+      }
+    } else {
+      return <EnhancedLogin />;
+    }
+  }, [currentUser, role]);
+
   return (
     <Router basename="/Israel-cyber-academy">
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
@@ -194,19 +207,7 @@ const AppContent = () => {
           
           <Route
             path="/login"
-            element={
-              useMemo(() => {
-                if (currentUser) {
-                  if (role === 'teacher') {
-                    return <Navigate to="/teacher/dashboard" replace />;
-                  } else {
-                    return <Navigate to="/student/roadmap" replace />;
-                  }
-                } else {
-                  return <EnhancedLogin />;
-                }
-              }, [currentUser, role])
-            }
+            element={loginRouteElement}
           />
           
           {/* Student Routes */}
