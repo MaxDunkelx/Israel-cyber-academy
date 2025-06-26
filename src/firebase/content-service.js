@@ -37,26 +37,65 @@ import { lessons as localLessons } from '../data/lessons/index.js';
  */
 export const getAllLessons = async () => {
   try {
-    const lessonsQuery = query(
-      collection(db, 'lessons'),
-      orderBy('id', 'asc')
-    );
+    console.log('🔍 Loading lessons from Firestore...');
     
-    const snapshot = await getDocs(lessonsQuery);
-    const lessons = snapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt?.toDate?.() || new Date(),
-        updatedAt: data.updatedAt?.toDate?.() || new Date()
-      };
-    });
-    
-    console.log(`Loaded ${lessons.length} lessons from database`);
-    return lessons;
+    // First try with ordering by the numeric id field
+    try {
+      const lessonsQuery = query(
+        collection(db, 'lessons'),
+        orderBy('id', 'asc')
+      );
+      
+      const snapshot = await getDocs(lessonsQuery);
+      const lessons = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate?.() || new Date(),
+          updatedAt: data.updatedAt?.toDate?.() || new Date()
+        };
+      });
+      
+      console.log(`✅ Loaded ${lessons.length} lessons from database with ordering`);
+      return lessons;
+    } catch (orderError) {
+      console.log('⚠️ Ordering failed, trying without order...');
+      
+      // If ordering fails, try without it
+      const lessonsQuery = query(collection(db, 'lessons'));
+      
+      const snapshot = await getDocs(lessonsQuery);
+      const lessons = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate?.() || new Date(),
+          updatedAt: data.updatedAt?.toDate?.() || new Date()
+        };
+      });
+      
+      // Sort in memory by the numeric id field
+      lessons.sort((a, b) => (a.id || 0) - (b.id || 0));
+      
+      console.log(`✅ Loaded ${lessons.length} lessons from database without ordering`);
+      
+      if (lessons.length === 0) {
+        console.log('⚠️ No lessons found in database. Run the sync script to populate from local files.');
+      }
+      
+      return lessons;
+    }
   } catch (error) {
-    console.error('Error getting lessons:', error);
+    console.error('❌ Error getting lessons:', error);
+    
+    if (error.code === 'permission-denied') {
+      console.error('🔒 Permission denied. Check your Firestore security rules.');
+    } else if (error.code === 'unavailable') {
+      console.error('🌐 Network error. Check your internet connection.');
+    }
+    
     throw error;
   }
 };
@@ -290,7 +329,7 @@ export const getSlideById = async (slideId) => {
 };
 
 /**
- * Create a new slide
+ * Enhanced create slide function with verification
  */
 export const createSlide = async (slideData) => {
   try {
@@ -303,20 +342,38 @@ export const createSlide = async (slideData) => {
       id: slideId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+      lastEdited: serverTimestamp(),
       version: 1
     };
     
     await setDoc(slideRef, newSlide);
-    console.log('✅ Slide created:', slideId);
-    return slideId;
+    console.log('✅ Slide created successfully:', slideId);
+    
+    // Verify the creation
+    const verifyDoc = await getDoc(slideRef);
+    if (verifyDoc.exists()) {
+      console.log('✅ Slide creation verified in database');
+      return slideId;
+    } else {
+      throw new Error('Slide was not created properly');
+    }
+    
   } catch (error) {
     console.error('❌ Error creating slide:', error);
-    throw error;
+    
+    // Provide specific error messages
+    if (error.code === 'permission-denied') {
+      throw new Error('Permission denied. Please check your Firebase security rules.');
+    } else if (error.code === 'unavailable') {
+      throw new Error('Firebase is temporarily unavailable. Please try again.');
+    } else {
+      throw new Error(`Failed to create slide: ${error.message}`);
+    }
   }
 };
 
 /**
- * Update an existing slide or create if it doesn't exist
+ * Enhanced update slide function with verification
  */
 export const updateSlide = async (slideId, slideData) => {
   try {
@@ -330,11 +387,24 @@ export const updateSlide = async (slideId, slideData) => {
       const updateData = {
         ...slideData,
         updatedAt: serverTimestamp(),
+        lastEdited: serverTimestamp(),
         version: (slideData.version || 0) + 1
       };
       
       await updateDoc(slideRef, updateData);
-      console.log('✅ Slide updated:', slideId);
+      console.log('✅ Slide updated successfully:', slideId);
+      
+      // Verify the update was saved
+      const verifyDoc = await getDoc(slideRef);
+      if (verifyDoc.exists()) {
+        const savedData = verifyDoc.data();
+        console.log('✅ Slide update verified in database');
+        console.log('📊 Updated fields:', Object.keys(updateData));
+        return slideId;
+      } else {
+        throw new Error('Slide was not saved properly');
+      }
+      
     } else {
       // Create new slide if it doesn't exist
       const newSlide = {
@@ -342,17 +412,26 @@ export const updateSlide = async (slideId, slideData) => {
         id: slideId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+        lastEdited: serverTimestamp(),
         version: 1
       };
       
       await setDoc(slideRef, newSlide);
       console.log('✅ Slide created (was missing):', slideId);
+      return slideId;
     }
     
-    return slideId;
   } catch (error) {
     console.error('❌ Error updating slide:', error);
-    throw error;
+    
+    // Provide specific error messages
+    if (error.code === 'permission-denied') {
+      throw new Error('Permission denied. Please check your Firebase security rules.');
+    } else if (error.code === 'unavailable') {
+      throw new Error('Firebase is temporarily unavailable. Please try again.');
+    } else {
+      throw new Error(`Failed to save slide: ${error.message}`);
+    }
   }
 };
 
@@ -806,19 +885,26 @@ export const getContentStatus = async () => {
 };
 
 /**
- * Show index creation notification
+ * Enhanced index notification with direct link
  */
 const showIndexNotification = () => {
-  const indexUrl = 'https://console.firebase.google.com/v1/r/project/israel-cyber-academy/firestore/indexes?create_composite=ClNwcm9qZWN0cy9pc3JhZWwtY3liZXItYWNhZGVteS9kYXRhYmFzZXMvKGRlZmF1bHQpL2NvbGxlY3Rpb25Hcm91cHMvc2xpZGVzL2luZGV4ZXMvXxABGgwKCGxlc3NvbklkEAEaCQoFb3JkZXIQARoMCghfX25hbWVfXxAB';
+  const message = 'Firebase index needed for optimal performance. Click to create it now!';
+  const directLink = 'https://console.firebase.google.com/v1/r/project/israel-cyber-academy/firestore/indexes?create_composite=ClNwcm9qZWN0cy9pc3JhZWwtY3liZXItYWNhZGVteS9kYXRhYmFzZXMvKGRlZmF1bHQpL2NvbGxlY3Rpb25Hcm91cHMvc2xpZGVzL2luZGV4ZXMvXxABGgwKCGxlc3NvbklkEAEaCQoFb3JkZXIQARoMCghfX25hbWVfXxAB';
   
-  toast.error(
-    `Firebase Index Required. Click here to create: ${indexUrl}`,
-    {
+  console.log('⚠️ Firebase Index Required');
+  console.log('📝 Message:', message);
+  console.log('🔗 Direct Link:', directLink);
+  
+  // Show toast notification if available
+  if (typeof toast !== 'undefined') {
+    toast.error(message, {
       duration: 10000,
-      position: 'top-right',
-      onClick: () => window.open(indexUrl, '_blank')
-    }
-  );
+      action: {
+        label: 'Create Index',
+        onClick: () => window.open(directLink, '_blank')
+      }
+    });
+  }
 };
 
 export default {

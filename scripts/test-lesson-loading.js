@@ -3,61 +3,77 @@
  * This script tests loading actual lesson data from the data folder
  */
 
-import { readFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { initializeApp } from 'firebase/app';
+import { getFirestore, collection, getDocs, query, orderBy } from 'firebase/firestore';
 
-const testLessonLoading = async () => {
-  try {
-    console.log('🧪 Testing lesson data loading...');
-    
-    const lessons = [
-      'lesson1', 'lesson2', 'lesson3', 'lesson4', 'lesson5',
-      'lesson6', 'lesson7', 'lesson8', 'lesson9'
-    ];
-    
-    for (const lessonId of lessons) {
-      console.log(`\n📖 Testing lesson: ${lessonId}`);
-      
-      const lessonPath = join(process.cwd(), 'src', 'data', 'lessons', lessonId, 'index.js');
-      
-      if (existsSync(lessonPath)) {
-        console.log(`✅ Lesson file exists: ${lessonPath}`);
-        
-        try {
-          // Try to import the lesson data
-          const lessonModule = await import(`../src/data/lessons/${lessonId}/index.js`);
-          const lessonData = lessonModule.default;
-          
-          console.log(`📊 Lesson title: ${lessonData.title || 'No title'}`);
-          console.log(`📊 Slides count: ${lessonData.slides?.length || 0}`);
-          
-          if (lessonData.slides && lessonData.slides.length > 0) {
-            console.log(`📊 First slide: ${lessonData.slides[0].title || 'No title'}`);
-            console.log(`📊 First slide type: ${lessonData.slides[0].type || 'No type'}`);
-          }
-          
-        } catch (importError) {
-          console.log(`❌ Error importing lesson: ${importError.message}`);
-        }
-      } else {
-        console.log(`❌ Lesson file not found: ${lessonPath}`);
-      }
-    }
-    
-    console.log('\n🎉 Lesson loading test completed!');
-    
-  } catch (error) {
-    console.error('❌ Error testing lesson loading:', error);
-  }
+// Your Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBvOkT3v1EQqMVIupBA-BmOoOqXjKJQJQw",
+  authDomain: "israel-cyber-academy.firebaseapp.com",
+  projectId: "israel-cyber-academy",
+  storageBucket: "israel-cyber-academy.appspot.com",
+  messagingSenderId: "123456789012",
+  appId: "1:123456789012:web:abcdef1234567890"
 };
 
-// Run the test
-testLessonLoading()
-  .then(() => {
-    console.log('✅ Test completed successfully');
-    process.exit(0);
-  })
-  .catch((error) => {
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+async function testLessonLoading() {
+  try {
+    console.log('🔍 Testing lesson loading...');
+    
+    // Test 1: Get all lessons
+    console.log('\n📚 Test 1: Getting all lessons...');
+    const lessonsQuery = query(collection(db, 'lessons'));
+    const lessonsSnapshot = await getDocs(lessonsQuery);
+    
+    console.log(`Found ${lessonsSnapshot.size} lessons in database`);
+    
+    lessonsSnapshot.forEach(doc => {
+      const data = doc.data();
+      console.log(`- Lesson: ${data.title} (ID: ${data.id}, Doc ID: ${doc.id})`);
+    });
+    
+    // Test 2: Try with ordering
+    console.log('\n📚 Test 2: Trying with ordering...');
+    try {
+      const orderedQuery = query(
+        collection(db, 'lessons'),
+        orderBy('id', 'asc')
+      );
+      const orderedSnapshot = await getDocs(orderedQuery);
+      console.log(`✅ Ordered query successful: ${orderedSnapshot.size} lessons`);
+    } catch (orderError) {
+      console.log(`❌ Ordering failed: ${orderError.message}`);
+    }
+    
+    // Test 3: Get slides for first lesson
+    if (lessonsSnapshot.size > 0) {
+      const firstLesson = lessonsSnapshot.docs[0];
+      const lessonData = firstLesson.data();
+      
+      console.log(`\n📚 Test 3: Getting slides for lesson "${lessonData.title}"...`);
+      
+      const slidesQuery = query(collection(db, 'slides'));
+      const slidesSnapshot = await getDocs(slidesQuery);
+      
+      const lessonSlides = slidesSnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(slide => slide.lessonId === lessonData.id.toString());
+      
+      console.log(`Found ${lessonSlides.length} slides for lesson ${lessonData.id}`);
+      lessonSlides.forEach(slide => {
+        console.log(`- Slide: ${slide.title} (Type: ${slide.type}, Order: ${slide.order})`);
+      });
+    }
+    
+    console.log('\n✅ Test completed successfully!');
+    
+  } catch (error) {
     console.error('❌ Test failed:', error);
-    process.exit(1);
-  }); 
+  }
+}
+
+testLessonLoading(); 

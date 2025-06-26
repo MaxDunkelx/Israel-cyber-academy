@@ -52,10 +52,9 @@ import StudentSession from './components/student/StudentSession';
 import SystemManagerDashboard from './components/system-manager/SystemManagerDashboard';
 import SystemManagerNavigation from './components/system-manager/SystemManagerNavigation';
 import UserManagement from './components/system-manager/UserManagement';
-import ContentManagement from './components/system-manager/ContentManagement';
-import ExcelImport from './components/system-manager/ExcelImport';
 import SystemSettings from './components/system-manager/SystemSettings';
 import SystemLogs from './components/system-manager/SystemLogs';
+import ExcelImport from './components/system-manager/ExcelImport';
 
 // import './App.css';
 
@@ -442,15 +441,6 @@ const AppContent = () => {
             element={
               <SystemManagerRoute>
                 <UserManagement />
-              </SystemManagerRoute>
-            }
-          />
-          
-          <Route
-            path="/system-manager/content"
-            element={
-              <SystemManagerRoute>
-                <ContentManagement />
               </SystemManagerRoute>
             }
           />

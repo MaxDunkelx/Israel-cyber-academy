@@ -150,8 +150,8 @@ const createIndexesManually = async () => {
   // For now, we'll provide instructions
   console.log('📋 Manual index creation instructions:');
   console.log('1. Go to Firebase Console: https://console.firebase.google.com/');
-  console.log('2. Select your project: israel-cyber-academy');
-  console.log('3. Go to Firestore Database > Indexes');
+console.log('2. Select your project: israel-cyber-academy');
+console.log('3. Go to Firestore Database > Indexes');
   console.log('4. Click "Create Index"');
   console.log('5. Create the following composite indexes:');
   

@@ -1,22 +1,22 @@
 // Lesson 6: Protocols - index.js
-import { slide1Intro } from './slides/slide1-intro';
-import { slide2Poll } from './slides/slide2-poll';
-import { slide3WhatIsProtocol } from './slides/slide3-what-is-protocol';
-import { slide4ProtocolTypes } from './slides/slide4-protocol-types';
-import { slide5HttpHttps } from './slides/slide5-http-https';
-import { slide6EmailProtocols } from './slides/slide6-email-protocols';
-import { slide7FileProtocols } from './slides/slide7-file-protocols';
-import { slide8ProtocolGame } from './slides/slide8-protocol-game';
-import { slide9SecurityProtocols } from './slides/slide9-security-protocols';
-import { slide10ProtocolLayers } from './slides/slide10-protocol-layers';
-import { slide11Break } from './slides/slide11-break';
-import { slide12RealWorld } from './slides/slide12-real-world';
-import { slide13ProtocolSimulator } from './slides/slide13-protocol-simulator';
-import { slide14Quiz } from './slides/slide14-quiz';
-import { slide15Reflection } from './slides/slide15-reflection';
-import { slide16FinalQuiz } from './slides/slide16-final-quiz';
-import { slide17Reflection } from './slides/slide17-reflection';
-import { slide18Summary } from './slides/slide18-summary';
+import { slide1Intro } from './slides/slide1-intro.js';
+import { slide2Poll } from './slides/slide2-poll.js';
+import { slide3WhatIsProtocol } from './slides/slide3-what-is-protocol.js';
+import { slide4ProtocolTypes } from './slides/slide4-protocol-types.js';
+import { slide5HttpHttps } from './slides/slide5-http-https.js';
+import { slide6EmailProtocols } from './slides/slide6-email-protocols.js';
+import { slide7FileProtocols } from './slides/slide7-file-protocols.js';
+import { slide8ProtocolGame } from './slides/slide8-protocol-game.js';
+import { slide9SecurityProtocols } from './slides/slide9-security-protocols.js';
+import { slide10ProtocolLayers } from './slides/slide10-protocol-layers.js';
+import { slide11Break } from './slides/slide11-break.js';
+import { slide12RealWorld } from './slides/slide12-real-world.js';
+import { slide13ProtocolSimulator } from './slides/slide13-protocol-simulator.js';
+import { slide14Quiz } from './slides/slide14-quiz.js';
+import { slide15Reflection } from './slides/slide15-reflection.js';
+import { slide16FinalQuiz } from './slides/slide16-final-quiz.js';
+import { slide17Reflection } from './slides/slide17-reflection.js';
+import { slide18Summary } from './slides/slide18-summary.js';
 
 export const lesson6 = {
   id: 6,
