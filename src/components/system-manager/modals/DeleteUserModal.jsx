@@ -8,6 +8,10 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Trash2, AlertTriangle, User } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { deleteUser } from 'firebase/auth';
+import { doc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../../../firebase/firebase-config';
+import { logSecurityEvent } from '../../../utils/security';
 import Button from '../../ui/Button';
 
 const DeleteUserModal = ({ user, onClose, onSuccess }) => {
@@ -23,9 +27,25 @@ const DeleteUserModal = ({ user, onClose, onSuccess }) => {
     setLoading(true);
 
     try {
-      // TODO: Implement user deletion
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+      // Ensure we're using the correct document ID
+      const documentId = user.documentId || user.uid;
       
+      // Delete user document from Firestore
+      const userRef = doc(db, 'users', documentId);
+      await deleteDoc(userRef);
+
+      // Note: Firebase Auth user deletion requires re-authentication
+      // For now, we'll only delete the Firestore document
+      // The Auth user will need to be deleted separately by an admin
+      
+      // Log security event
+      logSecurityEvent('USER_DELETED', {
+        userId: documentId,
+        userEmail: user.email,
+        deletedBy: auth.currentUser?.uid,
+        timestamp: new Date().toISOString()
+      });
+
       toast.success('המשתמש נמחק בהצלחה');
       onSuccess();
     } catch (error) {

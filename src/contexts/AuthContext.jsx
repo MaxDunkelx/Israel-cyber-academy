@@ -10,6 +10,7 @@
  * - Progress tracking and lesson completion
  * - Achievement system
  * - Real-time data synchronization
+ * - Demo mode for development
  * 
  * Data Flow:
  * 1. User authentication → Firebase Auth
@@ -35,6 +36,9 @@ const AuthContext = createContext();
 
 // Add system manager email constant at the top
 const SYSTEM_MANAGER_EMAIL = 'maxibunnyshow@gmail.com';
+
+// Demo mode detection
+const isDemoMode = !import.meta.env.VITE_FIREBASE_API_KEY || import.meta.env.VITE_FIREBASE_API_KEY === 'your_api_key_here';
 
 /**
  * Custom hook to access authentication context
@@ -66,6 +70,104 @@ export const AuthProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(null); // Extended user data
   const [loading, setLoading] = useState(true); // Loading state
 
+  // Demo mode state
+  const [demoUser, setDemoUser] = useState(null);
+
+  /**
+   * Demo Mode Authentication Functions
+   */
+  const demoSignup = async (email, password, displayName, role = 'student', credentials = {}) => {
+    console.log('🎭 Demo mode: Creating demo user');
+    const demoUserData = {
+      uid: `demo_${Date.now()}`,
+      email,
+      displayName: displayName || 'משתמש דמו',
+      role,
+      progress: {
+        1: {
+          completed: false,
+          score: 0,
+          completedAt: null,
+          temporary: false,
+          lastSlide: 0,
+          pagesEngaged: [],
+          lastActivity: new Date()
+        }
+      },
+      completedLessons: [],
+      currentLesson: 1,
+      totalTimeSpent: 0,
+      totalPagesEngaged: 0,
+      achievements: [],
+      streak: 0,
+      createdAt: new Date(),
+      lastLogin: new Date(),
+      lastActivityDate: new Date(),
+      updatedAt: new Date()
+    };
+    
+    setDemoUser(demoUserData);
+    setCurrentUser(demoUserData);
+    setUserProfile(demoUserData);
+    return { user: demoUserData };
+  };
+
+  const demoLogin = async (email, password) => {
+    console.log('🎭 Demo mode: Logging in demo user');
+    
+    // Create demo user based on email
+    let role = 'student';
+    let displayName = 'משתמש דמו';
+    
+    if (email === SYSTEM_MANAGER_EMAIL) {
+      role = 'system_manager';
+      displayName = 'מנהל המערכת';
+    } else if (email.includes('teacher')) {
+      role = 'teacher';
+      displayName = 'מורה דמו';
+    }
+    
+    const demoUserData = {
+      uid: `demo_${email}_${Date.now()}`,
+      email,
+      displayName,
+      role,
+      progress: {
+        1: {
+          completed: false,
+          score: 0,
+          completedAt: null,
+          temporary: false,
+          lastSlide: 0,
+          pagesEngaged: [],
+          lastActivity: new Date()
+        }
+      },
+      completedLessons: [],
+      currentLesson: 1,
+      totalTimeSpent: 0,
+      totalPagesEngaged: 0,
+      achievements: [],
+      streak: 0,
+      createdAt: new Date(),
+      lastLogin: new Date(),
+      lastActivityDate: new Date(),
+      updatedAt: new Date()
+    };
+    
+    setDemoUser(demoUserData);
+    setCurrentUser(demoUserData);
+    setUserProfile(demoUserData);
+    return { user: demoUserData };
+  };
+
+  const demoLogout = async () => {
+    console.log('🎭 Demo mode: Logging out demo user');
+    setDemoUser(null);
+    setCurrentUser(null);
+    setUserProfile(null);
+  };
+
   /**
    * User Registration Function
    * 
@@ -81,6 +183,10 @@ export const AuthProvider = ({ children }) => {
    * @throws {Error} If registration fails
    */
   const signup = async (email, password, displayName, role = 'student', credentials = {}) => {
+    if (isDemoMode) {
+      return demoSignup(email, password, displayName, role, credentials);
+    }
+    
     try {
       // Check if this is the system manager
       if (email === SYSTEM_MANAGER_EMAIL) {
@@ -217,6 +323,10 @@ export const AuthProvider = ({ children }) => {
    * @throws {Error} If login fails
    */
   const login = async (email, password) => {
+    if (isDemoMode) {
+      return demoLogin(email, password);
+    }
+    
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
@@ -642,6 +752,10 @@ export const AuthProvider = ({ children }) => {
    * Cleans up temporary progress and signs out from Firebase.
    */
   const logout = async () => {
+    if (isDemoMode) {
+      return demoLogout();
+    }
+    
     try {
       console.log('🔄 Logging out user...');
       
@@ -818,6 +932,12 @@ export const AuthProvider = ({ children }) => {
    */
   useEffect(() => {
     console.log('🔄 Setting up authentication listener...');
+    
+    if (isDemoMode) {
+      console.log('🎭 Demo mode detected - skipping Firebase authentication');
+      setLoading(false);
+      return;
+    }
     
     // Test Firestore connectivity first with enhanced diagnostics
     testFirestoreConnection().then(isConnected => {

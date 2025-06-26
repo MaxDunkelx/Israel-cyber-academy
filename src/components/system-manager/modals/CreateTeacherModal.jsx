@@ -8,6 +8,10 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, UserPlus, Mail, User, Shield } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../../../firebase/firebase-config';
+import { logSecurityEvent } from '../../../utils/security';
 import Button from '../../ui/Button';
 
 const CreateTeacherModal = ({ onClose, onSuccess }) => {
@@ -15,7 +19,8 @@ const CreateTeacherModal = ({ onClose, onSuccess }) => {
     email: '',
     firstName: '',
     lastName: '',
-    displayName: ''
+    displayName: '',
+    password: 'Teacher123!' // Default password for new teachers
   });
   const [loading, setLoading] = useState(false);
 
@@ -24,14 +29,79 @@ const CreateTeacherModal = ({ onClose, onSuccess }) => {
     setLoading(true);
 
     try {
-      // TODO: Implement teacher creation
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+      // Create user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(
+        auth, 
+        formData.email, 
+        formData.password
+      );
+      
+      const user = userCredential.user;
+      
+      // Update display name in Auth
+      const displayName = formData.displayName || `${formData.firstName} ${formData.lastName}`;
+      await updateProfile(user, { displayName });
+      
+      // Create comprehensive teacher profile in Firestore
+      const teacherProfile = {
+        uid: user.uid,
+        email: user.email,
+        displayName: displayName,
+        role: 'teacher',
+        // User credentials
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        // Teacher-specific fields
+        teacherClasses: [], // Array of class IDs managed by this teacher
+        teacherPermissions: ['manage_students', 'view_analytics', 'add_comments'],
+        teacherSettings: {
+          defaultClassId: null,
+          notificationPreferences: {
+            emailNotifications: true,
+            studentProgressAlerts: true,
+            classUpdates: true
+          }
+        },
+        // Progress tracking (for consistency)
+        progress: {},
+        completedLessons: [],
+        currentLesson: 1,
+        totalTimeSpent: 0,
+        totalPagesEngaged: 0,
+        achievements: [],
+        streak: 0,
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
+        lastActivityDate: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+      
+      // Store profile in Firestore
+      await setDoc(doc(db, 'users', user.uid), teacherProfile);
+      
+      // Log security event
+      logSecurityEvent('TEACHER_CREATED', {
+        teacherId: user.uid,
+        teacherEmail: formData.email,
+        createdBy: auth.currentUser?.uid,
+        timestamp: new Date().toISOString()
+      });
       
       toast.success('המורה נוצר בהצלחה');
       onSuccess();
     } catch (error) {
       console.error('Error creating teacher:', error);
-      toast.error('אירעה שגיאה ביצירת המורה');
+      
+      let errorMessage = 'אירעה שגיאה ביצירת המורה';
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'כתובת האימייל כבר קיימת במערכת';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'הסיסמה חייבת להכיל לפחות 6 תווים';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'כתובת האימייל אינה תקינה';
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -467,6 +467,20 @@ const EnhancedLogin = () => {
       <ParticleSystem />
       <FloatingIcons />
       
+      {/* Demo Mode Notification */}
+      {(!import.meta.env.VITE_FIREBASE_API_KEY || import.meta.env.VITE_FIREBASE_API_KEY === 'your_api_key_here') && (
+        <div className="fixed top-4 left-4 right-4 z-50 bg-yellow-500/90 backdrop-blur-sm border border-yellow-400 rounded-lg p-4 text-center">
+          <div className="flex items-center justify-center space-x-2 text-yellow-900 font-semibold">
+            <span>🎭</span>
+            <span>מצב דמו פעיל - התחברות ללא Firebase</span>
+            <span>🎭</span>
+          </div>
+          <p className="text-yellow-800 text-sm mt-1">
+            השתמש בכל אימייל וסיסמה כדי להתחבר ולחקור את המערכת
+          </p>
+        </div>
+      )}
+      
       {/* Large Background Logo */}
       <div className="fixed inset-0 flex items-center justify-center opacity-10 pointer-events-none z-0">
         <motion.img 

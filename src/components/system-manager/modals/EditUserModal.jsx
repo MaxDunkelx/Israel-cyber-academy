@@ -8,6 +8,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, User, Mail, Calendar, Hash } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { db, auth } from '../../../firebase/firebase-config';
+import { logSecurityEvent } from '../../../utils/security';
 import Button from '../../ui/Button';
 
 const EditUserModal = ({ user, onClose, onSuccess }) => {
@@ -39,9 +42,37 @@ const EditUserModal = ({ user, onClose, onSuccess }) => {
     setLoading(true);
 
     try {
-      // TODO: Implement user update
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+      // Prepare update data
+      const updateData = {
+        displayName: formData.displayName,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        role: formData.role,
+        updatedAt: serverTimestamp()
+      };
+
+      // Add age and sex for students
+      if (formData.role === 'student') {
+        updateData.age = formData.age ? parseInt(formData.age) : null;
+        updateData.sex = formData.sex;
+      }
+
+      // Ensure we're using the correct document ID
+      const documentId = user.documentId || user.uid;
       
+      // Update user in Firestore
+      const userRef = doc(db, 'users', documentId);
+      await updateDoc(userRef, updateData);
+
+      // Log security event
+      logSecurityEvent('USER_UPDATED', {
+        userId: documentId,
+        userEmail: user.email,
+        updatedBy: auth.currentUser?.uid,
+        updatedFields: Object.keys(updateData),
+        timestamp: new Date().toISOString()
+      });
+
       toast.success('המשתמש עודכן בהצלחה');
       onSuccess();
     } catch (error) {

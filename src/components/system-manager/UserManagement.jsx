@@ -107,8 +107,11 @@ const UserManagement = () => {
       const fetchedUsers = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
+        const documentId = doc.id; // This is the correct Firestore document ID
+        
         fetchedUsers.push({
-          uid: doc.id,
+          uid: documentId, // Always use the document ID as uid
+          documentId: documentId, // Keep document ID for reference
           ...data,
           // Ensure dates are properly converted
           createdAt: data.createdAt?.toDate?.() || data.createdAt || new Date(),

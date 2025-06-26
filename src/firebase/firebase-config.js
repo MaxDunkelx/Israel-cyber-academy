@@ -25,15 +25,23 @@ import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 
 // Firebase project configuration from environment variables
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'demo-api-key',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'demo-project.firebaseapp.com',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'demo-project',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'demo-project.appspot.com',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '123456789',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || 'demo-app-id'
 };
 
-// Validate that all required environment variables are present
+// Check if we're in development mode with demo config
+const isDemoMode = !import.meta.env.VITE_FIREBASE_API_KEY || import.meta.env.VITE_FIREBASE_API_KEY === 'your_api_key_here';
+
+if (isDemoMode) {
+  console.warn('⚠️ Running in DEMO MODE - Firebase features will be limited');
+  console.warn('💡 To enable full Firebase features, update your .env.local file with real Firebase credentials');
+}
+
+// Validate that all required environment variables are present (only warn in demo mode)
 const requiredEnvVars = [
   'VITE_FIREBASE_API_KEY',
   'VITE_FIREBASE_AUTH_DOMAIN', 
@@ -43,9 +51,9 @@ const requiredEnvVars = [
   'VITE_FIREBASE_APP_ID'
 ];
 
-const missingVars = requiredEnvVars.filter(varName => !import.meta.env[varName]);
+const missingVars = requiredEnvVars.filter(varName => !import.meta.env[varName] || import.meta.env[varName] === 'your_api_key_here');
 
-if (missingVars.length > 0) {
+if (missingVars.length > 0 && !isDemoMode) {
   console.error('❌ Missing required environment variables:', missingVars);
   console.error('💡 Please check your .env file and ensure all Firebase configuration variables are set.');
   throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
@@ -55,7 +63,8 @@ if (missingVars.length > 0) {
 console.log('🔥 Firebase Config:', {
   projectId: firebaseConfig.projectId,
   authDomain: firebaseConfig.authDomain,
-  apiKey: firebaseConfig.apiKey ? '***' + firebaseConfig.apiKey.slice(-4) : 'undefined'
+  apiKey: firebaseConfig.apiKey ? '***' + firebaseConfig.apiKey.slice(-4) : 'undefined',
+  mode: isDemoMode ? 'DEMO' : 'PRODUCTION'
 });
 
 // Initialize Firebase app with configuration
@@ -85,6 +94,15 @@ try {
 // Enhanced diagnostic function for Firestore connectivity
 export const diagnoseFirestoreConnection = async () => {
   console.log('🔍 Starting Firestore connection diagnosis...');
+  
+  if (isDemoMode) {
+    console.log('⚠️ Demo mode detected - skipping Firestore tests');
+    return {
+      success: false,
+      demo: true,
+      message: 'Running in demo mode - Firebase features disabled'
+    };
+  }
   
   try {
     // Test 1: Check if Firestore is accessible

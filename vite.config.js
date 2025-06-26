@@ -5,6 +5,17 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: '/Israel-cyber-academy/',
+  server: {
+    port: 5173,
+    host: true, // Allow external connections
+    hmr: {
+      port: 5173,
+      host: 'localhost'
+    },
+    watch: {
+      usePolling: true
+    }
+  },
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
