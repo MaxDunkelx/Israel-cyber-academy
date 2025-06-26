@@ -23,6 +23,7 @@ import {
   onSnapshot
 } from 'firebase/firestore';
 import { db } from './firebase-config.js';
+import { toast } from 'react-hot-toast';
 
 // Import local lesson data for migration
 import { lessons as localLessons } from '../data/lessons/index.js';
@@ -185,12 +186,12 @@ export const getSlidesByLessonId = async (lessonId) => {
     });
     
     if (slides.length > 0) {
-      console.log(`Loaded ${slides.length} slides from database for lesson ${lessonId}`);
+      console.log(`✅ Loaded ${slides.length} slides from database for lesson ${lessonId}`);
       return slides;
     }
     
     // Fallback to local content
-    console.log(`No database slides found for lesson ${lessonId}, falling back to local content`);
+    console.log(`📋 No database slides found for lesson ${lessonId}, falling back to local content`);
     const localLesson = localLessons.find(lesson => lesson.id === parseInt(lessonId));
     
     if (localLesson && localLesson.content?.slides) {
@@ -203,21 +204,29 @@ export const getSlidesByLessonId = async (lessonId) => {
         updatedAt: new Date()
       }));
       
-      console.log(`Loaded ${localSlides.length} slides from local content for lesson ${lessonId}`);
+      console.log(`✅ Loaded ${localSlides.length} slides from local content for lesson ${lessonId}`);
       return localSlides;
     }
     
-    console.log(`No slides found for lesson ${lessonId}`);
+    console.log(`❌ No slides found for lesson ${lessonId}`);
     return [];
     
   } catch (error) {
     console.error('Error getting slides:', error);
     
-    // If it's an index error, try without ordering
-    if (error.message.includes('index') || error.code === 'failed-precondition') {
+    // Check if it's an index error
+    const isIndexError = error.message.includes('index') || 
+                        error.code === 'failed-precondition' ||
+                        error.message.includes('requires an index');
+    
+    if (isIndexError) {
       console.log('⚠️ Index not found, trying without ordering...');
       
+      // Show user-friendly notification
+      showIndexNotification();
+      
       try {
+        // Try without ordering first
         const slidesQuery = query(
           collection(db, 'slides'),
           where('lessonId', '==', lessonId)
@@ -238,7 +247,7 @@ export const getSlidesByLessonId = async (lessonId) => {
         slides.sort((a, b) => (a.order || 0) - (b.order || 0));
         
         if (slides.length > 0) {
-          console.log(`Loaded ${slides.length} slides for lesson ${lessonId} (without ordering)`);
+          console.log(`✅ Loaded ${slides.length} slides for lesson ${lessonId} (without ordering)`);
           return slides;
         }
       } catch (fallbackError) {
@@ -781,6 +790,33 @@ export const getContentStatus = async () => {
     console.error('Error getting content status:', error);
     throw error;
   }
+};
+
+/**
+ * Show index creation notification
+ */
+const showIndexNotification = () => {
+  const indexUrl = 'https://console.firebase.google.com/v1/r/project/israel-cyber-academy/firestore/indexes?create_composite=ClNwcm9qZWN0cy9pc3JhZWwtY3liZXItYWNhZGVteS9kYXRhYmFzZXMvKGRlZmF1bHQpL2NvbGxlY3Rpb25Hcm91cHMvc2xpZGVzL2luZGV4ZXMvXxABGgwKCGxlc3NvbklkEAEaCQoFb3JkZXIQARoMCghfX25hbWVfXxAB';
+  
+  toast.error(
+    <div>
+      <div className="font-bold mb-2">Firebase Index Required</div>
+      <div className="text-sm mb-3">
+        A database index is needed for optimal performance. 
+        The app will work with local content until the index is created.
+      </div>
+      <button 
+        onClick={() => window.open(indexUrl, '_blank')}
+        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
+      >
+        Create Index
+      </button>
+    </div>,
+    {
+      duration: 10000,
+      position: 'top-right'
+    }
+  );
 };
 
 export default {
