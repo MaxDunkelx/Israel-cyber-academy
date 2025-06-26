@@ -294,41 +294,64 @@ export const getSlideById = async (slideId) => {
  */
 export const createSlide = async (slideData) => {
   try {
-    const slideRef = doc(collection(db, 'slides'));
+    // Generate a proper ID for the slide
+    const slideId = `slide-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const slideRef = doc(db, 'slides', slideId);
+    
     const newSlide = {
       ...slideData,
-      id: slideRef.id,
+      id: slideId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       version: 1
     };
     
     await setDoc(slideRef, newSlide);
-    console.log('Slide created:', slideRef.id);
-    return slideRef.id;
+    console.log('✅ Slide created:', slideId);
+    return slideId;
   } catch (error) {
-    console.error('Error creating slide:', error);
+    console.error('❌ Error creating slide:', error);
     throw error;
   }
 };
 
 /**
- * Update an existing slide
+ * Update an existing slide or create if it doesn't exist
  */
 export const updateSlide = async (slideId, slideData) => {
   try {
     const slideRef = doc(db, 'slides', slideId);
-    const updateData = {
-      ...slideData,
-      updatedAt: serverTimestamp(),
-      version: (slideData.version || 0) + 1
-    };
     
-    await updateDoc(slideRef, updateData);
-    console.log('Slide updated:', slideId);
+    // Check if document exists
+    const slideDoc = await getDoc(slideRef);
+    
+    if (slideDoc.exists()) {
+      // Update existing slide
+      const updateData = {
+        ...slideData,
+        updatedAt: serverTimestamp(),
+        version: (slideData.version || 0) + 1
+      };
+      
+      await updateDoc(slideRef, updateData);
+      console.log('✅ Slide updated:', slideId);
+    } else {
+      // Create new slide if it doesn't exist
+      const newSlide = {
+        ...slideData,
+        id: slideId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        version: 1
+      };
+      
+      await setDoc(slideRef, newSlide);
+      console.log('✅ Slide created (was missing):', slideId);
+    }
+    
     return slideId;
   } catch (error) {
-    console.error('Error updating slide:', error);
+    console.error('❌ Error updating slide:', error);
     throw error;
   }
 };
