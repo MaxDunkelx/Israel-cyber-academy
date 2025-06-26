@@ -1,12 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const LinuxSimulator = ({ commands, instructions, onComplete }) => {
+const LinuxSimulator = ({ commands = [], instructions = 'Try Linux commands in this safe simulator', onComplete }) => {
   const [currentCommand, setCurrentCommand] = useState('');
   const [commandHistory, setCommandHistory] = useState([]);
   const [outputHistory, setOutputHistory] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showHint, setShowHint] = useState(false);
   const inputRef = useRef(null);
+
+  // Ensure commands is always an array
+  const safeCommands = Array.isArray(commands) ? commands : [];
 
   useEffect(() => {
     if (inputRef.current) {
@@ -22,7 +25,7 @@ const LinuxSimulator = ({ commands, instructions, onComplete }) => {
     setCommandHistory(newHistory);
 
     // Find matching command
-    const matchingCommand = commands.find(cmd => 
+    const matchingCommand = safeCommands.find(cmd => 
       cmd.command.toLowerCase() === currentCommand.toLowerCase()
     );
 
@@ -53,7 +56,7 @@ const LinuxSimulator = ({ commands, instructions, onComplete }) => {
     }
   };
 
-  const suggestedCommands = commands
+  const suggestedCommands = safeCommands
     .filter(cmd => !commandHistory.includes(cmd.command))
     .slice(0, 3);
 
@@ -115,11 +118,11 @@ const LinuxSimulator = ({ commands, instructions, onComplete }) => {
 
       {/* Progress */}
       <div className="mt-4 text-sm text-gray-400">
-        התקדמות: {currentIndex} / {commands.length} פקודות
+        התקדמות: {currentIndex} / {safeCommands.length} פקודות
         <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
           <div 
             className="bg-green-500 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${(currentIndex / commands.length) * 100}%` }}
+            style={{ width: `${safeCommands.length > 0 ? (currentIndex / safeCommands.length) * 100 : 0}%` }}
           ></div>
         </div>
       </div>
@@ -128,7 +131,7 @@ const LinuxSimulator = ({ commands, instructions, onComplete }) => {
       <div className="mt-4">
         <h4 className="text-sm font-bold text-white mb-2">פקודות זמינות:</h4>
         <div className="grid grid-cols-2 gap-2 text-xs">
-          {commands.map((cmd, index) => (
+          {safeCommands.map((cmd, index) => (
             <div 
               key={index}
               className={`p-2 rounded ${

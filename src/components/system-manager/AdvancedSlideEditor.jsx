@@ -305,18 +305,13 @@ const AdvancedSlideEditor = ({ slide, onSave, onCancel }) => {
     updateSlideData(newSlideData);
   };
 
-  // Delete element
-  const deleteElement = (elementId) => {
-    const newElements = slideData.content.elements.filter(element => element.id !== elementId);
-    const newSlideData = {
+  // Remove element from slide
+  const handleRemoveElement = (elementId) => {
+    const newElements = (slideData.content?.elements || []).filter(element => element.id !== elementId);
+    setSlideData({
       ...slideData,
-      content: {
-        ...slideData.content,
-        elements: newElements
-      }
-    };
-
-    updateSlideData(newSlideData);
+      content: { ...slideData.content, elements: newElements }
+    });
     setSelectedElement(null);
   };
 
@@ -546,7 +541,7 @@ const AdvancedSlideEditor = ({ slide, onSave, onCancel }) => {
                         onClick={() => handleElementClick(element.id)}
                         onDrag={handleElementDrag}
                         onResize={handleElementResize}
-                        onDelete={deleteElement}
+                        onDelete={handleRemoveElement}
                       />
                     ))}
                   </div>

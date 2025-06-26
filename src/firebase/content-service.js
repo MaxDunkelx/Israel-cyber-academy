@@ -152,9 +152,23 @@ export const createLesson = async (lessonData) => {
  */
 export const updateLesson = async (lessonId, lessonData) => {
   try {
+    // Validate and sanitize lesson data
+    const sanitizedData = {
+      ...lessonData,
+      title: String(lessonData?.title || ''),
+      description: String(lessonData?.description || ''),
+      difficulty: lessonData?.difficulty || 'beginner',
+      targetAge: Number(lessonData?.targetAge) || 12,
+      duration: Number(lessonData?.duration) || 30,
+      order: Number(lessonData?.order) || 1,
+      tags: Array.isArray(lessonData?.tags) ? lessonData.tags : [],
+      totalSlides: Number(lessonData?.totalSlides) || 0,
+      isPublished: Boolean(lessonData?.isPublished)
+    };
+
     const lessonRef = doc(db, 'lessons', lessonId);
     const updateData = {
-      ...lessonData,
+      ...sanitizedData,
       updatedAt: serverTimestamp(),
       version: (lessonData.version || 0) + 1
     };
@@ -377,6 +391,16 @@ export const createSlide = async (slideData) => {
  */
 export const updateSlide = async (slideId, slideData) => {
   try {
+    // Validate and sanitize slide data
+    const sanitizedData = {
+      ...slideData,
+      title: String(slideData?.title || ''),
+      type: String(slideData?.type || 'presentation'),
+      order: Number(slideData?.order) || 1,
+      lessonId: String(slideData?.lessonId || ''),
+      content: slideData?.content || {}
+    };
+
     const slideRef = doc(db, 'slides', slideId);
     
     // Check if document exists
@@ -385,7 +409,7 @@ export const updateSlide = async (slideId, slideData) => {
     if (slideDoc.exists()) {
       // Update existing slide
       const updateData = {
-        ...slideData,
+        ...sanitizedData,
         updatedAt: serverTimestamp(),
         lastEdited: serverTimestamp(),
         version: (slideData.version || 0) + 1
@@ -408,7 +432,7 @@ export const updateSlide = async (slideId, slideData) => {
     } else {
       // Create new slide if it doesn't exist
       const newSlide = {
-        ...slideData,
+        ...sanitizedData,
         id: slideId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -515,10 +539,15 @@ export const searchLessons = async (searchTerm, limitCount = 10) => {
   try {
     const lessons = await getAllLessons();
     
-    const filteredLessons = lessons.filter(lesson => 
-      lesson.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lesson.description.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Ensure searchTerm is a string
+    const safeSearchTerm = String(searchTerm || '').toLowerCase();
+    
+    const filteredLessons = lessons.filter(lesson => {
+      const title = String(lesson?.title || '').toLowerCase();
+      const description = String(lesson?.description || '').toLowerCase();
+      
+      return title.includes(safeSearchTerm) || description.includes(safeSearchTerm);
+    });
     
     return filteredLessons.slice(0, limitCount);
   } catch (error) {

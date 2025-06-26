@@ -21,7 +21,8 @@ import BrowserSimulator from '../exercises/BrowserSimulator';
  * @param {Object} props.answers - Current answers state
  */
 const InteractiveSlide = ({ slide, onAnswer, answers }) => {
-  const { content } = slide;
+  // Add null checks and default values
+  const content = slide?.content || {};
   const [exerciseCompleted, setExerciseCompleted] = useState(false);
 
   const handleExerciseComplete = (isCorrect) => {
@@ -29,16 +30,32 @@ const InteractiveSlide = ({ slide, onAnswer, answers }) => {
     onAnswer(slide.id, { completed: true, isCorrect });
   };
 
+  // Show loading state if content is not ready
+  if (!content || !content.type) {
+    return (
+      <div className="h-[calc(100vh-120px)] flex flex-col items-center justify-center p-8" style={{ minHeight: '500px' }}>
+        <div className="max-w-5xl w-full h-full flex flex-col">
+          <div className="text-center mb-8">
+            <h2 className="text-4xl font-bold text-white mb-4" style={{ textShadow: '0 4px 8px rgba(0,0,0,0.3)' }}>
+              {slide?.title || 'Loading...'}
+            </h2>
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500 mx-auto"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-[calc(100vh-120px)] flex flex-col items-center justify-center p-8" style={{ minHeight: '500px' }}>
       <div className="max-w-5xl w-full h-full flex flex-col">
         {/* Title */}
         <div className="text-center mb-8">
           <h2 className="text-4xl font-bold text-white mb-4" style={{ textShadow: '0 4px 8px rgba(0,0,0,0.3)' }}>
-            {slide.title}
+            {slide?.title || 'Interactive Exercise'}
           </h2>
           <p className="text-xl text-gray-200" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
-            {content.instructions}
+            {content.instructions || 'Complete the interactive exercise below'}
           </p>
         </div>
 
@@ -76,8 +93,8 @@ const InteractiveSlide = ({ slide, onAnswer, answers }) => {
           )}
           {content.type === 'linux-simulator' && (
             <LinuxSimulator
-              commands={content.commands}
-              instructions={content.instructions}
+              commands={content.commands || []}
+              instructions={content.instructions || 'Try Linux commands in this safe simulator'}
               onComplete={handleExerciseComplete}
             />
           )}

@@ -234,7 +234,7 @@ const ComprehensiveSlideEditor = ({ slide, onSave, onCancel }) => {
 
   // Remove element from presentation slide
   const handleRemoveElement = (index) => {
-    const newElements = editedSlide.content.elements.filter((_, i) => i !== index);
+    const newElements = (editedSlide.content.elements || []).filter((_, i) => i !== index);
     setEditedSlide({
       ...editedSlide,
       content: { ...editedSlide.content, elements: newElements }
@@ -262,7 +262,7 @@ const ComprehensiveSlideEditor = ({ slide, onSave, onCancel }) => {
 
   // Remove poll option
   const handleRemovePollOption = (index) => {
-    const newOptions = editedSlide.content.options.filter((_, i) => i !== index);
+    const newOptions = (editedSlide.content.options || []).filter((_, i) => i !== index);
     handleContentChange('options', newOptions);
   };
 
@@ -293,7 +293,7 @@ const ComprehensiveSlideEditor = ({ slide, onSave, onCancel }) => {
 
   // Remove quiz question
   const handleRemoveQuizQuestion = (index) => {
-    const newQuestions = editedSlide.content.questions.filter((_, i) => i !== index);
+    const newQuestions = (editedSlide.content.questions || []).filter((_, i) => i !== index);
     handleContentChange('questions', newQuestions);
   };
 
