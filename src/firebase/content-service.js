@@ -192,24 +192,7 @@ export const getSlidesByLessonId = async (lessonId) => {
     
     // Fallback to local content
     console.log(`📋 No database slides found for lesson ${lessonId}, falling back to local content`);
-    const localLesson = localLessons.find(lesson => lesson.id === parseInt(lessonId));
-    
-    if (localLesson && localLesson.content?.slides) {
-      const localSlides = localLesson.content.slides.map((slide, index) => ({
-        ...slide,
-        lessonId: lessonId,
-        order: index + 1,
-        source: 'local_fallback',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }));
-      
-      console.log(`✅ Loaded ${localSlides.length} slides from local content for lesson ${lessonId}`);
-      return localSlides;
-    }
-    
-    console.log(`❌ No slides found for lesson ${lessonId}`);
-    return [];
+    return getLocalSlidesForLesson(lessonId);
     
   } catch (error) {
     console.error('Error getting slides:', error);
@@ -257,24 +240,31 @@ export const getSlidesByLessonId = async (lessonId) => {
     
     // Final fallback to local content
     console.log('🔄 Falling back to local content...');
-    const localLesson = localLessons.find(lesson => lesson.id === parseInt(lessonId));
-    if (localLesson && localLesson.content?.slides) {
-      const localSlides = localLesson.content.slides.map((slide, index) => ({
-        ...slide,
-        lessonId: lessonId,
-        order: index + 1,
-        source: 'local_fallback',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }));
-      
-      console.log(`✅ Loaded ${localSlides.length} slides from local content for lesson ${lessonId}`);
-      return localSlides;
-    }
-    
-    console.log(`❌ No slides found for lesson ${lessonId}`);
-    return [];
+    return getLocalSlidesForLesson(lessonId);
   }
+};
+
+/**
+ * Get slides from local content as fallback
+ */
+const getLocalSlidesForLesson = (lessonId) => {
+  const localLesson = localLessons.find(lesson => lesson.id === parseInt(lessonId));
+  if (localLesson && localLesson.content?.slides) {
+    const localSlides = localLesson.content.slides.map((slide, index) => ({
+      ...slide,
+      lessonId: lessonId,
+      order: index + 1,
+      source: 'local_fallback',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }));
+    
+    console.log(`✅ Loaded ${localSlides.length} slides from local content for lesson ${lessonId}`);
+    return localSlides;
+  }
+  
+  console.log(`❌ No slides found for lesson ${lessonId}`);
+  return [];
 };
 
 /**
@@ -799,22 +789,11 @@ const showIndexNotification = () => {
   const indexUrl = 'https://console.firebase.google.com/v1/r/project/israel-cyber-academy/firestore/indexes?create_composite=ClNwcm9qZWN0cy9pc3JhZWwtY3liZXItYWNhZGVteS9kYXRhYmFzZXMvKGRlZmF1bHQpL2NvbGxlY3Rpb25Hcm91cHMvc2xpZGVzL2luZGV4ZXMvXxABGgwKCGxlc3NvbklkEAEaCQoFb3JkZXIQARoMCghfX25hbWVfXxAB';
   
   toast.error(
-    <div>
-      <div className="font-bold mb-2">Firebase Index Required</div>
-      <div className="text-sm mb-3">
-        A database index is needed for optimal performance. 
-        The app will work with local content until the index is created.
-      </div>
-      <button 
-        onClick={() => window.open(indexUrl, '_blank')}
-        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
-      >
-        Create Index
-      </button>
-    </div>,
+    `Firebase Index Required. Click here to create: ${indexUrl}`,
     {
       duration: 10000,
-      position: 'top-right'
+      position: 'top-right',
+      onClick: () => window.open(indexUrl, '_blank')
     }
   );
 };
