@@ -220,32 +220,107 @@ export const deleteLesson = async (lessonId) => {
  */
 export const getSlidesByLessonId = async (lessonId) => {
   try {
+    console.log(`🔍 Loading slides for lesson ${lessonId} from database...`);
+    
+    // Normalize lessonId to string for consistent querying
+    const normalizedLessonId = String(lessonId);
+    
     // First try to get from database with ordering
-    const slidesQuery = query(
-      collection(db, 'slides'),
-      where('lessonId', '==', lessonId),
-      orderBy('order', 'asc')
-    );
-    
-    const snapshot = await getDocs(slidesQuery);
-    const slides = snapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt?.toDate?.() || new Date(),
-        updatedAt: data.updatedAt?.toDate?.() || new Date()
-      };
-    });
-    
-    if (slides.length > 0) {
-      console.log(`✅ Loaded ${slides.length} slides from database for lesson ${lessonId}`);
-      return slides;
+    try {
+      const slidesQuery = query(
+        collection(db, 'slides'),
+        where('lessonId', '==', normalizedLessonId),
+        orderBy('order', 'asc')
+      );
+      
+      const snapshot = await getDocs(slidesQuery);
+      const slides = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate?.() || new Date(),
+          updatedAt: data.updatedAt?.toDate?.() || new Date()
+        };
+      });
+      
+      if (slides.length > 0) {
+        console.log(`✅ Loaded ${slides.length} slides from database for lesson ${normalizedLessonId}`);
+        return slides;
+      }
+    } catch (orderError) {
+      console.log('⚠️ Ordering failed, trying without order...');
     }
     
-    // Fallback to local content
-    console.log(`📋 No database slides found for lesson ${lessonId}, falling back to local content`);
-    return getLocalSlidesForLesson(lessonId);
+    // Try without ordering
+    try {
+      const slidesQuery = query(
+        collection(db, 'slides'),
+        where('lessonId', '==', normalizedLessonId)
+      );
+      
+      const snapshot = await getDocs(slidesQuery);
+      const slides = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate?.() || new Date(),
+          updatedAt: data.updatedAt?.toDate?.() || new Date()
+        };
+      });
+      
+      // Sort in memory
+      slides.sort((a, b) => (a.order || 0) - (b.order || 0));
+      
+      if (slides.length > 0) {
+        console.log(`✅ Loaded ${slides.length} slides for lesson ${normalizedLessonId} (without ordering)`);
+        return slides;
+      }
+    } catch (queryError) {
+      console.error('Error querying slides:', queryError);
+    }
+    
+    // Try with different lessonId formats
+    const alternativeIds = [
+      lessonId.toString(),
+      parseInt(lessonId).toString(),
+      lessonId,
+      parseInt(lessonId)
+    ].filter(id => id !== normalizedLessonId);
+    
+    for (const altId of alternativeIds) {
+      try {
+        console.log(`🔄 Trying alternative lessonId: ${altId}`);
+        const slidesQuery = query(
+          collection(db, 'slides'),
+          where('lessonId', '==', String(altId))
+        );
+        
+        const snapshot = await getDocs(slidesQuery);
+        const slides = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate?.() || new Date(),
+            updatedAt: data.updatedAt?.toDate?.() || new Date()
+          };
+        });
+        
+        slides.sort((a, b) => (a.order || 0) - (b.order || 0));
+        
+        if (slides.length > 0) {
+          console.log(`✅ Loaded ${slides.length} slides for lesson ${altId} (alternative ID)`);
+          return slides;
+        }
+      } catch (altError) {
+        console.log(`⚠️ Alternative ID ${altId} failed:`, altError.message);
+      }
+    }
+    
+    console.log(`📋 No database slides found for lesson ${lessonId}`);
+    return [];
     
   } catch (error) {
     console.error('Error getting slides:', error);
@@ -262,10 +337,10 @@ export const getSlidesByLessonId = async (lessonId) => {
       showIndexNotification();
       
       try {
-        // Try without ordering first
+        // Try without ordering
         const slidesQuery = query(
           collection(db, 'slides'),
-          where('lessonId', '==', lessonId)
+          where('lessonId', '==', String(lessonId))
         );
         
         const snapshot = await getDocs(slidesQuery);
@@ -291,9 +366,8 @@ export const getSlidesByLessonId = async (lessonId) => {
       }
     }
     
-    // Final fallback to local content
-    console.log('🔄 Falling back to local content...');
-    return getLocalSlidesForLesson(lessonId);
+    console.log(`❌ No slides found for lesson ${lessonId}`);
+    return [];
   }
 };
 
@@ -347,12 +421,20 @@ export const getSlideById = async (slideId) => {
  */
 export const createSlide = async (slideData) => {
   try {
+    console.log(`📝 Creating new slide with data:`, slideData);
+    
     // Generate a proper ID for the slide
     const slideId = `slide-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const slideRef = doc(db, 'slides', slideId);
     
-    const newSlide = {
+    // Ensure lessonId is always a string
+    const normalizedSlideData = {
       ...slideData,
+      lessonId: String(slideData?.lessonId || '')
+    };
+    
+    const newSlide = {
+      ...normalizedSlideData,
       id: slideId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -360,13 +442,17 @@ export const createSlide = async (slideData) => {
       version: 1
     };
     
+    console.log(`✅ Creating slide with normalized data:`, newSlide);
+    
     await setDoc(slideRef, newSlide);
     console.log('✅ Slide created successfully:', slideId);
     
     // Verify the creation
     const verifyDoc = await getDoc(slideRef);
     if (verifyDoc.exists()) {
+      const savedData = verifyDoc.data();
       console.log('✅ Slide creation verified in database');
+      console.log('📊 Created lessonId:', savedData.lessonId);
       return slideId;
     } else {
       throw new Error('Slide was not created properly');
@@ -391,15 +477,19 @@ export const createSlide = async (slideData) => {
  */
 export const updateSlide = async (slideId, slideData) => {
   try {
+    console.log(`💾 Updating slide ${slideId} with data:`, slideData);
+    
     // Validate and sanitize slide data
     const sanitizedData = {
       ...slideData,
       title: String(slideData?.title || ''),
       type: String(slideData?.type || 'presentation'),
       order: Number(slideData?.order) || 1,
-      lessonId: String(slideData?.lessonId || ''),
+      lessonId: String(slideData?.lessonId || ''), // Ensure lessonId is always a string
       content: slideData?.content || {}
     };
+
+    console.log(`✅ Sanitized data:`, sanitizedData);
 
     const slideRef = doc(db, 'slides', slideId);
     
@@ -415,6 +505,8 @@ export const updateSlide = async (slideId, slideData) => {
         version: (slideData.version || 0) + 1
       };
       
+      console.log(`📝 Updating existing slide with data:`, updateData);
+      
       await updateDoc(slideRef, updateData);
       console.log('✅ Slide updated successfully:', slideId);
       
@@ -424,6 +516,7 @@ export const updateSlide = async (slideId, slideData) => {
         const savedData = verifyDoc.data();
         console.log('✅ Slide update verified in database');
         console.log('📊 Updated fields:', Object.keys(updateData));
+        console.log('📊 Saved lessonId:', savedData.lessonId);
         return slideId;
       } else {
         throw new Error('Slide was not saved properly');
@@ -440,9 +533,21 @@ export const updateSlide = async (slideId, slideData) => {
         version: 1
       };
       
+      console.log(`📝 Creating new slide with data:`, newSlide);
+      
       await setDoc(slideRef, newSlide);
       console.log('✅ Slide created (was missing):', slideId);
-      return slideId;
+      
+      // Verify the creation
+      const verifyDoc = await getDoc(slideRef);
+      if (verifyDoc.exists()) {
+        const savedData = verifyDoc.data();
+        console.log('✅ Slide creation verified in database');
+        console.log('📊 Created lessonId:', savedData.lessonId);
+        return slideId;
+      } else {
+        throw new Error('Slide was not created properly');
+      }
     }
     
   } catch (error) {
@@ -517,18 +622,96 @@ const updateLessonSlideCount = async (lessonId) => {
  */
 export const getLessonWithSlides = async (lessonId) => {
   try {
-    const [lesson, slides] = await Promise.all([
-      getLessonById(lessonId),
-      getSlidesByLessonId(lessonId)
-    ]);
+    console.log(`🔍 Loading lesson ${lessonId} with slides from database...`);
     
-    return {
-      ...lesson,
-      slides
-    };
+    // Try to get lesson from database first
+    let lesson = await getLessonById(lessonId);
+    
+    // If lesson not found in database, try with numeric ID
+    if (!lesson) {
+      console.log(`⚠️ Lesson ${lessonId} not found, trying with numeric ID...`);
+      lesson = await getLessonById(lessonId.toString());
+    }
+    
+    // If still not found, try with string ID
+    if (!lesson) {
+      console.log(`⚠️ Lesson ${lessonId} not found, trying with string ID...`);
+      lesson = await getLessonById(lessonId.toString());
+    }
+    
+    // Get slides from database
+    let slides = [];
+    try {
+      // Try with original lessonId
+      slides = await getSlidesByLessonId(lessonId);
+      
+      // If no slides found, try with string version
+      if (slides.length === 0) {
+        console.log(`⚠️ No slides found for lessonId ${lessonId}, trying with string version...`);
+        slides = await getSlidesByLessonId(lessonId.toString());
+      }
+      
+      // If still no slides, try with numeric version
+      if (slides.length === 0) {
+        console.log(`⚠️ No slides found for lessonId ${lessonId}, trying with numeric version...`);
+        slides = await getSlidesByLessonId(parseInt(lessonId));
+      }
+      
+    } catch (slideError) {
+      console.error('Error loading slides from database:', slideError);
+      slides = [];
+    }
+    
+    // If we have a lesson from database, return it with slides
+    if (lesson) {
+      console.log(`✅ Found lesson in database: ${lesson.title} with ${slides.length} slides`);
+      return {
+        ...lesson,
+        slides: slides
+      };
+    }
+    
+    // If no lesson in database but we have slides, create a lesson object
+    if (slides.length > 0) {
+      console.log(`✅ Found ${slides.length} slides in database, creating lesson object...`);
+      return {
+        id: lessonId,
+        title: `Lesson ${lessonId}`,
+        description: `Lesson loaded from database with ${slides.length} slides`,
+        slides: slides,
+        source: 'database_slides_only'
+      };
+    }
+    
+    // Final fallback to local content
+    console.log(`🔄 No database content found, falling back to local content for lesson ${lessonId}...`);
+    const localLesson = localLessons.find(l => l.id === parseInt(lessonId) || l.id === lessonId);
+    if (localLesson) {
+      console.log(`✅ Found local lesson: ${localLesson.title}`);
+      return {
+        ...localLesson,
+        source: 'local_fallback'
+      };
+    }
+    
+    console.log(`❌ No lesson found for ID: ${lessonId}`);
+    return null;
+    
   } catch (error) {
     console.error('Error fetching lesson with slides:', error);
-    throw new Error('Failed to fetch lesson with slides');
+    
+    // Final fallback to local content
+    console.log(`🔄 Error occurred, falling back to local content for lesson ${lessonId}...`);
+    const localLesson = localLessons.find(l => l.id === parseInt(lessonId) || l.id === lessonId);
+    if (localLesson) {
+      console.log(`✅ Found local lesson as fallback: ${localLesson.title}`);
+      return {
+        ...localLesson,
+        source: 'local_error_fallback'
+      };
+    }
+    
+    throw new Error(`Failed to fetch lesson with slides for ID: ${lessonId}`);
   }
 };
 
@@ -936,6 +1119,57 @@ const showIndexNotification = () => {
   }
 };
 
+/**
+ * Fix lessonId consistency in the database
+ * This function ensures all slides have consistent lessonId values
+ */
+export const fixLessonIdConsistency = async () => {
+  try {
+    console.log('🔧 Starting lessonId consistency fix...');
+    
+    // Get all slides
+    const slidesQuery = query(collection(db, 'slides'));
+    const snapshot = await getDocs(slidesQuery);
+    const slides = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    
+    console.log(`📊 Found ${slides.length} slides to check`);
+    
+    const batch = writeBatch(db);
+    let updatedCount = 0;
+    
+    for (const slide of slides) {
+      const currentLessonId = slide.lessonId;
+      const normalizedLessonId = String(currentLessonId);
+      
+      if (currentLessonId !== normalizedLessonId) {
+        console.log(`🔄 Fixing slide ${slide.id}: ${currentLessonId} -> ${normalizedLessonId}`);
+        
+        const slideRef = doc(db, 'slides', slide.id);
+        batch.update(slideRef, {
+          lessonId: normalizedLessonId,
+          updatedAt: serverTimestamp()
+        });
+        updatedCount++;
+      }
+    }
+    
+    if (updatedCount > 0) {
+      await batch.commit();
+      console.log(`✅ Fixed ${updatedCount} slides with inconsistent lessonId values`);
+    } else {
+      console.log('✅ All slides already have consistent lessonId values');
+    }
+    
+    return updatedCount;
+  } catch (error) {
+    console.error('❌ Error fixing lessonId consistency:', error);
+    throw error;
+  }
+};
+
 export default {
   // Lesson operations
   getAllLessons,
@@ -968,5 +1202,8 @@ export default {
   migrateLocalLessonsToFirebase,
   getLessonByTitle,
   syncLocalWithDatabase,
-  getContentStatus
+  getContentStatus,
+  
+  // New functions
+  fixLessonIdConsistency
 }; 
