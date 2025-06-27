@@ -438,6 +438,41 @@ export const addTeacherNote = async (sessionId, slideIndex, note) => {
 };
 
 /**
+ * Check and end stale sessions automatically
+ * @param {string} sessionId - Session ID
+ * @returns {Promise<boolean>} True if session was ended, false if still active
+ */
+export const checkAndEndStaleSession = async (sessionId) => {
+  try {
+    const sessionRef = doc(db, 'sessions', sessionId);
+    const sessionDoc = await getDoc(sessionRef);
+    
+    if (!sessionDoc.exists()) {
+      return false;
+    }
+
+    const sessionData = sessionDoc.data();
+    
+    // Check if session has been inactive for more than 15 minutes
+    const lastActivity = sessionData.lastActivity?.toDate?.() || new Date(sessionData.lastActivity);
+    const now = new Date();
+    const timeDiff = now.getTime() - lastActivity.getTime();
+    const maxInactiveTime = 15 * 60 * 1000; // 15 minutes in milliseconds
+
+    if (timeDiff > maxInactiveTime && sessionData.status === 'active') {
+      console.log(`Auto-ending stale session ${sessionId}, inactive for ${timeDiff / 1000} seconds`);
+      await endSession(sessionId);
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    console.error('Error checking stale session:', error);
+    return false;
+  }
+};
+
+/**
  * Get current active session for a student's class
  * @param {string} studentId - Student ID
  * @returns {Promise<Object|null>} Current active session or null
@@ -472,7 +507,20 @@ export const getCurrentActiveSessionForStudent = async (studentId) => {
         const timeB = b.startTime?.toDate?.() || b.startTime || new Date(0);
         return timeB - timeA;
       });
-      return sessions[0];
+      
+      // Check if the most recent session is stale
+      const mostRecentSession = sessions[0];
+      const lastActivity = mostRecentSession.lastActivity?.toDate?.() || new Date(mostRecentSession.lastActivity);
+      const now = new Date();
+      const timeDiff = now.getTime() - lastActivity.getTime();
+      const maxInactiveTime = 10 * 60 * 1000; // 10 minutes in milliseconds
+
+      if (timeDiff > maxInactiveTime) {
+        console.log('Most recent session is stale, returning null');
+        return null;
+      }
+      
+      return mostRecentSession;
     }
     
     return null;
@@ -518,7 +566,19 @@ export const listenToCurrentActiveSession = (studentId, callback) => {
         const timeB = b.startTime?.toDate?.() || b.startTime || new Date(0);
         return timeB - timeA;
       });
-      currentSession = sessions[0];
+      
+      // Check if the most recent session is stale
+      const mostRecentSession = sessions[0];
+      const lastActivity = mostRecentSession.lastActivity?.toDate?.() || new Date(mostRecentSession.lastActivity);
+      const now = new Date();
+      const timeDiff = now.getTime() - lastActivity.getTime();
+      const maxInactiveTime = 10 * 60 * 1000; // 10 minutes in milliseconds
+
+      if (timeDiff <= maxInactiveTime) {
+        currentSession = mostRecentSession;
+      } else {
+        console.log('Most recent session is stale, not showing notification');
+      }
     }
     
     callback(currentSession);

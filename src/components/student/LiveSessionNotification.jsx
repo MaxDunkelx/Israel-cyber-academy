@@ -5,7 +5,8 @@ import {
   Clock, 
   Users, 
   X,
-  Radio
+  Radio,
+  AlertCircle
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -19,18 +20,48 @@ const LiveSessionNotification = () => {
   const [currentSession, setCurrentSession] = useState(null);
   const [isVisible, setIsVisible] = useState(false);
   const [sessionDuration, setSessionDuration] = useState(0);
+  const [isSessionValid, setIsSessionValid] = useState(true);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
 
     // Listen to current active session
     const unsubscribe = listenToCurrentActiveSession(currentUser.uid, (session) => {
-      setCurrentSession(session);
-      setIsVisible(!!session);
+      if (session) {
+        // Validate if session is actually active and teacher is online
+        const isValid = validateSession(session);
+        setCurrentSession(session);
+        setIsSessionValid(isValid);
+        setIsVisible(isValid);
+      } else {
+        setCurrentSession(null);
+        setIsVisible(false);
+        setIsSessionValid(false);
+      }
     });
 
     return () => unsubscribe();
   }, [currentUser?.uid]);
+
+  // Validate session - check if teacher is online and session is recent
+  const validateSession = (session) => {
+    if (!session || session.status !== 'active') {
+      return false;
+    }
+
+    // Check if session has been inactive for more than 10 minutes
+    const lastActivity = session.lastActivity?.toDate?.() || new Date(session.lastActivity);
+    const now = new Date();
+    const timeDiff = now.getTime() - lastActivity.getTime();
+    const maxInactiveTime = 10 * 60 * 1000; // 10 minutes in milliseconds
+
+    if (timeDiff > maxInactiveTime) {
+      console.log('Session is stale, last activity was', timeDiff / 1000, 'seconds ago');
+      return false;
+    }
+
+    return true;
+  };
 
   // Calculate session duration
   useEffect(() => {
@@ -46,7 +77,11 @@ const LiveSessionNotification = () => {
   }, [currentSession?.startTime]);
 
   const handleJoinSession = () => {
-    if (!currentSession) return;
+    if (!currentSession || !isSessionValid) {
+      toast.error('השיעור כבר לא פעיל או שהמורה לא מחובר');
+      setIsVisible(false);
+      return;
+    }
     
     try {
       navigate(`/student/session/${currentSession.id}`);
@@ -129,11 +164,21 @@ const LiveSessionNotification = () => {
               onClick={handleJoinSession}
               variant="primary"
               size="lg"
-              className="w-full bg-white text-green-600 hover:bg-green-50 transition-colors flex items-center justify-center space-x-2"
+              className="w-full bg-white text-green-600 hover:bg-green-50 transition-colors flex items-center justify-center space-x-2 font-semibold"
             >
               <Play className="w-4 h-4" />
               <span>הצטרף לשיעור החי</span>
             </Button>
+
+            {/* Session Status Warning */}
+            {!isSessionValid && (
+              <div className="bg-yellow-500/20 rounded-lg p-3 border border-yellow-500/30">
+                <div className="flex items-center space-x-2 text-yellow-200">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="text-sm">השיעור עשוי להיות לא פעיל</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
