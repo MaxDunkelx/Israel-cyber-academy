@@ -1,34 +1,65 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { saveTeacherNotes, getTeacherNotesForLesson } from '../../firebase/teacher-service';
+import { getLessonWithSlides, getAllLessons } from '../../firebase/content-service';
 import TeacherLessonPreview from './TeacherLessonPreview';
 import LoadingSpinner from '../common/LoadingSpinner';
-import { lessons } from '../../data/lessons';
 
 const SlidePreviewManager = () => {
   const { currentUser } = useAuth();
   const [selectedLesson, setSelectedLesson] = useState(null);
+  const [lessons, setLessons] = useState([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [notes, setNotes] = useState({});
   const [currentNote, setCurrentNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Load all lessons from database
+  const loadLessons = async () => {
+    try {
+      setLoading(true);
+      console.log('🔍 Loading lessons from database...');
+      
+      const lessonsData = await getAllLessons();
+      console.log('✅ Loaded lessons from database:', lessonsData);
+      
+      // Transform lessons to match expected format
+      const transformedLessons = lessonsData.map(lesson => ({
+        ...lesson,
+        content: { slides: lesson.slides || [] }
+      }));
+      
+      setLessons(transformedLessons);
+      
+      // Auto-select first lesson if available
+      if (transformedLessons.length > 0 && !selectedLesson) {
+        setSelectedLesson(transformedLessons[0]);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error loading lessons:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Load notes when a lesson is selected
   const loadNotesForLesson = async (lessonId) => {
     if (!currentUser?.uid || !lessonId) return;
     
-    console.log('Loading notes for lesson:', lessonId, 'User:', currentUser.uid);
+    console.log('🔍 Loading notes for lesson:', lessonId, 'User:', currentUser.uid);
     
     try {
       const userNotes = await getTeacherNotesForLesson(currentUser.uid, lessonId);
-      console.log('Loaded notes from database:', userNotes);
+      console.log('✅ Loaded notes from database:', userNotes);
       
       const notesMap = {};
       userNotes.forEach(note => {
+        // Use slideIndex as key for better consistency
         const key = `${note.lessonId}-${note.slideIndex}`;
         notesMap[key] = note.content;
-        console.log('Note mapped:', key, '->', note.content);
+        console.log('📝 Note mapped:', key, '->', note.content);
       });
       
       setNotes(notesMap);
@@ -36,17 +67,22 @@ const SlidePreviewManager = () => {
       // Set current note for the first slide
       const firstSlideKey = `${lessonId}-0`;
       const firstNote = notesMap[firstSlideKey] || '';
-      console.log('Setting first note:', firstSlideKey, '->', firstNote);
+      console.log('📝 Setting first note:', firstSlideKey, '->', firstNote);
       setCurrentNote(firstNote);
     } catch (error) {
-      console.error('Error loading notes:', error);
+      console.error('❌ Error loading notes:', error);
     }
   };
+
+  // Load lessons on component mount
+  useEffect(() => {
+    loadLessons();
+  }, []);
 
   // Load notes when component mounts or user changes
   useEffect(() => {
     if (currentUser?.uid && selectedLesson) {
-      console.log('Effect triggered - loading notes for selected lesson:', selectedLesson.id);
+      console.log('🔄 Effect triggered - loading notes for selected lesson:', selectedLesson.id);
       loadNotesForLesson(selectedLesson.id.toString());
     }
   }, [currentUser?.uid, selectedLesson?.id]);
@@ -54,48 +90,50 @@ const SlidePreviewManager = () => {
   const handleSaveNote = async () => {
     if (!currentUser?.uid || !selectedLesson || currentNote.trim() === '') return;
     
-    console.log('Saving note for lesson:', selectedLesson.id, 'slide:', currentSlide, 'content:', currentNote);
+    console.log('💾 Saving note for lesson:', selectedLesson.id, 'slide:', currentSlide, 'content:', currentNote);
     
     setSaving(true);
     try {
+      // Use slideIndex instead of slideId for better consistency
+      const slideIndex = currentSlide;
       const slideId = selectedLesson.content?.slides?.[currentSlide]?.id || `slide-${currentSlide + 1}`;
       
       const result = await saveTeacherNotes(currentUser.uid, selectedLesson.id.toString(), slideId, {
         content: currentNote.trim(),
-        slideIndex: currentSlide,
+        slideIndex: slideIndex,
         timestamp: new Date().toISOString()
       });
       
-      console.log('Note saved successfully:', result);
+      console.log('✅ Note saved successfully:', result);
       
-      // Update local state
-      const key = `${selectedLesson.id}-${currentSlide}`;
+      // Update local state using slideIndex as key
+      const key = `${selectedLesson.id}-${slideIndex}`;
       setNotes(prev => ({ ...prev, [key]: currentNote.trim() }));
       
       setSaving(false);
     } catch (error) {
-      console.error('Error saving note:', error);
+      console.error('❌ Error saving note:', error);
       setSaving(false);
     }
   };
 
   const handleSlideChange = (newSlideIndex) => {
-    console.log('Changing slide from', currentSlide, 'to', newSlideIndex);
+    console.log('🔄 Changing slide from', currentSlide, 'to', newSlideIndex);
     setCurrentSlide(newSlideIndex);
     const key = `${selectedLesson.id}-${newSlideIndex}`;
     const noteForSlide = notes[key] || '';
-    console.log('Loading note for slide', newSlideIndex, 'key:', key, 'note:', noteForSlide);
+    console.log('📝 Loading note for slide', newSlideIndex, 'key:', key, 'note:', noteForSlide);
     setCurrentNote(noteForSlide);
   };
 
   const handleLessonChange = (lessonId) => {
-    console.log('Lesson changed to:', lessonId);
-    const lesson = lessons.find(l => l.id.toString() === lessonId);
+    console.log('🔄 Lesson changed to:', lessonId);
+    const lesson = lessons.find(l => l.id.toString() === lessonId || l.id === lessonId);
     setSelectedLesson(lesson);
     setCurrentSlide(0);
     
     if (lesson) {
-      console.log('Loading notes for new lesson:', lesson.id);
+      console.log('📚 Loading notes for new lesson:', lesson.id);
       loadNotesForLesson(lesson.id.toString());
     } else {
       setNotes({});
@@ -106,7 +144,7 @@ const SlidePreviewManager = () => {
   const getNoteForSlide = (lessonId, slideIndex) => {
     const key = `${lessonId}-${slideIndex}`;
     const note = notes[key] || '';
-    console.log('Getting note for slide', slideIndex, 'key:', key, 'note:', note);
+    console.log('📝 Getting note for slide', slideIndex, 'key:', key, 'note:', note);
     return note;
   };
 
@@ -133,7 +171,7 @@ const SlidePreviewManager = () => {
               <option value="">Select a Lesson</option>
               {lessons.map(lesson => (
                 <option key={lesson.id} value={lesson.id}>
-                  {lesson.title}
+                  {lesson.title || `Lesson ${lesson.id}`}
                 </option>
               ))}
             </select>
@@ -148,9 +186,12 @@ const SlidePreviewManager = () => {
             <>
               {/* Lesson Info */}
               <div className="p-4 border-b border-gray-700">
-                <h2 className="text-lg font-semibold text-white mb-2">{selectedLesson.title}</h2>
+                <h2 className="text-lg font-semibold text-white mb-2">{selectedLesson.title || `Lesson ${selectedLesson.id}`}</h2>
                 <div className="text-sm text-gray-400">
                   {selectedLesson.content?.slides?.length || 0} slides
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Source: {selectedLesson.source || 'database'}
                 </div>
               </div>
 

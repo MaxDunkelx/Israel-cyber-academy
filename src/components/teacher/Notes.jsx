@@ -5,6 +5,7 @@ import {
   deleteTeacherNotes,
   logTeacherActivity 
 } from '../../firebase/teacher-service';
+import { getLessonWithSlides, getAllLessons } from '../../firebase/content-service';
 import { useAuth } from '../../hooks/useAuth';
 import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 
@@ -16,39 +17,55 @@ const Notes = () => {
   const [currentNote, setCurrentNote] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [slides, setSlides] = useState([]);
+  const [lessons, setLessons] = useState([]);
   const [error, setError] = useState(null);
 
-  const lessonNames = {
-    'lesson1': 'שיעור 1: מבוא לסייבר',
-    'lesson2': 'שיעור 2: מבנה המחשב',
-    'lesson3': 'שיעור 3: מערכת ההפעלה Windows',
-    'lesson4': 'שיעור 4: מערכת ההפעלה Linux',
-    'lesson5': 'שיעור 5: רשתות מחשבים',
-    'lesson6': 'שיעור 6: פרוטוקולים',
-    'lesson7': 'שיעור 7: תכנות ווב',
-    'lesson8': 'שיעור 8: מסדי נתונים',
-    'lesson9': 'שיעור 9: דפדפנים ואבטחה',
+  // Load all lessons from database
+  const loadAllLessons = async () => {
+    try {
+      setIsLoading(true);
+      console.log('🔍 Loading all lessons from database...');
+      
+      const lessonsData = await getAllLessons();
+      console.log('✅ Loaded lessons from database:', lessonsData);
+      
+      setLessons(lessonsData);
+      
+      // Auto-select first lesson if available
+      if (lessonsData.length > 0 && !selectedLesson) {
+        const firstLesson = lessonsData[0];
+        await loadLessonData(firstLesson.id);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error loading lessons:', error);
+      setError(`שגיאה בטעינת השיעורים: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Load lesson data
+  // Load lesson data from Firebase
   const loadLessonData = async (lessonId) => {
     try {
       setError(null);
       setIsLoading(true);
       
-      const lessonModule = await import(`../../data/lessons/${lessonId}/index.js`);
-      const lesson = lessonModule.default || lessonModule[lessonId] || lessonModule;
+      console.log('🔍 Loading lesson data for:', lessonId);
       
-      if (!lesson || !lesson.content || !lesson.content.slides) {
-        throw new Error(`Invalid lesson structure for ${lessonId}`);
+      const lessonData = await getLessonWithSlides(lessonId);
+      if (lessonData && lessonData.slides && lessonData.slides.length > 0) {
+        console.log('✅ Lesson data loaded from Firebase:', lessonData);
+        setSlides(lessonData.slides);
+        setSelectedLesson(lessonId);
+        setSelectedSlideIndex(0);
+        await loadNotes(lessonId);
+      } else {
+        throw new Error(`No slides found for lesson ${lessonId}`);
       }
       
-      setSlides(lesson.content.slides);
-      setSelectedSlideIndex(0);
-      await loadNotes(lessonId);
-      
     } catch (err) {
-      console.error('Error loading lesson:', err);
+      console.error('❌ Error loading lesson:', err);
       setError(`שגיאה בטעינת השיעור: ${err.message}`);
     } finally {
       setIsLoading(false);
@@ -59,34 +76,38 @@ const Notes = () => {
   const loadNotes = async (lessonId) => {
     if (!currentUser?.uid) return;
     try {
+      console.log('🔍 Loading notes for lesson:', lessonId);
+      
       const lessonNotes = await getTeacherNotesForLesson(currentUser.uid, lessonId);
+      console.log('✅ Loaded notes from database:', lessonNotes);
       
       const notesObject = {};
       lessonNotes.forEach(note => {
-        notesObject[note.slideId] = note.content;
+        // Use slideIndex as key for better consistency
+        notesObject[note.slideIndex] = note.content;
       });
       
       setNotes(notesObject);
-      const slideId = slides[selectedSlideIndex]?.id || `slide-${selectedSlideIndex + 1}`;
-      setCurrentNote(notesObject[slideId] || '');
+      setCurrentNote(notesObject[selectedSlideIndex] || '');
+      
     } catch (err) {
-      console.error('Error loading notes:', err);
+      console.error('❌ Error loading notes:', err);
       setError(`שגיאה בטעינת הערות: ${err.message}`);
     }
   };
 
   // Handle lesson selection
   const handleLessonChange = async (lessonId) => {
-    setSelectedLesson(lessonId);
+    console.log('🔄 Lesson changed to:', lessonId);
     await loadLessonData(lessonId);
   };
 
   // Handle slide selection
   const handleSlideChange = (index) => {
     if (index >= 0 && index < slides.length) {
+      console.log('🔄 Slide changed to:', index);
       setSelectedSlideIndex(index);
-      const slideId = slides[index]?.id || `slide-${index + 1}`;
-      setCurrentNote(notes[slideId] || '');
+      setCurrentNote(notes[index] || '');
     }
   };
 
@@ -94,31 +115,36 @@ const Notes = () => {
   const handleSaveNote = async () => {
     if (!currentUser?.uid || !selectedLesson) return;
     try {
+      console.log('💾 Saving note for lesson:', selectedLesson, 'slide:', selectedSlideIndex);
+      
       const slideId = slides[selectedSlideIndex]?.id || `slide-${selectedSlideIndex + 1}`;
       const slideTitle = slides[selectedSlideIndex]?.title || `שקופית ${selectedSlideIndex + 1}`;
       
       await saveTeacherNotes(currentUser.uid, selectedLesson, slideId, {
-        content: currentNote
+        content: currentNote,
+        slideIndex: selectedSlideIndex
       });
       
-      setNotes(prev => ({ ...prev, [slideId]: currentNote }));
+      setNotes(prev => ({ ...prev, [selectedSlideIndex]: currentNote }));
       
       if (currentNote.trim()) {
         await logTeacherActivity(currentUser.uid, {
           type: 'note_added',
           title: 'הערה נוספה',
-          description: `הערה נוספה לשיעור ${lessonNames[selectedLesson]}, שקופית ${slideTitle}`,
+          description: `הערה נוספה לשיעור ${selectedLesson}, שקופית ${slideTitle}`,
           metadata: {
             lessonId: selectedLesson,
-            lessonName: lessonNames[selectedLesson],
             slideId,
             slideTitle,
             noteLength: currentNote.length
           }
         });
       }
+      
+      console.log('✅ Note saved successfully');
+      
     } catch (err) {
-      console.error('Error saving note:', err);
+      console.error('❌ Error saving note:', err);
       setError(`שגיאה בשמירת ההערה: ${err.message}`);
     }
   };
@@ -127,6 +153,8 @@ const Notes = () => {
   const handleDeleteNote = async () => {
     if (!currentUser?.uid || !selectedLesson) return;
     try {
+      console.log('🗑️ Deleting note for lesson:', selectedLesson, 'slide:', selectedSlideIndex);
+      
       const slideId = slides[selectedSlideIndex]?.id || `slide-${selectedSlideIndex + 1}`;
       const slideTitle = slides[selectedSlideIndex]?.title || `שקופית ${selectedSlideIndex + 1}`;
       
@@ -134,7 +162,7 @@ const Notes = () => {
       
       setNotes(prev => {
         const newNotes = { ...prev };
-        delete newNotes[slideId];
+        delete newNotes[selectedSlideIndex];
         return newNotes;
       });
       
@@ -143,16 +171,18 @@ const Notes = () => {
       await logTeacherActivity(currentUser.uid, {
         type: 'note_deleted',
         title: 'הערה נמחקה',
-        description: `הערה נמחקה משיעור ${lessonNames[selectedLesson]}, שקופית ${slideTitle}`,
+        description: `הערה נמחקה משיעור ${selectedLesson}, שקופית ${slideTitle}`,
         metadata: {
           lessonId: selectedLesson,
-          lessonName: lessonNames[selectedLesson],
           slideId,
           slideTitle
         }
       });
+      
+      console.log('✅ Note deleted successfully');
+      
     } catch (err) {
-      console.error('Error deleting note:', err);
+      console.error('❌ Error deleting note:', err);
       setError(`שגיאה במחיקת ההערה: ${err.message}`);
     }
   };
@@ -161,19 +191,16 @@ const Notes = () => {
   useEffect(() => {
     if (!currentUser) return;
     const timeoutId = setTimeout(() => {
-      if (currentNote !== (notes[slides[selectedSlideIndex]?.id || `slide-${selectedSlideIndex + 1}`] || '')) {
+      if (currentNote !== (notes[selectedSlideIndex] || '')) {
         handleSaveNote();
       }
     }, 1000);
     return () => clearTimeout(timeoutId);
   }, [currentNote]);
 
-  // Load initial lesson if none selected
+  // Load lessons on component mount
   useEffect(() => {
-    if (!selectedLesson && Object.keys(lessonNames).length > 0) {
-      const firstLesson = Object.keys(lessonNames)[0];
-      handleLessonChange(firstLesson);
-    }
+    loadAllLessons();
   }, []);
 
   if (!currentUser) {
@@ -184,117 +211,158 @@ const Notes = () => {
     );
   }
 
-  const currentSlide = slides[selectedSlideIndex];
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">טוען...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between bg-white rounded-lg shadow-sm p-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-1">הערות אישיות</h2>
-          <p className="text-gray-600 text-sm">הוסף הערות אישיות לכל שקופית בשיעורים</p>
-        </div>
-        <div className="mt-4 md:mt-0">
-          <select
-            value={selectedLesson}
-            onChange={(e) => handleLessonChange(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
-          >
-            <option value="">בחר שיעור...</option>
-            {Object.entries(lessonNames).map(([id, name]) => (
-              <option key={id} value={id}>{name}</option>
-            ))}
-          </select>
+      <div className="bg-white shadow-sm border-b border-gray-200 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">הערות מורה</h1>
+              <p className="text-gray-600 mt-1">ניהול הערות אישיות לשיעורים</p>
+            </div>
+            
+            {/* Lesson Selector */}
+            <div className="flex items-center space-x-4">
+              <label className="text-sm font-medium text-gray-700">בחר שיעור:</label>
+              <select
+                value={selectedLesson}
+                onChange={(e) => handleLessonChange(e.target.value)}
+                className="bg-white border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">בחר שיעור</option>
+                {lessons.map(lesson => (
+                  <option key={lesson.id} value={lesson.id}>
+                    {lesson.title || `שיעור ${lesson.id}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Error Display */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-sm text-red-800">{error}</p>
+        <div className="max-w-7xl mx-auto mt-4 px-6">
+          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-red-800">{error}</p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      {isLoading ? (
-        <div className="bg-white rounded-lg shadow-sm p-8 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">טוען שיעור...</p>
-        </div>
-      ) : selectedLesson && slides.length > 0 ? (
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Slide Preview */}
-          <div className="lg:w-1/2 flex flex-col items-center">
-            <div className="mb-4 w-full flex items-center justify-between">
-              <button
-                onClick={() => handleSlideChange(selectedSlideIndex - 1)}
-                disabled={selectedSlideIndex === 0}
-                className={`rounded-full p-2 border ${selectedSlideIndex === 0 ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'} transition`}
-              >
-                <ChevronRight size={20} />
-              </button>
-              <span className="text-sm text-gray-700 font-medium">
-                {currentSlide?.title || `שקופית ${selectedSlideIndex + 1}`}
-              </span>
-              <button
-                onClick={() => handleSlideChange(selectedSlideIndex + 1)}
-                disabled={selectedSlideIndex === slides.length - 1}
-                className={`rounded-full p-2 border ${selectedSlideIndex === slides.length - 1 ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'} transition`}
-              >
-                <ChevronLeft size={20} />
-              </button>
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {selectedLesson && slides.length > 0 ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Slide Navigation */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">שקופיות</h2>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {slides.map((slide, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleSlideChange(index)}
+                      className={`w-full text-left p-3 rounded-lg transition-colors ${
+                        selectedSlideIndex === index
+                          ? 'bg-blue-100 border border-blue-300 text-blue-900'
+                          : 'bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">
+                            {slide.title || `שקופית ${index + 1}`}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">{slide.type || 'presentation'}</div>
+                        </div>
+                        {notes[index] && (
+                          <div className="w-2 h-2 bg-yellow-400 rounded-full ml-2"></div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
-            
-            {/* Simple slide preview */}
-            <div className="w-64 h-40 bg-gray-100 rounded-lg border border-gray-200 p-4 flex flex-col justify-center items-center text-center">
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                {currentSlide?.title || `שקופית ${selectedSlideIndex + 1}`}
-              </h3>
-              <p className="text-sm text-gray-600 mb-2">
-                סוג: {currentSlide?.type || 'presentation'}
-              </p>
-              {currentSlide?.content?.question && (
-                <p className="text-xs text-gray-500 truncate w-full">
-                  {currentSlide.content.question}
-                </p>
-              )}
-            </div>
-            
-            <div className="mt-2 text-xs text-gray-500">
-              {selectedSlideIndex + 1} מתוך {slides.length} שקופיות
-            </div>
-          </div>
 
-          {/* Notes Editor */}
-          <div className="lg:w-1/2 flex flex-col">
-            <div className="bg-white rounded-lg shadow-md p-6 flex-1 flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">הערות אישיות לשקופית</h3>
-                {currentNote.trim() && (
-                  <button
-                    onClick={handleDeleteNote}
-                    className="flex items-center gap-1 px-3 py-1 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
-                  >
-                    <Trash2 size={16} /> מחק
-                  </button>
+            {/* Notes Editor */}
+            <div className="lg:col-span-2">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    הערות - {slides[selectedSlideIndex]?.title || `שקופית ${selectedSlideIndex + 1}`}
+                  </h2>
+                  <div className="flex items-center space-x-2">
+                    {notes[selectedSlideIndex] && (
+                      <button
+                        onClick={handleDeleteNote}
+                        className="text-red-600 hover:text-red-800 transition-colors"
+                        title="מחק הערה"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Existing Note Display */}
+                {notes[selectedSlideIndex] && (
+                  <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="text-sm text-yellow-800 font-medium mb-1">הערה קיימת:</div>
+                    <div className="text-sm text-yellow-700">{notes[selectedSlideIndex]}</div>
+                  </div>
                 )}
-              </div>
-              <textarea
-                value={currentNote}
-                onChange={(e) => setCurrentNote(e.target.value)}
-                placeholder="הוסף הערות אישיות על השקופית הזו..."
-                className="w-full h-40 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-gray-900 bg-gray-50"
-              />
-              <div className="mt-2 text-xs text-gray-500">
-                {currentNote.length} תווים
+
+                <textarea
+                  value={currentNote}
+                  onChange={(e) => setCurrentNote(e.target.value)}
+                  placeholder={notes[selectedSlideIndex] 
+                    ? "ערוך את ההערה הקיימת..." 
+                    : "הוסף הערות לשקופית זו..."}
+                  className="w-full h-64 p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+
+                <div className="mt-4 flex items-center justify-between">
+                  <p className="text-sm text-gray-500">
+                    ההערות נשמרות אוטומטית למסד הנתונים האישי שלך
+                  </p>
+                  <div className="text-sm text-gray-500">
+                    {Object.keys(notes).filter(key => notes[key] && notes[key].trim()).length} הערות שמורות
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      ) : selectedLesson ? (
-        <div className="bg-white rounded-lg shadow-sm p-8 text-center">
-          <p className="text-gray-600">לא נמצאו שקופיות בשיעור זה</p>
-        </div>
-      ) : null}
+        ) : (
+          <div className="text-center py-12">
+            <div className="text-6xl text-gray-300 mb-4">📝</div>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">בחר שיעור</h2>
+            <p className="text-gray-600">בחר שיעור מהרשימה כדי להתחיל להוסיף הערות</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

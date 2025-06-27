@@ -1170,27 +1170,36 @@ export const getAllLessons = async () => {
  */
 export const getTeacherNotes = async (teacherId, lessonId, slideId) => {
   try {
+    console.log('🔍 Fetching specific notes for teacher:', teacherId, 'lesson:', lessonId, 'slide:', slideId);
+    
+    // Normalize lessonId to string for consistent querying
+    const normalizedLessonId = String(lessonId);
+    
     const notesRef = collection(db, 'teacherNotes');
     const q = query(
       notesRef,
       where('teacherId', '==', teacherId),
-      where('lessonId', '==', lessonId),
+      where('lessonId', '==', normalizedLessonId),
       where('slideId', '==', slideId)
     );
     
     const querySnapshot = await getDocs(q);
     
     if (querySnapshot.empty) {
+      console.log('📝 No notes found for slide:', slideId);
       return null;
     }
     
     const noteDoc = querySnapshot.docs[0];
-    return {
+    const noteData = {
       id: noteDoc.id,
       ...noteDoc.data()
     };
+    
+    console.log('✅ Found note:', noteData.id);
+    return noteData;
   } catch (error) {
-    console.error('Error fetching teacher notes:', error);
+    console.error('❌ Error fetching teacher notes:', error);
     throw error;
   }
 };
@@ -1200,7 +1209,7 @@ export const getTeacherNotes = async (teacherId, lessonId, slideId) => {
  */
 export const saveTeacherNotes = async (teacherId, lessonId, slideId, notesData) => {
   try {
-    console.log('Saving notes:', { teacherId, lessonId, slideId, notesData });
+    console.log('💾 Saving notes:', { teacherId, lessonId, slideId, notesData });
     
     const notesRef = collection(db, 'teacherNotes');
     
@@ -1216,7 +1225,7 @@ export const saveTeacherNotes = async (teacherId, lessonId, slideId, notesData) 
         updatedAt: serverTimestamp()
       });
       
-      console.log('Updated existing note:', existingNotes.id);
+      console.log('✅ Updated existing note:', existingNotes.id);
       
       // Log activity
       await logTeacherActivity(teacherId, {
@@ -1243,11 +1252,11 @@ export const saveTeacherNotes = async (teacherId, lessonId, slideId, notesData) 
         updatedAt: serverTimestamp()
       };
       
-      console.log('Creating new note:', noteDoc);
+      console.log('📝 Creating new note:', noteDoc);
       
       const docRef = await addDoc(notesRef, noteDoc);
       
-      console.log('Created note with ID:', docRef.id);
+      console.log('✅ Created note with ID:', docRef.id);
       
       // Log activity
       await logTeacherActivity(teacherId, {
@@ -1264,7 +1273,7 @@ export const saveTeacherNotes = async (teacherId, lessonId, slideId, notesData) 
       return { id: docRef.id, ...noteDoc };
     }
   } catch (error) {
-    console.error('Error saving teacher notes:', error);
+    console.error('❌ Error saving teacher notes:', error);
     throw error;
   }
 };
@@ -1274,14 +1283,19 @@ export const saveTeacherNotes = async (teacherId, lessonId, slideId, notesData) 
  */
 export const deleteTeacherNotes = async (teacherId, lessonId, slideId) => {
   try {
+    console.log('🗑️ Deleting notes for teacher:', teacherId, 'lesson:', lessonId, 'slide:', slideId);
+    
     const existingNotes = await getTeacherNotes(teacherId, lessonId, slideId);
     
     if (!existingNotes) {
+      console.log('📝 No notes found to delete');
       throw new Error('Notes not found');
     }
     
     const noteRef = doc(db, 'teacherNotes', existingNotes.id);
     await deleteDoc(noteRef);
+    
+    console.log('✅ Deleted note:', existingNotes.id);
     
     // Log activity
     await logTeacherActivity(teacherId, {
@@ -1296,7 +1310,7 @@ export const deleteTeacherNotes = async (teacherId, lessonId, slideId) => {
     
     return true;
   } catch (error) {
-    console.error('Error deleting teacher notes:', error);
+    console.error('❌ Error deleting teacher notes:', error);
     throw error;
   }
 };
@@ -1306,13 +1320,16 @@ export const deleteTeacherNotes = async (teacherId, lessonId, slideId) => {
  */
 export const getTeacherNotesForLesson = async (teacherId, lessonId) => {
   try {
-    console.log('Fetching notes for teacher:', teacherId, 'lesson:', lessonId);
+    console.log('🔍 Fetching notes for teacher:', teacherId, 'lesson:', lessonId);
+    
+    // Normalize lessonId to string for consistent querying
+    const normalizedLessonId = String(lessonId);
     
     const notesRef = collection(db, 'teacherNotes');
     const q = query(
       notesRef,
       where('teacherId', '==', teacherId),
-      where('lessonId', '==', lessonId)
+      where('lessonId', '==', normalizedLessonId)
     );
     
     const querySnapshot = await getDocs(q);
@@ -1332,10 +1349,102 @@ export const getTeacherNotesForLesson = async (teacherId, lessonId) => {
       });
     });
     
-    console.log('Found notes:', notes);
+    console.log('✅ Found notes:', notes.length, 'notes for lesson', normalizedLessonId);
     return notes;
   } catch (error) {
-    console.error('Error fetching teacher notes for lesson:', error);
+    console.error('❌ Error fetching teacher notes for lesson:', error);
+    throw error;
+  }
+};
+
+/**
+ * Clean up teacher notes when slides are deleted or modified
+ * This function removes teacher notes for slides that no longer exist
+ */
+export const cleanupTeacherNotesForLesson = async (lessonId, currentSlideIds) => {
+  try {
+    console.log('🧹 Cleaning up teacher notes for lesson:', lessonId);
+    console.log('📋 Current slide IDs:', currentSlideIds);
+    
+    const notesRef = collection(db, 'teacherNotes');
+    const q = query(
+      notesRef,
+      where('lessonId', '==', String(lessonId))
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const notesToDelete = [];
+    
+    querySnapshot.forEach((doc) => {
+      const noteData = doc.data();
+      // If the slideId no longer exists in the current slides, mark for deletion
+      if (!currentSlideIds.includes(noteData.slideId)) {
+        notesToDelete.push({
+          id: doc.id,
+          ...noteData
+        });
+      }
+    });
+    
+    if (notesToDelete.length > 0) {
+      console.log('🗑️ Found notes to delete:', notesToDelete.length);
+      
+      for (const note of notesToDelete) {
+        console.log('🗑️ Deleting note for non-existent slide:', note.slideId);
+        await deleteDoc(doc(db, 'teacherNotes', note.id));
+      }
+      
+      console.log('✅ Cleanup completed - deleted', notesToDelete.length, 'notes');
+    } else {
+      console.log('✅ No cleanup needed - all notes are for existing slides');
+    }
+    
+    return notesToDelete.length;
+  } catch (error) {
+    console.error('❌ Error cleaning up teacher notes:', error);
+    throw error;
+  }
+};
+
+/**
+ * Migrate teacher notes when slide IDs change
+ * This function helps migrate notes when slides are reorganized
+ */
+export const migrateTeacherNotes = async (lessonId, slideIdMapping) => {
+  try {
+    console.log('🔄 Migrating teacher notes for lesson:', lessonId);
+    console.log('📋 Slide ID mapping:', slideIdMapping);
+    
+    const notesRef = collection(db, 'teacherNotes');
+    const q = query(
+      notesRef,
+      where('lessonId', '==', String(lessonId))
+    );
+    
+    const querySnapshot = await getDocs(q);
+    let migratedCount = 0;
+    
+    for (const docSnapshot of querySnapshot.docs) {
+      const noteData = docSnapshot.data();
+      const newSlideId = slideIdMapping[noteData.slideId];
+      
+      if (newSlideId && newSlideId !== noteData.slideId) {
+        console.log('🔄 Migrating note from', noteData.slideId, 'to', newSlideId);
+        
+        // Update the note with the new slideId
+        await updateDoc(doc(db, 'teacherNotes', docSnapshot.id), {
+          slideId: newSlideId,
+          updatedAt: serverTimestamp()
+        });
+        
+        migratedCount++;
+      }
+    }
+    
+    console.log('✅ Migration completed - migrated', migratedCount, 'notes');
+    return migratedCount;
+  } catch (error) {
+    console.error('❌ Error migrating teacher notes:', error);
     throw error;
   }
 }; 

@@ -569,10 +569,41 @@ export const updateSlide = async (slideId, slideData) => {
  */
 export const deleteSlide = async (slideId) => {
   try {
-    await deleteDoc(doc(db, 'slides', slideId));
-    console.log('Slide deleted:', slideId);
+    console.log('🗑️ Deleting slide:', slideId);
+    
+    // Get the slide data first to know which lesson it belongs to
+    const slideRef = doc(db, 'slides', slideId);
+    const slideDoc = await getDoc(slideRef);
+    
+    if (!slideDoc.exists()) {
+      throw new Error('Slide not found');
+    }
+    
+    const slideData = slideDoc.data();
+    const lessonId = slideData.lessonId;
+    
+    // Delete the slide
+    await deleteDoc(slideRef);
+    console.log('✅ Slide deleted successfully');
+    
+    // Clean up teacher notes for this slide
+    try {
+      const { cleanupTeacherNotesForLesson } = await import('./teacher-service.jsx');
+      const currentSlides = await getSlidesByLessonId(lessonId);
+      const currentSlideIds = currentSlides.map(slide => slide.id);
+      
+      // Remove the deleted slide ID from the list since it's already deleted
+      const remainingSlideIds = currentSlideIds.filter(id => id !== slideId);
+      
+      await cleanupTeacherNotesForLesson(lessonId, remainingSlideIds);
+    } catch (cleanupError) {
+      console.warn('⚠️ Teacher notes cleanup failed:', cleanupError);
+      // Don't throw error for cleanup failure, as the main operation succeeded
+    }
+    
+    return true;
   } catch (error) {
-    console.error('Error deleting slide:', error);
+    console.error('❌ Error deleting slide:', error);
     throw error;
   }
 };
