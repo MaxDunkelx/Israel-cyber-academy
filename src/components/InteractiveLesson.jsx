@@ -26,7 +26,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getLessonById, getNextLesson } from '../data/lessons';
+import { getLessonWithSlides } from '../firebase/content-service';
+import { getLessonById as getLocalLessonById, getNextLesson } from '../data/lessons';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -102,6 +103,8 @@ const InteractiveLesson = () => {
   const isInitialized = useRef(false);
   const lastSavedSlide = useRef(0);
   const isCompletedLesson = useRef(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Debug: Log current slide position
   useEffect(() => {
@@ -119,64 +122,37 @@ const InteractiveLesson = () => {
    * Initialize lesson data and timer - FIXED for completed lessons
    */
   useEffect(() => {
-    if (isInitialized.current) return; // Prevent multiple initializations
-    
-    console.log('🔄 Loading lesson data for lessonId:', lessonId);
-    const lessonData = getLessonById(parseInt(lessonId));
-    if (lessonData) {
-      console.log('✅ Lesson loaded successfully:', {
-        id: lessonData.id,
-        title: lessonData.title,
-        totalSlides: lessonData.content.slides.length,
-        slideTypes: lessonData.content.slides.map(slide => slide.type)
-      });
-      setLesson(lessonData);
-      
-      // Initialize session monitoring
-      if (currentUser) {
-        initLessonSession(currentUser.uid, lessonData.id);
-      }
-      
-      // Check if lesson is completed
-      let isCompleted = false;
-      let startSlide = 0;
-      
-      if (userProfile && userProfile.progress && userProfile.progress[lessonData.id]) {
-        const lessonProgress = userProfile.progress[lessonData.id];
-        isCompleted = lessonProgress.completed || false;
-        isCompletedLesson.current = isCompleted;
-        
-        if (isCompleted) {
-          // For completed lessons, always start from the first slide
-          startSlide = 0;
-          console.log(`🎓 Lesson ${lessonData.id} is completed - starting from first slide`);
+    let isMounted = true;
+    async function loadLesson() {
+      setLoading(true);
+      setError(null);
+      try {
+        let lessonData = await getLessonWithSlides(lessonId);
+        if (lessonData && lessonData.slides && lessonData.slides.length > 0) {
+          // Transform to match local format if needed
+          lessonData = {
+            ...lessonData,
+            content: { slides: lessonData.slides }
+          };
+          if (isMounted) setLesson(lessonData);
         } else {
-          // For incomplete lessons, restore the last slide position
-          startSlide = lessonProgress.lastSlide || 0;
-          console.log(`📚 Loading saved slide position: ${startSlide} for lesson ${lessonData.id}`);
+          throw new Error('No slides found in Firebase');
         }
-      } else {
-        console.log(`🆕 New lesson ${lessonData.id} - starting from first slide`);
+      } catch (e) {
+        // Fallback to local data
+        const localLesson = getLocalLessonById(parseInt(lessonId));
+        if (localLesson) {
+          if (isMounted) setLesson(localLesson);
+        } else {
+          if (isMounted) setError('השיעור לא נמצא');
+        }
+      } finally {
+        if (isMounted) setLoading(false);
       }
-      
-      // Set the current slide
-      setCurrentSlide(startSlide);
-      lastSavedSlide.current = startSlide;
-      
-      // Set up timer for the current slide
-      const currentSlideData = lessonData.content.slides[startSlide];
-      setTimeLeft(currentSlideData?.content?.duration || 30);
-      setLessonStartTime(Date.now());
-      setSlideStartTime(Date.now());
-      setSlideTimeSpent(0);
-      
-      isInitialized.current = true;
-    } else {
-      console.error('❌ Lesson not found:', lessonId);
-      toast.error('השיעור לא נמצא');
-      navigate('/roadmap');
     }
-  }, [lessonId, navigate, userProfile, currentUser]);
+    loadLesson();
+    return () => { isMounted = false; };
+  }, [lessonId]);
 
   /**
    * Track slide engagement when slide changes - FIXED to prevent conflicts
@@ -483,10 +459,18 @@ const InteractiveLesson = () => {
   };
 
   // Loading state
-  if (!lesson) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
         <div className="text-white text-2xl">טוען שיעור...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
+        <div className="text-white text-2xl">{error}</div>
       </div>
     );
   }

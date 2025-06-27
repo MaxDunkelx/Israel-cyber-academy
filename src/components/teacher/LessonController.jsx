@@ -41,7 +41,8 @@ import LoadingSpinner from '../common/LoadingSpinner';
 import TeacherLessonPreview from './TeacherLessonPreview';
 import { getSession, updateSessionSlide, endSession } from '../../firebase/session-service';
 import { getTeacherNotesForLesson } from '../../firebase/teacher-service';
-import { getLessonById } from '../../data/lessons';
+import { getLessonWithSlides } from '../../firebase/content-service';
+import { getLessonById as getLocalLessonById } from '../../data/lessons';
 
 const LessonController = () => {
   const { sessionId } = useParams();
@@ -104,8 +105,22 @@ const LessonController = () => {
       setSession(sessionData);
       setCurrentSlide(sessionData.currentSlide || 0);
       
-      // Load lesson data
-      const lessonData = getLessonById(sessionData.lessonId);
+      // Load lesson data from Firebase first
+      let lessonData = null;
+      try {
+        lessonData = await getLessonWithSlides(sessionData.lessonId);
+        if (lessonData && lessonData.slides && lessonData.slides.length > 0) {
+          lessonData = {
+            ...lessonData,
+            content: { slides: lessonData.slides }
+          };
+        } else {
+          throw new Error('No slides found in Firebase');
+        }
+      } catch (e) {
+        // Fallback to local data
+        lessonData = getLocalLessonById(sessionData.lessonId);
+      }
       setLesson(lessonData);
       
       // Load teacher notes for this lesson

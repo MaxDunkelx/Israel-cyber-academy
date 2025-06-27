@@ -28,13 +28,13 @@ import { toast } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { isTeacher, validateTeacherAccess, logSecurityEvent } from '../../utils/security';
 import { getSession, updateSessionSlide, unlockSlide, endSession, listenToSession } from '../../firebase/session-service';
-import { lessons } from '../../data/lessons';
+import { getLessonWithSlides } from '../../firebase/content-service';
+import { getLessonById as getLocalLessonById } from '../../data/lessons';
 import TeacherLessonPreview from './TeacherLessonPreview';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { getTeacherNotesForLesson } from '../../firebase/teacher-service';
-import { getLessonById } from '../../data/lessons';
 
 const SessionHosting = () => {
   const { sessionId } = useParams();
@@ -114,12 +114,25 @@ const SessionHosting = () => {
       const sessionData = await getSession(sessionId);
       console.log('✅ Session data loaded:', sessionData);
       
-      // Get lesson data
-      const lessonData = lessons.find(lesson => lesson.id === sessionData.lessonId);
+      // Get lesson data from Firebase first
+      let lessonData = null;
+      try {
+        lessonData = await getLessonWithSlides(sessionData.lessonId);
+        if (lessonData && lessonData.slides && lessonData.slides.length > 0) {
+          lessonData = {
+            ...lessonData,
+            content: { slides: lessonData.slides }
+          };
+        } else {
+          throw new Error('No slides found in Firebase');
+        }
+      } catch (e) {
+        // Fallback to local data
+        lessonData = getLocalLessonById(sessionData.lessonId);
+      }
       if (!lessonData) {
         throw new Error(`Lesson ${sessionData.lessonId} not found`);
       }
-      
       console.log('✅ Lesson data loaded:', lessonData);
       
       // Load teacher notes for this lesson
