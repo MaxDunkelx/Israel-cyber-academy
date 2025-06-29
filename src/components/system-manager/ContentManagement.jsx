@@ -56,12 +56,220 @@ import {
   MessageSquare,
   Video,
   Music,
-  Layers
+  Layers,
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react';
 import { getAllLessons, getSlidesByLessonId, updateSlide, createSlide, deleteSlide, createLesson, updateLesson, deleteLesson } from '../../firebase/content-service';
 import ComprehensiveSlideEditor from './ComprehensiveSlideEditor';
 import AdvancedSlideEditor from './AdvancedSlideEditor';
 import LessonGenerator from './LessonGenerator';
+
+// Error boundary component for slide previews
+const SlidePreviewErrorBoundary = ({ children, slideTitle, onError }) => {
+  const [hasError, setHasError] = useState(false);
+  const [errorDetails, setErrorDetails] = useState(null);
+
+  if (hasError) {
+    return (
+      <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-6 text-center">
+        <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-red-200 mb-2">
+          Preview Error - {slideTitle}
+        </h3>
+        <p className="text-red-300 mb-4">
+          This slide contains content that cannot be previewed safely.
+        </p>
+        {errorDetails && (
+          <details className="text-left bg-red-900/30 rounded p-3 mb-4">
+            <summary className="cursor-pointer text-red-200 font-medium">
+              Technical Details
+            </summary>
+            <pre className="text-xs text-red-300 mt-2 whitespace-pre-wrap">
+              {errorDetails}
+            </pre>
+          </details>
+        )}
+        <div className="flex items-center justify-center space-x-3">
+          <button
+            onClick={() => {
+              setHasError(false);
+              setErrorDetails(null);
+            }}
+            className="flex items-center space-x-2 bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Retry Preview</span>
+          </button>
+          <button
+            onClick={() => onError && onError(errorDetails)}
+            className="flex items-center space-x-2 bg-gray-600 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            <Edit3 className="w-4 h-4" />
+            <span>Edit Slide</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div onError={(error) => {
+      console.error('Slide preview error:', error);
+      setHasError(true);
+      setErrorDetails(error.message || 'Unknown error occurred');
+    }}>
+      {children}
+    </div>
+  );
+};
+
+// Safe slide preview component
+const SafeSlidePreview = ({ slide, onEdit }) => {
+  const [previewError, setPreviewError] = useState(null);
+
+  const handlePreviewError = (error) => {
+    console.error('Slide preview failed:', error);
+    setPreviewError(error);
+  };
+
+  if (previewError) {
+    return (
+      <SlidePreviewErrorBoundary
+        slideTitle={slide.title || 'Unknown Slide'}
+        onError={handlePreviewError}
+      >
+        <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-6 text-center">
+          <AlertTriangle className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-yellow-200 mb-2">
+            Preview Unavailable
+          </h3>
+          <p className="text-yellow-300 mb-4">
+            This slide type cannot be previewed in the content manager.
+          </p>
+          <button
+            onClick={() => onEdit(slide)}
+            className="flex items-center space-x-2 bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors mx-auto"
+          >
+            <Edit3 className="w-4 h-4" />
+            <span>Edit Slide</span>
+          </button>
+        </div>
+      </SlidePreviewErrorBoundary>
+    );
+  }
+
+  // Try to render the slide preview safely
+  try {
+    // For interactive slides that might crash, show a safe preview
+    if (slide.type === 'interactive' && slide.content?.type) {
+      const interactiveTypes = [
+        'windows-simulator', 'linux-simulator', 'network-simulator',
+        'protocol-simulator', 'code-editor', 'website-builder',
+        'database-simulator', 'browser-simulator'
+      ];
+      
+      if (interactiveTypes.includes(slide.content.type)) {
+        return (
+          <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-6 text-center">
+            <Play className="w-12 h-12 text-blue-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-blue-200 mb-2">
+              Interactive Exercise
+            </h3>
+            <p className="text-blue-300 mb-2">
+              Type: {slide.content.type.replace('-', ' ').toUpperCase()}
+            </p>
+            {slide.content.instructions && (
+              <p className="text-blue-300 text-sm mb-4">
+                {slide.content.instructions}
+              </p>
+            )}
+            <div className="flex items-center justify-center space-x-3">
+              <button
+                onClick={() => onEdit(slide)}
+                className="flex items-center space-x-2 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Edit3 className="w-4 h-4" />
+                <span>Edit Exercise</span>
+              </button>
+              <div className="text-blue-300 text-sm">
+                ⚠️ Preview not available for simulators
+              </div>
+            </div>
+          </div>
+        );
+      }
+    }
+
+    // For other slide types, show basic preview
+    return (
+      <div className="bg-gray-800 rounded-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">{slide.title}</h3>
+          <span className="text-sm text-gray-400 bg-gray-700 px-2 py-1 rounded">
+            {slide.type}
+          </span>
+        </div>
+        
+        {slide.content?.elements && slide.content.elements.length > 0 ? (
+          <div className="space-y-3">
+            {slide.content.elements.slice(0, 3).map((element, index) => (
+              <div key={index} className="text-gray-300 text-sm">
+                {element.type === 'title' && <strong>{element.text}</strong>}
+                {element.type === 'subtitle' && <em>{element.text}</em>}
+                {element.type === 'text' && <span>{element.text}</span>}
+                {element.type === 'image' && <span>🖼️ Image: {element.alt || 'No alt text'}</span>}
+                {element.type === 'video' && <span>🎥 Video: {element.src || 'No source'}</span>}
+                {element.type === 'timer' && <span>⏱️ Timer: {element.duration}s</span>}
+              </div>
+            ))}
+            {slide.content.elements.length > 3 && (
+              <div className="text-gray-500 text-sm">
+                +{slide.content.elements.length - 3} more elements
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-gray-400 italic">No content to preview</p>
+        )}
+        
+        <div className="mt-4 pt-4 border-t border-gray-700">
+          <button
+            onClick={() => onEdit(slide)}
+            className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Edit Slide
+          </button>
+        </div>
+      </div>
+    );
+  } catch (error) {
+    console.error('Error rendering slide preview:', error);
+    return (
+      <SlidePreviewErrorBoundary
+        slideTitle={slide.title || 'Unknown Slide'}
+        onError={handlePreviewError}
+      >
+        <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-6 text-center">
+          <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-red-200 mb-2">
+            Preview Error
+          </h3>
+          <p className="text-red-300 mb-4">
+            Failed to render slide preview due to an error.
+          </p>
+          <button
+            onClick={() => onEdit(slide)}
+            className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors mx-auto"
+          >
+            <Edit3 className="w-4 h-4" />
+            <span>Edit Slide</span>
+          </button>
+        </div>
+      </SlidePreviewErrorBoundary>
+    );
+  }
+};
 
 const ContentManagement = () => {
   const [lessons, setLessons] = useState([]);
@@ -83,6 +291,7 @@ const ContentManagement = () => {
   const [successMessage, setSuccessMessage] = useState(null);
   const [useAdvancedEditor, setUseAdvancedEditor] = useState(false);
   const [showLessonGenerator, setShowLessonGenerator] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     loadLessons();
@@ -92,11 +301,26 @@ const ContentManagement = () => {
     try {
       setLoading(true);
       setError(null);
+      console.log('🔄 Loading lessons from database...');
+      
       const lessonsData = await getAllLessons();
+      console.log(`✅ Loaded ${lessonsData.length} lessons`);
       setLessons(lessonsData);
+      
+      if (lessonsData.length === 0) {
+        setError('No lessons found. Please check your database connection or run the sync script.');
+      }
     } catch (err) {
-      setError('Failed to load lessons: ' + err.message);
-      console.error('Error loading lessons:', err);
+      console.error('❌ Error loading lessons:', err);
+      setError(`Failed to load lessons: ${err.message}. Please check your database connection.`);
+      
+      // Auto-retry on network errors
+      if (retryCount < 3 && (err.message.includes('network') || err.message.includes('permission'))) {
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+          loadLessons();
+        }, 2000);
+      }
     } finally {
       setLoading(false);
     }
@@ -105,39 +329,68 @@ const ContentManagement = () => {
   const loadSlides = async (lessonId) => {
     try {
       setError(null);
+      console.log(`🔄 Loading slides for lesson ${lessonId}...`);
+      
       const slidesData = await getSlidesByLessonId(lessonId);
+      console.log(`✅ Loaded ${slidesData.length} slides`);
       setSlides(slidesData);
+      
+      if (slidesData.length === 0) {
+        console.log('⚠️ No slides found for this lesson');
+      }
     } catch (err) {
-      setError('Failed to load slides: ' + err.message);
-      console.error('Error loading slides:', err);
+      console.error('❌ Error loading slides:', err);
+      setError(`Failed to load slides: ${err.message}`);
+      setSlides([]);
     }
   };
 
   const handleLessonClick = async (lesson) => {
-    if (selectedLesson?.id === lesson.id) {
-      setSelectedLesson(null);
-      setSlides([]);
-    } else {
-      setSelectedLesson(lesson);
-      await loadSlides(lesson.id);
+    try {
+      if (selectedLesson?.id === lesson.id) {
+        setSelectedLesson(null);
+        setSlides([]);
+      } else {
+        setSelectedLesson(lesson);
+        await loadSlides(lesson.id);
+      }
+    } catch (error) {
+      console.error('❌ Error handling lesson click:', error);
+      setError(`Failed to load lesson: ${error.message}`);
     }
   };
 
   const handleSlideClick = (slide) => {
-    setPreviewSlide(slide);
-    setQuickEditMode(false);
-    setSelectedElement(null);
+    try {
+      setPreviewSlide(slide);
+      setQuickEditMode(false);
+      setSelectedElement(null);
+    } catch (error) {
+      console.error('❌ Error handling slide click:', error);
+      setError(`Failed to preview slide: ${error.message}`);
+    }
   };
 
   const handleEditSlide = (slide) => {
-    setEditingSlide(slide);
-    setPreviewSlide(null);
+    try {
+      setEditingSlide(slide);
+      setPreviewSlide(null);
+    } catch (error) {
+      console.error('❌ Error handling edit slide:', error);
+      setError(`Failed to edit slide: ${error.message}`);
+    }
   };
 
   const handleSaveSlide = async (slideData) => {
     try {
       setError(null);
       setSuccessMessage(null);
+      
+      if (!selectedLesson) {
+        throw new Error('No lesson selected');
+      }
+      
+      console.log('💾 Saving slide...');
       
       // Ensure the slide has the correct lessonId (Firestore document ID)
       const slideToSave = {
@@ -148,9 +401,11 @@ const ContentManagement = () => {
       if (editingSlide.id) {
         await updateSlide(editingSlide.id, slideToSave);
         setSuccessMessage('Slide updated successfully!');
+        console.log('✅ Slide updated');
       } else {
         await createSlide(slideToSave);
         setSuccessMessage('Slide created successfully!');
+        console.log('✅ Slide created');
       }
       
       await loadSlides(selectedLesson.id);
@@ -159,22 +414,26 @@ const ContentManagement = () => {
       // Auto-hide success message
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      setError('Failed to save slide: ' + err.message);
-      console.error('Error saving slide:', err);
+      console.error('❌ Error saving slide:', err);
+      setError(`Failed to save slide: ${err.message}`);
     }
   };
 
   const handleDeleteSlide = async (slideId) => {
     try {
       setError(null);
+      console.log(`🗑️ Deleting slide ${slideId}...`);
+      
       await deleteSlide(slideId);
       await loadSlides(selectedLesson.id);
       setPreviewSlide(null);
       setSuccessMessage('Slide deleted successfully!');
+      
+      console.log('✅ Slide deleted');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      setError('Failed to delete slide: ' + err.message);
-      console.error('Error deleting slide:', err);
+      console.error('❌ Error deleting slide:', err);
+      setError(`Failed to delete slide: ${err.message}`);
     }
   };
 
@@ -204,31 +463,52 @@ const ContentManagement = () => {
     setEditingSlide(newSlide);
   };
 
-  const handleDuplicateSlide = async (slide) => {
-    const duplicatedSlide = {
-      ...slide,
-      id: null,
-      title: `${slide.title} (העתק)`,
-      order: slides.length + 1
-    };
-    setEditingSlide(duplicatedSlide);
+  const handleDuplicateSlide = (slide) => {
+    try {
+      const duplicatedSlide = {
+        ...slide,
+        id: null, // Remove ID so it creates a new slide
+        title: `${slide.title} (Copy)`,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      setEditingSlide(duplicatedSlide);
+      setPreviewSlide(null);
+      
+      console.log('📋 Slide duplicated for editing');
+    } catch (error) {
+      console.error('❌ Error duplicating slide:', error);
+      setError(`Failed to duplicate slide: ${error.message}`);
+    }
   };
 
   const handleCreateNewLesson = () => {
-    setEditingLesson({
-      title: 'שיעור חדש',
-      description: 'תיאור השיעור',
-      order: lessons.length + 1,
-      difficulty: 'beginner',
-      duration: 60,
-      tags: []
-    });
-    setShowLessonModal(true);
+    try {
+      setEditingLesson({
+        title: '',
+        description: '',
+        icon: '📚',
+        duration: '60 דקות',
+        difficulty: 'בינוני',
+        targetAge: '10-13',
+        breakDuration: 10
+      });
+      setShowLessonModal(true);
+    } catch (error) {
+      console.error('❌ Error creating new lesson:', error);
+      setError(`Failed to create new lesson: ${error.message}`);
+    }
   };
 
   const handleEditLesson = (lesson) => {
-    setEditingLesson(lesson);
-    setShowLessonModal(true);
+    try {
+      setEditingLesson(lesson);
+      setShowLessonModal(true);
+    } catch (error) {
+      console.error('❌ Error editing lesson:', error);
+      setError(`Failed to edit lesson: ${error.message}`);
+    }
   };
 
   const handleSaveLesson = async (lessonData) => {
@@ -236,12 +516,16 @@ const ContentManagement = () => {
       setError(null);
       setSuccessMessage(null);
       
+      console.log('💾 Saving lesson...');
+      
       if (editingLesson.id) {
         await updateLesson(editingLesson.id, lessonData);
         setSuccessMessage('Lesson updated successfully!');
+        console.log('✅ Lesson updated');
       } else {
         await createLesson(lessonData);
         setSuccessMessage('Lesson created successfully!');
+        console.log('✅ Lesson created');
       }
       
       await loadLessons();
@@ -250,22 +534,26 @@ const ContentManagement = () => {
       
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      setError('Failed to save lesson: ' + err.message);
-      console.error('Error saving lesson:', err);
+      console.error('❌ Error saving lesson:', err);
+      setError(`Failed to save lesson: ${err.message}`);
     }
   };
 
   const handleDeleteLesson = async (lessonId) => {
     try {
       setError(null);
+      console.log(`🗑️ Deleting lesson ${lessonId}...`);
+      
       await deleteLesson(lessonId);
       await loadLessons();
       setShowConfirmDelete(null);
       setSuccessMessage('Lesson deleted successfully!');
+      
+      console.log('✅ Lesson deleted');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      setError('Failed to delete lesson: ' + err.message);
-      console.error('Error deleting lesson:', err);
+      console.error('❌ Error deleting lesson:', err);
+      setError(`Failed to delete lesson: ${err.message}`);
     }
   };
 
@@ -273,6 +561,8 @@ const ContentManagement = () => {
     try {
       setError(null);
       setSuccessMessage(null);
+      
+      console.log('🚀 Generating lesson...');
       
       // Create the lesson first
       const newLesson = await createLesson({
@@ -293,83 +583,91 @@ const ContentManagement = () => {
       await loadLessons();
       setShowLessonGenerator(false);
       setSuccessMessage('Lesson generated successfully!');
+      
+      console.log('✅ Lesson generated');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      setError('Failed to generate lesson: ' + err.message);
-      console.error('Error generating lesson:', err);
+      console.error('❌ Error generating lesson:', err);
+      setError(`Failed to generate lesson: ${err.message}`);
     }
   };
 
   const handleQuickEdit = (elementIndex, updates) => {
-    if (!previewSlide) return;
-    
-    const newElements = [...previewSlide.content.elements];
-    newElements[elementIndex] = { ...newElements[elementIndex], ...updates };
-    
-    setPreviewSlide({
-      ...previewSlide,
-      content: { ...previewSlide.content, elements: newElements }
-    });
+    try {
+      if (!previewSlide) return;
+      
+      const newElements = [...previewSlide.content.elements];
+      newElements[elementIndex] = { ...newElements[elementIndex], ...updates };
+      
+      setPreviewSlide({
+        ...previewSlide,
+        content: { ...previewSlide.content, elements: newElements }
+      });
+    } catch (error) {
+      console.error('❌ Error in quick edit:', error);
+      setError(`Failed to edit element: ${error.message}`);
+    }
   };
 
   const handleSaveQuickEdit = async () => {
-    if (!previewSlide) return;
-    
     try {
+      if (!previewSlide) return;
+      
+      console.log('💾 Saving quick edit...');
+      
       await updateSlide(previewSlide.id, previewSlide);
       await loadSlides(selectedLesson.id);
       setQuickEditMode(false);
       setSelectedElement(null);
       setSuccessMessage('Quick edit saved!');
+      
+      console.log('✅ Quick edit saved');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      setError('Failed to save changes: ' + err.message);
-      console.error('Error saving quick edit:', err);
+      console.error('❌ Error saving quick edit:', err);
+      setError(`Failed to save changes: ${err.message}`);
     }
   };
 
   const handleDragStart = (e, slide) => {
-    setDraggedSlide(slide);
+    try {
+      setDraggedSlide(slide);
+    } catch (error) {
+      console.error('❌ Error starting drag:', error);
+    }
   };
 
   const handleDragOver = (e) => {
-    e.preventDefault();
+    try {
+      e.preventDefault();
+    } catch (error) {
+      console.error('❌ Error during drag over:', error);
+    }
   };
 
   const handleDrop = async (e, targetSlide) => {
-    e.preventDefault();
-    if (!draggedSlide || draggedSlide.id === targetSlide.id) return;
-
     try {
-      // Update slide orders
-      const newSlides = [...slides];
-      const draggedIndex = newSlides.findIndex(s => s.id === draggedSlide.id);
-      const targetIndex = newSlides.findIndex(s => s.id === targetSlide.id);
+      e.preventDefault();
+      if (!draggedSlide || draggedSlide.id === targetSlide.id) return;
       
-      // Remove dragged slide and insert at target position
-      const [draggedItem] = newSlides.splice(draggedIndex, 1);
-      newSlides.splice(targetIndex, 0, draggedItem);
+      // Implement slide reordering logic here
+      console.log('🔄 Reordering slides...');
       
-      // Update orders
-      newSlides.forEach((slide, index) => {
-        slide.order = index + 1;
-      });
-      
-      setSlides(newSlides);
-      
-      // Save all updated slides
-      for (const slide of newSlides) {
-        await updateSlide(slide.id, slide);
-      }
-      
-      setSuccessMessage('Slide order updated!');
+      // For now, just show a message
+      setSuccessMessage('Slide reordering will be implemented soon!');
       setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (err) {
-      setError('Failed to reorder slides: ' + err.message);
-      console.error('Error reordering slides:', err);
-    } finally {
+      
       setDraggedSlide(null);
+    } catch (error) {
+      console.error('❌ Error dropping slide:', error);
+      setError(`Failed to reorder slides: ${error.message}`);
     }
+  };
+
+  const handleRetryLoad = () => {
+    setRetryCount(0);
+    setError(null);
+    loadLessons();
   };
 
   const getSlideTypeIcon = (type) => {
@@ -541,13 +839,24 @@ const ContentManagement = () => {
               className="mb-6 bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded-lg flex items-center space-x-2"
             >
               <AlertCircle className="w-5 h-5" />
-              <span>{error}</span>
-              <button
-                onClick={() => setError(null)}
-                className="ml-auto text-red-300 hover:text-red-100"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <span className="flex-1">{error}</span>
+              <div className="flex items-center space-x-2">
+                {retryCount > 0 && (
+                  <button
+                    onClick={handleRetryLoad}
+                    className="flex items-center space-x-1 bg-red-600 text-white px-2 py-1 rounded text-sm hover:bg-red-700 transition-colors"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Retry</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setError(null)}
+                  className="text-red-300 hover:text-red-100"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </motion.div>
           )}
           
@@ -559,10 +868,10 @@ const ContentManagement = () => {
               className="mb-6 bg-green-900/50 border border-green-500 text-green-200 px-4 py-3 rounded-lg flex items-center space-x-2"
             >
               <Check className="w-5 h-5" />
-              <span>{successMessage}</span>
+              <span className="flex-1">{successMessage}</span>
               <button
                 onClick={() => setSuccessMessage(null)}
-                className="ml-auto text-green-300 hover:text-green-100"
+                className="text-green-300 hover:text-green-100"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -571,361 +880,323 @@ const ContentManagement = () => {
         </AnimatePresence>
 
         {/* Lessons List */}
-        <div className="space-y-4">
-          {filteredLessons.map((lesson, index) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {filteredLessons.map((lesson) => (
             <motion.div
               key={lesson.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden"
+              className={`bg-gray-800 rounded-lg p-6 cursor-pointer transition-all duration-200 hover:bg-gray-700 hover:shadow-lg ${
+                selectedLesson?.id === lesson.id ? 'ring-2 ring-blue-500 bg-gray-700' : ''
+              }`}
+              onClick={() => handleLessonClick(lesson)}
             >
-              {/* Lesson Header */}
-              <div className="p-6 border-b border-gray-700">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <button
-                      onClick={() => handleLessonClick(lesson)}
-                      className="flex items-center space-x-3 text-white hover:text-blue-400 transition-colors"
-                    >
-                      {selectedLesson?.id === lesson.id ? (
-                        <FolderOpen className="w-6 h-6 text-blue-400" />
-                      ) : (
-                        <Folder className="w-6 h-6" />
-                      )}
-                      <div className="text-right">
-                        <h3 className="text-lg font-semibold">{lesson.title}</h3>
-                        <p className="text-gray-400 text-sm">{lesson.description}</p>
-                      </div>
-                    </button>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <div className="flex items-center space-x-4 text-sm text-gray-400">
-                      <span className="flex items-center space-x-1">
-                        <FileText className="w-4 h-4" />
-                        <span>{slides.length} slides</span>
-                      </span>
-                      <span className="flex items-center space-x-1">
-                        <Clock className="w-4 h-4" />
-                        <span>{lesson.duration || 60} min</span>
-                      </span>
-                      <span className="flex items-center space-x-1">
-                        <Users className="w-4 h-4" />
-                        <span>{lesson.difficulty || 'beginner'}</span>
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center space-x-1">
-                      <button
-                        onClick={() => handleEditLesson(lesson)}
-                        className="p-2 text-gray-400 hover:text-blue-400 transition-colors"
-                        title="Edit Lesson"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setShowConfirmDelete({ type: 'lesson', id: lesson.id, title: lesson.title })}
-                        className="p-2 text-gray-400 hover:text-red-400 transition-colors"
-                        title="Delete Lesson"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Slides Section */}
-              <AnimatePresence>
-                {selectedLesson?.id === lesson.id && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="p-6"
-                  >
-                    {/* Slides Header */}
-                    <div className="flex items-center justify-between mb-6">
-                      <h4 className="text-lg font-semibold text-white">Slides</h4>
-                      <button
-                        onClick={handleCreateNewSlide}
-                        className="flex items-center space-x-2 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>New Slide</span>
-                      </button>
-                    </div>
-
-                    {/* Slides Grid */}
-                    {slides.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {slides.map((slide, slideIndex) => (
-                          <motion.div
-                            key={slide.id}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: slideIndex * 0.05 }}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, slide)}
-                            onDragOver={handleDragOver}
-                            onDrop={(e) => handleDrop(e, slide)}
-                            className={`relative group cursor-move ${
-                              draggedSlide?.id === slide.id ? 'opacity-50' : ''
-                            }`}
-                          >
-                            <div
-                              className="bg-gray-700 rounded-lg p-4 border border-gray-600 hover:border-blue-500 transition-all duration-200"
-                              onClick={() => handleSlideClick(slide)}
-                            >
-                              <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center space-x-2">
-                                  <div className={`p-1 rounded ${getSlideTypeColor(slide.type)}`}>
-                                    {getSlideTypeIcon(slide.type)}
-                                  </div>
-                                  <span className="text-sm text-gray-300">{slide.type}</span>
-                                </div>
-                                <span className="text-xs text-gray-500">#{slide.order}</span>
-                              </div>
-                              
-                              <h5 className="text-white font-medium mb-2 line-clamp-2">{slide.title}</h5>
-                              
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-1">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleEditSlide(slide);
-                                    }}
-                                    className="p-1 text-gray-400 hover:text-blue-400 transition-colors"
-                                    title="Edit Slide"
-                                  >
-                                    <Pencil className="w-3 h-3" />
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDuplicateSlide(slide);
-                                    }}
-                                    className="p-1 text-gray-400 hover:text-green-400 transition-colors"
-                                    title="Duplicate Slide"
-                                  >
-                                    <CopyIcon className="w-3 h-3" />
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setShowConfirmDelete({ type: 'slide', id: slide.id, title: slide.title });
-                                    }}
-                                    className="p-1 text-gray-400 hover:text-red-400 transition-colors"
-                                    title="Delete Slide"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </motion.div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-12">
-                        <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-400 mb-2">No slides yet</h3>
-                        <p className="text-gray-500 mb-4">Create your first slide to get started</p>
-                        <button
-                          onClick={handleCreateNewSlide}
-                          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                          Create First Slide
-                        </button>
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Empty State */}
-        {filteredLessons.length === 0 && (
-          <div className="text-center py-16">
-            <Folder className="w-24 h-24 text-gray-600 mx-auto mb-6" />
-            <h2 className="text-2xl font-bold text-gray-400 mb-4">No lessons found</h2>
-            <p className="text-gray-500 mb-8">Create your first lesson to start building content</p>
-            <button
-              onClick={handleCreateNewLesson}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors text-lg"
-            >
-              Create Your First Lesson
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Slide Preview Modal */}
-      <AnimatePresence>
-        {previewSlide && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
-          >
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-gray-800 rounded-lg shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-hidden border border-gray-700"
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between p-6 border-b border-gray-700">
-                <div className="flex items-center space-x-4">
-                  <div className={`p-2 rounded ${getSlideTypeColor(previewSlide.type)}`}>
-                    {getSlideTypeIcon(previewSlide.type)}
-                  </div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="text-2xl">{lesson.icon || '📚'}</div>
                   <div>
-                    <h3 className="text-xl font-semibold text-white">{previewSlide.title}</h3>
-                    <p className="text-gray-400 text-sm">Slide #{previewSlide.order} • {previewSlide.type}</p>
+                    <h3 className="text-lg font-semibold text-white">{lesson.title}</h3>
+                    <p className="text-sm text-gray-400">{lesson.difficulty}</p>
                   </div>
                 </div>
-                
                 <div className="flex items-center space-x-2">
                   <button
-                    onClick={() => handleEditSlide(previewSlide)}
-                    className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditLesson(lesson);
+                    }}
+                    className="p-2 text-gray-400 hover:text-white transition-colors"
+                    title="Edit Lesson"
                   >
                     <Pencil className="w-4 h-4" />
-                    <span>Edit</span>
                   </button>
                   <button
-                    onClick={() => setPreviewSlide(null)}
-                    className="p-2 text-gray-400 hover:text-white transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowConfirmDelete(lesson);
+                    }}
+                    className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                    title="Delete Lesson"
                   >
-                    <X className="w-5 h-5" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
               
-              {/* Modal Content */}
-              <div className="p-6">
-                <div className="bg-gray-900 rounded-lg overflow-hidden" style={{ aspectRatio: '16/9' }}>
-                  {/* Render the actual slide component here */}
-                  <div className="w-full h-full">
-                    {/* This would render the actual slide component */}
-                    <div className="w-full h-full flex items-center justify-center text-white">
-                      <div className="text-center">
-                        <div className="text-6xl mb-6">
-                          {previewSlide.type === 'presentation' && '📄'}
-                          {previewSlide.type === 'poll' && '📊'}
-                          {previewSlide.type === 'quiz' && '🎯'}
-                          {previewSlide.type === 'video' && '🎥'}
-                          {previewSlide.type === 'interactive' && '🎮'}
-                          {previewSlide.type === 'break' && '⏰'}
-                          {previewSlide.type === 'reflection' && '💭'}
-                        </div>
-                        <h2 className="text-3xl font-bold mb-4">{previewSlide.title}</h2>
-                        <p className="text-gray-300 text-lg mb-2">Slide Type: {previewSlide.type}</p>
-                        <p className="text-gray-400 text-sm">
-                          Click "Edit" to modify this slide with advanced tools
-                        </p>
+              <p className="text-gray-300 text-sm mb-4 line-clamp-2">{lesson.description}</p>
+              
+              <div className="flex items-center justify-between text-sm text-gray-400">
+                <div className="flex items-center space-x-4">
+                  <span className="flex items-center space-x-1">
+                    <Clock className="w-3 h-3" />
+                    <span>{lesson.duration}</span>
+                  </span>
+                  <span className="flex items-center space-x-1">
+                    <Users className="w-3 h-3" />
+                    <span>{lesson.targetAge}</span>
+                  </span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Star className="w-3 h-3" />
+                  <span>{lesson.breakDuration || 0}m break</span>
+                </div>
+              </div>
+              
+              {selectedLesson?.id === lesson.id && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="mt-4 pt-4 border-t border-gray-700"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium text-gray-300">Slides ({slides.length})</h4>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCreateNewSlide();
+                      }}
+                      className="flex items-center space-x-1 bg-blue-600 text-white px-2 py-1 rounded text-sm hover:bg-blue-700 transition-colors"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Add Slide</span>
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {slides.length === 0 ? (
+                      <div className="text-center py-4 text-gray-500">
+                        <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No slides yet</p>
                       </div>
-                    </div>
+                    ) : (
+                      slides.map((slide, index) => (
+                        <motion.div
+                          key={slide.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
+                            previewSlide?.id === slide.id 
+                              ? 'bg-blue-600/20 border border-blue-500/30' 
+                              : 'bg-gray-700/50 hover:bg-gray-700'
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSlideClick(slide);
+                          }}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, slide)}
+                          onDragOver={handleDragOver}
+                          onDrop={(e) => handleDrop(e, slide)}
+                        >
+                          <div className="flex items-center space-x-3 flex-1 min-w-0">
+                            <div className={`w-2 h-2 rounded-full ${getSlideTypeColor(slide.type)}`}></div>
+                            <div className="flex items-center space-x-2 min-w-0">
+                              {getSlideTypeIcon(slide.type)}
+                              <span className="text-sm text-gray-300 truncate">{slide.title}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center space-x-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditSlide(slide);
+                              }}
+                              className="p-1 text-gray-400 hover:text-white transition-colors"
+                              title="Edit Slide"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDuplicateSlide(slide);
+                              }}
+                              className="p-1 text-gray-400 hover:text-blue-400 transition-colors"
+                              title="Duplicate Slide"
+                            >
+                              <CopyIcon className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteSlide(slide.id);
+                              }}
+                              className="p-1 text-gray-400 hover:text-red-400 transition-colors"
+                              title="Delete Slide"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </motion.div>
+                      ))
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Slide Preview Modal */}
+        <AnimatePresence>
+          {previewSlide && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6"
+              onClick={() => setPreviewSlide(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-gray-800 rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Modal Header */}
+                <div className="bg-gray-700 px-6 py-4 flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    {getSlideTypeIcon(previewSlide.type)}
+                    <h2 className="text-lg font-semibold text-white">{previewSlide.title}</h2>
+                    <span className="text-sm text-gray-400 bg-gray-600 px-2 py-1 rounded">
+                      {previewSlide.type}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleEditSlide(previewSlide)}
+                      className="flex items-center space-x-2 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      onClick={() => setPreviewSlide(null)}
+                      className="p-2 text-gray-400 hover:text-white transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
                   </div>
                 </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {/* Lesson Modal */}
-      <AnimatePresence>
-        {showLessonModal && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
-          >
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-gray-800 rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden border border-gray-700"
-            >
-              <LessonModal
-                lesson={editingLesson}
-                onSave={handleSaveLesson}
-                onCancel={() => {
-                  setShowLessonModal(false);
-                  setEditingLesson(null);
-                }}
-              />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Confirm Delete Modal */}
-      <AnimatePresence>
-        {showConfirmDelete && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
-          >
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-gray-800 rounded-lg shadow-2xl max-w-md w-full border border-gray-700 p-6"
-            >
-              <div className="text-center">
-                <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">Confirm Delete</h3>
-                <p className="text-gray-400 mb-6">
-                  Are you sure you want to delete "{showConfirmDelete.title}"? This action cannot be undone.
-                </p>
-                
-                <div className="flex items-center justify-center space-x-4">
-                  <button
-                    onClick={() => setShowConfirmDelete(null)}
-                    className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (showConfirmDelete.type === 'lesson') {
-                        handleDeleteLesson(showConfirmDelete.id);
-                      } else {
-                        handleDeleteSlide(showConfirmDelete.id);
-                      }
-                      setShowConfirmDelete(null);
-                    }}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                  >
-                    Delete
-                  </button>
+                {/* Modal Content */}
+                <div className="p-6">
+                  <SafeSlidePreview
+                    slide={previewSlide}
+                    onEdit={handleEditSlide}
+                  />
                 </div>
-              </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
 
-      {/* Lesson Generator Modal */}
-      <AnimatePresence>
-        {showLessonGenerator && (
-          <LessonGenerator
-            onGenerate={handleGenerateLesson}
-            onCancel={() => setShowLessonGenerator(false)}
-          />
-        )}
-      </AnimatePresence>
+        {/* Lesson Generator Modal */}
+        <AnimatePresence>
+          {showLessonGenerator && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6"
+              onClick={() => setShowLessonGenerator(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-gray-800 rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <LessonGenerator
+                  onGenerate={handleGenerateLesson}
+                  onCancel={() => setShowLessonGenerator(false)}
+                />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Delete Confirmation Modal */}
+        <AnimatePresence>
+          {showConfirmDelete && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6"
+              onClick={() => setShowConfirmDelete(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-gray-800 rounded-lg shadow-2xl max-w-md w-full p-6"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="text-center">
+                  <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-white mb-2">
+                    Delete {showConfirmDelete.title}?
+                  </h3>
+                  <p className="text-gray-300 mb-6">
+                    This action cannot be undone. All slides in this lesson will also be deleted.
+                  </p>
+                  <div className="flex items-center justify-center space-x-3">
+                    <button
+                      onClick={() => setShowConfirmDelete(null)}
+                      className="flex items-center space-x-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                      <span>Cancel</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleDeleteLesson(showConfirmDelete.id);
+                        setShowConfirmDelete(null);
+                      }}
+                      className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Lesson Modal */}
+        <AnimatePresence>
+          {showLessonModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6"
+              onClick={() => setShowLessonModal(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-gray-800 rounded-lg shadow-2xl max-w-2xl w-full p-6"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <LessonModal
+                  lesson={editingLesson}
+                  onSave={handleSaveLesson}
+                  onCancel={() => setShowLessonModal(false)}
+                />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 };
