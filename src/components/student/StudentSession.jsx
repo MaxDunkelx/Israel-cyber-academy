@@ -21,6 +21,7 @@ import Card from '../ui/Card';
 import Button from '../ui/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
 import LiveSessionNotification from './LiveSessionNotification';
+import { logger } from '../../utils/logger';
 
 const StudentSession = () => {
   const { sessionId } = useParams();

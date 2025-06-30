@@ -4,10 +4,9 @@ export const slide12ThreatIdentification = {
   title: "זיהוי איומים דיגיטליים 🔍",
   content: {
     type: "multiple-choice",
+    text: "אימייל שמבקש ממך ללחוץ על קישור ולזין פרטי בנק הוא דוגמה ל:",
     question: "אימייל שמבקש ממך ללחוץ על קישור ולזין פרטי בנק הוא דוגמה ל:",
-    content: {
-      text: "תמונה של אימייל חשוד"
-    },
+    subtext: "תמונה של אימייל חשוד",
     options: [
       { id: "a", text: "וירוס", icon: "🦠" },
       { id: "b", text: "פישינג", icon: "🎣" },

@@ -4,6 +4,7 @@ export const slide9CyberTriangleQuiz = {
   title: "מבחן ידע - תנאי הסייבר 🧠",
   content: {
     type: "multiple-choice",
+    text: "איזה מהתנאים הבאים מתייחס לכך שהמידע נשאר מדויק ולא משתנה?",
     question: "איזה מהתנאים הבאים מתייחס לכך שהמידע נשאר מדויק ולא משתנה?",
     options: [
       { id: "a", text: "סודיות", icon: "🔐" },

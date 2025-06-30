@@ -43,7 +43,8 @@ import {
   Play,
   Pause,
   SkipForward,
-  SkipBack
+  SkipBack,
+  Navigation
 } from 'lucide-react';
 import { PresentationSlide, PollSlide, VideoSlide, InteractiveSlide, BreakSlide, ReflectionSlide, QuizSlide } from './slides';
 import Confetti from 'react-confetti';
@@ -530,16 +531,14 @@ const InteractiveLesson = () => {
       <div className="flex h-screen">
         {/* Lesson Content - Main Area */}
         <div className="flex-1 overflow-y-auto">
-          <div className="p-6">
+          <div className="p-7">
             {renderSlide(currentSlideData)}
           </div>
         </div>
 
         {/* Statistics Sidebar - Fixed Position */}
-        <div className="w-80 bg-gray-800/50 backdrop-blur-sm border-l border-gray-700/50 p-6 overflow-y-auto">
+        <div className="w-92 bg-gray-800/50 backdrop-blur-sm border-l border-gray-700/50 p-7">
           <div className="space-y-6">
-            <h3 className="text-xl font-bold text-white mb-4">סטטיסטיקות למידה</h3>
-            
             {/* Time Studied */}
             <div className="bg-gray-700/30 rounded-lg p-4">
               <div className="flex items-center gap-3 mb-2">
@@ -576,56 +575,52 @@ const InteractiveLesson = () => {
               <p className="text-2xl font-bold text-cyan-400">{formatTime(slideTimeSpent)}</p>
             </div>
 
-            {/* Navigation Controls */}
-            <div className="bg-gray-700/30 rounded-lg p-4">
-              <div className="flex items-center gap-3 mb-4">
-                <ChevronLeft className="h-5 w-5 text-blue-400" />
-                <span className="text-white font-semibold">ניווט</span>
+            {/* Navigation Controls - Bigger and Better */}
+            <div className="bg-gradient-to-br from-blue-900/40 to-purple-900/40 rounded-xl p-7 border border-blue-500/30">
+              <div className="flex items-center gap-4 mb-7">
+                <Navigation className="h-8 w-8 text-blue-400" />
+                <span className="text-white font-bold text-2xl">ניווט שקופיות</span>
               </div>
               
-              {/* Progress indicator */}
-              <div className="flex flex-col items-center space-y-2 mb-4">
-                <div className="text-sm font-bold text-white/80">
-                  {currentSlide + 1} / {lesson.content.slides.length}
-                </div>
-                <div className="w-full h-2 bg-gray-600/50 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500 ease-out"
-                    style={{ width: `${((currentSlide + 1) / lesson.content.slides.length) * 100}%` }}
-                  />
+              {/* Current Slide Display */}
+              <div className="text-center mb-7">
+                <div className="bg-gray-800/50 rounded-lg p-5 border border-gray-600/50">
+                  <div className="text-3xl font-bold text-white">
+                    שקופית {currentSlide + 1} מתוך {lesson.content.slides.length}
+                  </div>
                 </div>
               </div>
 
               {/* Navigation Buttons */}
-              <div className="flex items-center justify-between space-x-3 space-x-reverse">
+              <div className="flex items-center justify-between space-x-5 space-x-reverse">
                 {/* Previous Button */}
                 <button
                   onClick={handlePrevSlide}
                   disabled={currentSlide === 0}
-                  className="group relative p-3 rounded-full bg-gradient-to-r from-gray-700/80 to-gray-600/80 hover:from-gray-600/90 hover:to-gray-500/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300 hover:scale-110 hover:shadow-lg border border-gray-500/30 hover:border-gray-400/50"
+                  className="group relative p-5 rounded-xl bg-gradient-to-r from-gray-700/80 to-gray-600/80 hover:from-gray-600/90 hover:to-gray-500/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 hover:shadow-lg border border-gray-500/30 hover:border-gray-400/50"
                   title="שקופית קודמת"
                 >
-                  <ChevronLeft className="h-5 w-5 text-white group-hover:text-blue-300 transition-all duration-300" />
+                  <ChevronLeft className="h-7 w-7 text-white group-hover:text-blue-300 transition-all duration-300" />
                 </button>
                 
                 {/* Next/Finish Button */}
                 {currentSlide === lesson.content.slides.length - 1 ? (
                   <button
                     onClick={handleLessonComplete}
-                    className="group relative px-4 py-3 rounded-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 transition-all duration-300 hover:scale-110 hover:shadow-2xl text-white font-bold border-2 border-green-400/50 hover:border-green-300/70 text-sm"
+                    className="group relative px-7 py-5 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 transition-all duration-300 hover:scale-105 hover:shadow-2xl text-white font-bold border-2 border-green-400/50 hover:border-green-300/70"
                     title="סיים שיעור"
                   >
-                    <span className="group-hover:scale-105 transition-transform duration-300">
-                      סיים
+                    <span className="group-hover:scale-105 transition-transform duration-300 text-xl">
+                      סיים שיעור
                     </span>
                   </button>
                 ) : (
                   <button
                     onClick={handleNextSlide}
-                    className="group relative p-3 rounded-full bg-gradient-to-r from-blue-600/80 to-purple-600/80 hover:from-blue-500/90 hover:to-purple-500/90 transition-all duration-300 hover:scale-110 hover:shadow-lg border border-blue-500/30 hover:border-blue-400/50"
+                    className="group relative p-5 rounded-xl bg-gradient-to-r from-blue-600/80 to-purple-600/80 hover:from-blue-500/90 hover:to-purple-500/90 transition-all duration-300 hover:scale-105 hover:shadow-lg border border-blue-500/30 hover:border-blue-400/50"
                     title="שקופית הבאה"
                   >
-                    <ChevronRight className="h-5 w-5 text-white group-hover:text-purple-300 transition-all duration-300" />
+                    <ChevronRight className="h-7 w-7 text-white group-hover:text-purple-300 transition-all duration-300" />
                   </button>
                 )}
               </div>

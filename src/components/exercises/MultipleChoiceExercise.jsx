@@ -163,8 +163,39 @@ const MultipleChoiceExercise = ({ exercise, onComplete }) => {
         </div>
       )}
 
-      {/* Content */}
-      {/* Removed image and text content section */}
+      {/* Question Content */}
+      <div className="text-center mb-6">
+        {currentQuestion?.image && (
+          <div className="mb-4">
+            <img
+              src={currentQuestion.image}
+              alt="Question"
+              className="mx-auto max-w-full h-auto rounded-lg shadow-lg"
+              style={{ maxHeight: '300px' }}
+            />
+          </div>
+        )}
+        
+        {currentQuestion?.text && (
+          <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50">
+            <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-white mb-3 leading-relaxed">
+              {currentQuestion.text}
+            </h3>
+            {currentQuestion?.options && currentQuestion.options.length === 4 && (
+              <div className="bg-blue-600/20 border border-blue-500/30 rounded-lg p-3 mb-3">
+                <p className="text-blue-200 font-semibold text-base md:text-lg">
+                  בחר תשובה אחת מתוך 4 אפשרויות
+                </p>
+              </div>
+            )}
+            {currentQuestion?.subtext && (
+              <p className="text-gray-300 text-base md:text-lg">
+                {currentQuestion.subtext}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Answer Options */}
       <div className="space-y-2 flex-1">
@@ -176,46 +207,45 @@ const MultipleChoiceExercise = ({ exercise, onComplete }) => {
           return (
             <motion.div
               key={optionId}
-              className={`p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+              className={`p-5 rounded-2xl border-4 cursor-pointer transition-all duration-200 text-lg md:text-xl lg:text-2xl font-bold tracking-wide select-none focus:outline-none focus:ring-4 focus:ring-blue-400/50 ${
                 getAnswerClass(optionId)
               }`}
               onClick={() => handleAnswerSelect(optionId)}
-              whileHover={!isAnswered && !quizCompleted ? { scale: 1.02 } : {}}
-              whileTap={!isAnswered && !quizCompleted ? { scale: 0.98 } : {}}
+              whileHover={!isAnswered && !quizCompleted ? { scale: 1.05 } : {}}
+              whileTap={!isAnswered && !quizCompleted ? { scale: 0.97 } : {}}
+              tabIndex={0}
             >
-              <div className="flex items-center gap-3">
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center font-bold text-base ${
-                  (isQuiz ? quizAnswers[currentQuestionIndex] : selectedAnswer) === optionId
-                    ? 'border-blue-400 bg-blue-400 text-white'
-                    : 'border-gray-500 bg-gray-600 text-gray-300'
-                }`}>
-                  {String.fromCharCode(65 + index)} {/* A, B, C, D */}
-                </div>
-                <div className="flex items-center gap-3 flex-1">
-                  {typeof option === 'object' && option.icon && (
-                    <span className="text-xl">{option.icon}</span>
-                  )}
-                  <span className="font-semibold text-white text-base">
-                    {optionText}
-                  </span>
-                </div>
-                {((isQuiz && quizCompleted) || (!isQuiz && isAnswered)) && optionId === currentQuestion.correctAnswer && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                  >
-                    <CheckCircle className="h-5 w-5 text-green-400" />
-                  </motion.div>
-                )}
-                {((isQuiz && quizCompleted) || (!isQuiz && isAnswered)) && optionId === (isQuiz ? quizAnswers[currentQuestionIndex] : selectedAnswer) && optionId !== currentQuestion.correctAnswer && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                  >
-                    <XCircle className="h-5 w-5 text-red-400" />
-                  </motion.div>
-                )}
+              <div className={`w-10 h-10 rounded-full border-4 flex items-center justify-center font-bold text-xl md:text-2xl lg:text-3xl ${
+                (isQuiz ? quizAnswers[currentQuestionIndex] : selectedAnswer) === optionId
+                  ? 'border-blue-400 bg-blue-400 text-white'
+                  : 'border-gray-500 bg-gray-600 text-gray-300'
+              }`}>
+                {String.fromCharCode(65 + index)}
               </div>
+              <div className="flex items-center gap-4 flex-1">
+                {typeof option === 'object' && option.icon && (
+                  <span className="text-2xl md:text-3xl">{option.icon}</span>
+                )}
+                <span className="font-semibold text-white text-lg md:text-xl lg:text-2xl">
+                  {optionText}
+                </span>
+              </div>
+              {((isQuiz && quizCompleted) || (!isQuiz && isAnswered)) && optionId === currentQuestion.correctAnswer && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                >
+                  <CheckCircle className="h-5 w-5 text-green-400" />
+                </motion.div>
+              )}
+              {((isQuiz && quizCompleted) || (!isQuiz && isAnswered)) && optionId === (isQuiz ? quizAnswers[currentQuestionIndex] : selectedAnswer) && optionId !== currentQuestion.correctAnswer && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                >
+                  <XCircle className="h-5 w-5 text-red-400" />
+                </motion.div>
+              )}
             </motion.div>
           );
         })}

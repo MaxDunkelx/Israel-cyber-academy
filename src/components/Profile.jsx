@@ -18,13 +18,25 @@ import {
   Save,
   X,
   Users,
-  BookOpen
+  BookOpen,
+  GraduationCap,
+  Shield,
+  Zap,
+  Brain,
+  Rocket,
+  Crown,
+  Sparkles,
+  Heart,
+  Eye,
+  BarChart3,
+  TrendingUp,
+  Activity
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import logo from '../assets/cyber-logo.png';
 import { toast } from 'react-hot-toast';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebase-config';
 import { updateProfile } from 'firebase/auth';
 import LiveSessionNotification from './student/LiveSessionNotification';
@@ -53,6 +65,10 @@ const Profile = () => {
     sex: userProfile?.sex || 'male'
   });
   const [isSavingCredentials, setIsSavingCredentials] = useState(false);
+  
+  // Teacher information state
+  const [teacherInfo, setTeacherInfo] = useState(null);
+  const [loadingTeacher, setLoadingTeacher] = useState(false);
   
   const navigate = useNavigate();
 
@@ -93,6 +109,27 @@ const Profile = () => {
       setSelectedEmoji(userProfile.emoji || '😀');
       setResetEmail(userProfile.email || '');
     }
+  }, [userProfile]);
+
+  // Fetch teacher information for students
+  useEffect(() => {
+    const fetchTeacherInfo = async () => {
+      if (userProfile?.role === 'student' && userProfile?.teacherId) {
+        setLoadingTeacher(true);
+        try {
+          const teacherDoc = await getDoc(doc(db, 'users', userProfile.teacherId));
+          if (teacherDoc.exists()) {
+            setTeacherInfo(teacherDoc.data());
+          }
+        } catch (error) {
+          console.error('Error fetching teacher info:', error);
+        } finally {
+          setLoadingTeacher(false);
+        }
+      }
+    };
+
+    fetchTeacherInfo();
   }, [userProfile]);
 
   // Handle display name update
@@ -691,101 +728,251 @@ const Profile = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/20 to-purple-900/20 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-20 left-20 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-cyan-500/5 rounded-full blur-3xl animate-pulse delay-500"></div>
+      </div>
+
       {/* Live Session Notification */}
       <LiveSessionNotification />
       
-      {/* Header */}
-      <div className="bg-gray-800/50 border-b border-gray-700 p-4">
-        <div className="max-w-2xl mx-auto">
-          {/* Go back to home button */}
-          <div className="mb-4 flex justify-end">
-            <button
-              onClick={() => navigate('/roadmap')}
-              className="btn-secondary flex items-center"
-            >
-              <Home className="h-5 w-5 ml-2" />
-              חזור למסך הבית
-            </button>
-          </div>
-          {/* Logo at the top */}
-          <div className="flex flex-col items-center mb-6">
-            <img src={logo} alt="Logo" className="h-40 w-40 mb-4 rounded-2xl drop-shadow-2xl border-4 border-cyber-blue" />
-          </div>
-          {/* Profile Card */}
-          <div className="bg-gray-800 rounded-2xl shadow-lg p-8 flex flex-col items-center mb-8 border border-gray-700">
-            {/* Round profile emoji */}
-            <div className="relative mb-4">
-              <span className="text-7xl rounded-full border-4 border-cyber-blue bg-gray-700 shadow-lg flex items-center justify-center w-28 h-28 cursor-pointer" title="בחר אייקון">
-                {selectedEmoji}
-              </span>
-              <div className="flex flex-wrap justify-center gap-2 mt-2">
+      <div className="relative z-10 max-w-4xl mx-auto p-6">
+        {/* Hero Profile Section */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-br from-gray-800/80 via-gray-700/80 to-gray-800/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 mb-8 border border-gray-600/50"
+        >
+          <div className="flex flex-col lg:flex-row items-center gap-8">
+            {/* Profile Avatar Section */}
+            <div className="relative">
+              <motion.div 
+                className="relative"
+                whileHover={{ scale: 1.05 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-cyan-500 p-1 shadow-2xl">
+                  <div className="w-full h-full rounded-full bg-gray-800 flex items-center justify-center text-6xl border-4 border-gray-700">
+                    {selectedEmoji}
+                  </div>
+                </div>
+                <div className="absolute -top-2 -right-2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center border-4 border-gray-800">
+                  <Shield className="w-4 h-4 text-white" />
+                </div>
+              </motion.div>
+              
+              {/* Emoji Selection */}
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
                 {emojiOptions.map((emoji) => (
-                  <button
+                  <motion.button
                     key={emoji}
-                    className={`text-xl p-1 rounded-full border-2 ${selectedEmoji === emoji ? 'border-cyber-blue bg-cyber-blue/20' : 'border-transparent'}`}
+                    className={`text-2xl p-2 rounded-full border-2 transition-all duration-300 ${
+                      selectedEmoji === emoji 
+                        ? 'border-blue-400 bg-blue-500/20 shadow-lg shadow-blue-500/25' 
+                        : 'border-gray-600 hover:border-gray-500 hover:bg-gray-700/50'
+                    }`}
                     onClick={() => setSelectedEmoji(emoji)}
-                    aria-label={`בחר ${emoji}`}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
                   >
                     {emoji}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
-              <span className="text-xs text-gray-400 block mt-1">בחר אייקון לפרופיל שלך</span>
             </div>
-            {/* User info and settings */}
-            <div className="w-full max-w-md mx-auto mt-4">
-              <div className="flex flex-col items-center mb-4">
-                <h2 className="text-2xl font-bold text-white mb-2">{getCurrentDisplayName()}</h2>
-                <div className="flex items-center text-gray-300 mb-2">
-                  <Mail className="h-5 w-5 ml-2" />
-                  <span>{userProfile.email}</span>
+
+            {/* User Information Section */}
+            <div className="flex-1 text-center lg:text-right">
+              {/* Display Name with Edit Functionality */}
+              <div className="mb-6">
+                {isEditingName ? (
+                  <div className="flex items-center justify-center lg:justify-end gap-3 mb-2">
+                    <input
+                      type="text"
+                      value={editingName}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      className="text-3xl font-bold bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2 text-white focus:border-blue-400 focus:outline-none"
+                      placeholder="הכנס שם תצוגה"
+                    />
+                    <motion.button
+                      onClick={handleUpdateDisplayName}
+                      disabled={isSavingName}
+                      className="bg-green-600 hover:bg-green-500 text-white p-2 rounded-lg transition-colors"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Save className="w-5 h-5" />
+                    </motion.button>
+                    <motion.button
+                      onClick={handleCancelNameEdit}
+                      className="bg-gray-600 hover:bg-gray-500 text-white p-2 rounded-lg transition-colors"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <X className="w-5 h-5" />
+                    </motion.button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center lg:justify-end gap-3 mb-2">
+                    <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
+                      {getCurrentDisplayName()}
+                    </h2>
+                    <motion.button
+                      onClick={() => setIsEditingName(true)}
+                      className="bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 p-2 rounded-lg transition-colors"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Edit className="w-5 h-5" />
+                    </motion.button>
+                  </div>
+                )}
+              </div>
+
+              {/* User Details */}
+              <div className="space-y-3 mb-6">
+                <div className="flex items-center justify-center lg:justify-end gap-3 text-gray-300">
+                  <Mail className="h-5 w-5 text-blue-400" />
+                  <span className="text-lg">{userProfile?.email}</span>
                 </div>
-                <div className="flex items-center text-gray-300">
-                  <User className="h-5 w-5 ml-2" />
-                  <span>{userProfile.role === 'teacher' ? 'מורה' : userProfile.role === 'student' ? 'תלמיד' : 'אורח'}</span>
+                <div className="flex items-center justify-center lg:justify-end gap-3 text-gray-300">
+                  <GraduationCap className="h-5 w-5 text-purple-400" />
+                  <span className="text-lg font-semibold">
+                    {userProfile?.role === 'teacher' ? 'מורה' : userProfile?.role === 'student' ? 'תלמיד' : 'אורח'}
+                  </span>
                 </div>
               </div>
-              {/* Settings: Change password */}
-              <div className="flex flex-col items-center mt-4">
-                <button
-                  className="btn-secondary flex items-center text-sm mb-2"
-                  onClick={() => setShowReset(!showReset)}
+
+              {/* Teacher Information for Students */}
+              {userProfile?.role === 'student' && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 rounded-xl p-4 border border-blue-500/30 mb-4"
                 >
-                  <KeyRound className="h-4 w-4 ml-2" />
-                  שנה/אפס סיסמה
-                </button>
-                {showReset && (
-                  <form onSubmit={handlePasswordReset} className="w-full max-w-xs mx-auto mt-2">
+                  <h3 className="text-lg font-bold text-blue-300 mb-3 flex items-center justify-center lg:justify-end gap-2">
+                    <Users className="h-5 w-5" />
+                    מורה מקצועי
+                  </h3>
+                  {loadingTeacher ? (
+                    <div className="flex items-center justify-center lg:justify-end gap-2 text-gray-400">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
+                      טוען פרטי מורה...
+                    </div>
+                  ) : teacherInfo ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-center lg:justify-end gap-2 text-white">
+                        <User className="h-4 w-4 text-blue-400" />
+                        <span className="font-semibold">{teacherInfo.displayName || teacherInfo.email}</span>
+                      </div>
+                      <div className="flex items-center justify-center lg:justify-end gap-2 text-gray-300 text-sm">
+                        <Mail className="h-4 w-4 text-blue-400" />
+                        <span>{teacherInfo.email}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-gray-400 text-center lg:text-right">
+                      לא הוקצה מורה עדיין
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap justify-center lg:justify-end gap-3">
+                <motion.button
+                  onClick={() => setShowReset(!showReset)}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <KeyRound className="w-4 h-4" />
+                  שנה סיסמה
+                </motion.button>
+                <motion.button
+                  onClick={handleLogout}
+                  className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <X className="w-4 h-4" />
+                  התנתק
+                </motion.button>
+              </div>
+
+              {/* Password Reset Form */}
+              {showReset && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="mt-4 bg-gray-700/50 rounded-xl p-4 border border-gray-600/50"
+                >
+                  <form onSubmit={handlePasswordReset} className="space-y-3">
                     <input
                       type="email"
                       value={resetEmail}
                       onChange={e => setResetEmail(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-600 rounded-lg mb-2 bg-gray-700 text-white"
+                      className="w-full px-4 py-3 bg-gray-600/50 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:border-blue-400 focus:outline-none"
                       placeholder="האימייל שלך"
                       required
                     />
-                    <button type="submit" className="btn-primary w-full">שלח קישור איפוס</button>
-                    {resetSent && <div className="text-green-400 mt-2">קישור איפוס נשלח!</div>}
+                    <motion.button 
+                      type="submit" 
+                      className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white py-3 rounded-lg font-semibold transition-all duration-300"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      שלח קישור איפוס
+                    </motion.button>
+                    {resetSent && (
+                      <div className="text-green-400 text-center font-semibold">
+                        קישור איפוס נשלח!
+                      </div>
+                    )}
                   </form>
-                )}
-              </div>
+                </motion.div>
+              )}
             </div>
           </div>
-          {/* Progress Bar */}
-          <div className="bg-gray-800 rounded-2xl shadow-lg p-6 flex flex-col items-center border border-gray-700">
-            <h3 className="text-lg font-bold text-white mb-2">התקדמות בקורס</h3>
-            <div className="w-full bg-gray-700 rounded-full h-6 mb-2">
-              <div
-                className="bg-gradient-to-r from-cyber-green to-cyber-blue h-6 rounded-full flex items-center justify-end pr-4 text-white font-bold text-lg transition-all duration-700"
-                style={{ width: `${getProgressPercentage()}%` }}
+        </motion.div>
+
+        {/* Progress Section */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-gradient-to-br from-gray-800/80 via-gray-700/80 to-gray-800/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-gray-600/50"
+        >
+          <div className="text-center mb-6">
+            <h3 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent mb-2">
+              התקדמות בקורס
+            </h3>
+            <p className="text-gray-300">המשך ללמוד ולהתקדם!</p>
+          </div>
+          
+          <div className="relative">
+            <div className="w-full bg-gray-700/50 rounded-full h-8 mb-4 border border-gray-600/50 overflow-hidden">
+              <motion.div
+                className="h-full bg-gradient-to-r from-green-500 via-cyan-500 to-blue-500 rounded-full flex items-center justify-end pr-4 text-white font-bold text-lg shadow-lg"
+                initial={{ width: 0 }}
+                animate={{ width: `${getProgressPercentage()}%` }}
+                transition={{ duration: 1.5, ease: "easeOut" }}
               >
                 {getProgressPercentage()}%
-              </div>
+              </motion.div>
             </div>
-            <span className="text-sm text-gray-400">{userProfile.completedLessons?.length || 0} מתוך {lessons.length} שיעורים הושלמו</span>
+            <div className="flex justify-between text-sm text-gray-400">
+              <span>התחלה</span>
+              <span className="font-semibold text-white">
+                {userProfile?.completedLessons?.length || 0} מתוך {lessons.length} שיעורים הושלמו
+              </span>
+              <span>סיום</span>
+            </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

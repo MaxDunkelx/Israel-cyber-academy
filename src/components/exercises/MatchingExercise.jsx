@@ -125,22 +125,23 @@ const MatchingExercise = ({ exercise, onComplete }) => {
             {pairs.map((pair, index) => (
               <motion.div
                 key={`left-${index}`}
-                className={`p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                className={`p-5 rounded-2xl border-4 cursor-pointer transition-all duration-200 text-lg md:text-xl lg:text-2xl font-bold tracking-wide select-none focus:outline-none focus:ring-4 focus:ring-blue-400/50 ${
                   selectedLeft === index
-                    ? 'border-blue-400 bg-blue-800/50 shadow-lg scale-105'
+                    ? 'border-blue-400 bg-blue-800/60 shadow-2xl scale-105'
                     : matches[index] !== undefined
                     ? isMatchCorrect(index)
-                      ? 'border-green-400 bg-green-800/30'
-                      : 'border-red-400 bg-red-800/30'
-                    : 'border-gray-600 bg-gray-700/50 hover:border-purple-400 hover:bg-purple-800/30'
+                      ? 'border-green-400 bg-green-800/40'
+                      : 'border-red-400 bg-red-800/40'
+                    : 'border-gray-600 bg-gray-700/80 hover:border-purple-400 hover:bg-purple-800/40 hover:scale-105'
                 }`}
                 onClick={() => handleLeftClick(index)}
                 whileHover={matches[index] === undefined ? { scale: 1.02 } : {}}
                 whileTap={matches[index] === undefined ? { scale: 0.98 } : {}}
+                tabIndex={0}
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">{getLeftIcon(pair)}</span>
-                  <span className="font-semibold text-white text-base">
+                <div className="flex items-center gap-4">
+                  <span className="text-2xl md:text-3xl">{getLeftIcon(pair)}</span>
+                  <span className="font-semibold text-white text-lg md:text-xl lg:text-2xl">
                     {getLeftText(pair)}
                   </span>
                   {matches[index] !== undefined && (
@@ -150,9 +151,9 @@ const MatchingExercise = ({ exercise, onComplete }) => {
                       className="ml-auto"
                     >
                       {isMatchCorrect(index) ? (
-                        <CheckCircle className="h-5 w-5 text-green-400" />
+                        <CheckCircle className="h-6 w-6 text-green-400" />
                       ) : (
-                        <XCircle className="h-5 w-5 text-red-400" />
+                        <XCircle className="h-6 w-6 text-red-400" />
                       )}
                     </motion.div>
                   )}
@@ -171,19 +172,20 @@ const MatchingExercise = ({ exercise, onComplete }) => {
             {pairs.map((pair, index) => (
               <motion.div
                 key={`right-${index}`}
-                className={`p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                className={`p-5 rounded-2xl border-4 cursor-pointer transition-all duration-200 text-lg md:text-xl lg:text-2xl font-bold tracking-wide select-none focus:outline-none focus:ring-4 focus:ring-green-400/50 ${
                   selectedRight === index
-                    ? 'border-blue-400 bg-blue-800/50 shadow-lg scale-105'
+                    ? 'border-blue-400 bg-blue-800/60 shadow-2xl scale-105'
                     : isRightMatched(index)
-                    ? 'border-gray-500 bg-gray-600/50 opacity-60'
-                    : 'border-gray-600 bg-gray-700/50 hover:border-green-400 hover:bg-green-800/30'
+                    ? 'border-gray-500 bg-gray-600/60 opacity-60'
+                    : 'border-gray-600 bg-gray-700/80 hover:border-green-400 hover:bg-green-800/40 hover:scale-105'
                 }`}
                 onClick={() => handleRightClick(index)}
                 whileHover={!isRightMatched(index) ? { scale: 1.02 } : {}}
                 whileTap={!isRightMatched(index) ? { scale: 0.98 } : {}}
+                tabIndex={0}
               >
-                <div className="flex items-center gap-3">
-                  <span className="font-semibold text-white text-base">
+                <div className="flex items-center gap-4">
+                  <span className="font-semibold text-white text-lg md:text-xl lg:text-2xl">
                     {getRightText(pair)}
                   </span>
                 </div>

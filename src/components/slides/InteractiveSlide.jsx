@@ -59,7 +59,7 @@ const InteractiveSlide = ({ slide, onAnswer, answers }) => {
           </p>
         </div>
 
-        {/* Exercise Container */}
+        {/* Content Container */}
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-8 border border-gray-700/50 shadow-2xl flex-1 flex flex-col justify-center">
           {content.type === 'drag-drop' && (
             <DragDropExercise

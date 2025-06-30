@@ -106,27 +106,6 @@ const StudentDashboard = () => {
       {/* Live Session Notification */}
       <LiveSessionNotification />
       
-      {/* Header */}
-      <div className="bg-gray-800/50 border-b border-gray-700 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button
-              onClick={() => navigate('/student/roadmap')}
-              variant="secondary"
-              size="sm"
-              className="flex items-center space-x-2"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              <span>חזור</span>
-            </Button>
-            <div>
-              <h1 className="text-xl font-bold text-white">דשבורד תלמיד</h1>
-              <p className="text-gray-300 text-sm">ברוכים הבאים, {currentUser.displayName || currentUser.email}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="p-6 max-w-7xl mx-auto">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

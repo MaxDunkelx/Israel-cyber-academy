@@ -417,6 +417,15 @@ const AppContent = () => {
             }
           />
           
+          <Route
+            path="/teacher/profile"
+            element={
+              <TeacherRoute>
+                <Profile />
+              </TeacherRoute>
+            }
+          />
+          
           {/* System Manager Routes */}
           <Route
             path="/system-manager"

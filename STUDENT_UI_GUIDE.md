@@ -3,6 +3,32 @@
 ## Overview
 The Student UI provides an interactive learning experience for students (ages 10-13) to learn cybersecurity fundamentals through engaging lessons, interactive exercises, and real-time participation in teacher-led sessions.
 
+## Recent UI Improvements (Latest Update)
+
+### 1. Enhanced Profile Management
+- **Display Name Editing:** Students can now change their display name directly from the profile page
+- **Teacher Information Display:** Shows assigned teacher's name and email (fetched from database)
+- **Animated Background:** Cool, vibrant design with animated gradients and improved layout
+- **Inline Editing:** Seamless editing experience with save/cancel functionality
+
+### 2. Navigation Header Improvements
+- **Dynamic Display Name:** Shows user's chosen display name instead of generic "STUDENT" label
+- **Larger Logo:** Dashboard logo increased by 20% for better visibility
+- **Pulse Animation:** Added subtle pulse animation to "Israel Cyber Campus" text
+- **Consistent Styling:** Improved button hover effects and spacing
+
+### 3. Interactive Lesson Experience
+- **Consistent Sizing:** Standardized container sizes, padding, and text sizes across all slide types
+- **Enhanced Exercises:** Improved MultipleChoiceExercise, DragDropExercise, and other interactive components
+- **Better Error Handling:** Centralized logging utility and improved error recovery
+- **Video Slide Improvements:** Enhanced YouTube iframe handling with retry options
+
+### 4. Statistics Sidebar
+- **No Scrollbars:** Removed scrollbars for cleaner appearance
+- **Bigger Elements:** Increased size of statistics and navigation elements
+- **Improved Navigation:** Redesigned navigation section with current slide number and navigation buttons
+- **Better Layout:** Removed redundant progress bars and slide descriptions
+
 ## Student User Journey
 
 ### 1. Authentication & Login
@@ -53,20 +79,61 @@ const updateProgress = async (lessonId, slideIndex) => {
 };
 ```
 
-### 2. Interactive Lesson Viewer (`src/components/InteractiveLesson.jsx`)
+### 2. Enhanced Profile Component (`src/components/Profile.jsx`)
+
+#### New Features
+- **Display Name Editing:** Inline editing with save/cancel functionality
+- **Teacher Information:** Displays assigned teacher's name and email
+- **Animated Design:** Gradient backgrounds and smooth animations
+- **Improved Layout:** Better organization of user information
+
+#### Key Functionality
+```javascript
+// Display name editing
+const handleDisplayNameSave = async () => {
+  try {
+    setIsSavingName(true);
+    await updateDisplayName(editingName);
+    setIsEditingName(false);
+    toast.success('Display name updated successfully!');
+  } catch (error) {
+    toast.error('Failed to update display name');
+  } finally {
+    setIsSavingName(false);
+  }
+};
+
+// Teacher information loading
+const loadTeacherInfo = async () => {
+  if (userProfile?.teacherId) {
+    setLoadingTeacher(true);
+    try {
+      const teacher = await getTeacherById(userProfile.teacherId);
+      setTeacherInfo(teacher);
+    } catch (error) {
+      console.error('Failed to load teacher info:', error);
+    } finally {
+      setLoadingTeacher(false);
+    }
+  }
+};
+```
+
+### 3. Interactive Lesson Viewer (`src/components/InteractiveLesson.jsx`)
 
 #### Features
 - **Slide Navigation:** Forward/backward navigation with progress tracking
 - **Interactive Elements:** Clickable components, click-based exercises
 - **Real-Time Updates:** Live content updates from teacher sessions
 - **Accessibility:** Keyboard navigation and screen reader support
+- **Statistics Sidebar:** Real-time learning statistics and navigation controls
 
 #### Slide Types Supported
 1. **Presentation Slides:** Text, images, videos with navigation
 2. **Interactive Exercises:** Click-based, matching, multiple choice
 3. **Simulators:** Windows, Linux, network, and protocol simulators
 4. **Polls & Quizzes:** Real-time voting and assessment
-5. **Video Content:** Embedded educational videos
+5. **Video Content:** Embedded educational videos with enhanced error handling
 6. **Break Slides:** Timed breaks with suggested activities
 7. **Reflection Slides:** Text input for student thoughts
 
@@ -97,9 +164,17 @@ const renderSlide = (slide) => {
     return <ErrorFallback error={error} />;
   }
 };
+
+// Statistics tracking
+const updateStatistics = () => {
+  setTotalTimeStudied(prev => prev + 1);
+  if (!pagesWatched.has(currentSlide)) {
+    setPagesWatched(prev => new Set([...prev, currentSlide]));
+  }
+};
 ```
 
-### 3. Live Session Participation (`src/components/student/StudentSession.jsx`)
+### 4. Live Session Participation (`src/components/student/StudentSession.jsx`)
 
 #### Features
 - **Real-Time Connection:** WebSocket-based live session participation
@@ -134,7 +209,7 @@ const followTeacher = (slideIndex) => {
 };
 ```
 
-### 4. Live Session Notifications (`src/components/student/LiveSessionNotification.jsx`)
+### 5. Live Session Notifications (`src/components/student/LiveSessionNotification.jsx`)
 
 #### Features
 - **Real-Time Alerts:** Instant notifications for active sessions
@@ -150,7 +225,37 @@ const followTeacher = (slideIndex) => {
 
 ## Interactive Exercise Components
 
-### 1. Click-Based Exercise (`src/components/exercises/DragDropExercise.jsx`)
+### 1. Enhanced Multiple Choice Exercise (`src/components/exercises/MultipleChoiceExercise.jsx`)
+
+#### Features
+- **Single/Multiple Selection:** Support for single or multiple correct answers
+- **Visual Feedback:** Immediate feedback on selection with consistent styling
+- **Explanation:** Detailed explanations for correct answers
+- **Progress Tracking:** Save student responses
+- **Consistent Sizing:** Standardized container sizes and text formatting
+
+#### Implementation
+```javascript
+const MultipleChoiceExercise = ({ exercise, onComplete }) => {
+  const [selectedAnswer, setSelectedAnswer] = useState(null);
+  const [isAnswered, setIsAnswered] = useState(false);
+  const [showHint, setShowHint] = useState(false);
+
+  const handleAnswerSelect = (answerId) => {
+    if (isAnswered) return;
+    setSelectedAnswer(answerId);
+  };
+
+  const handleSubmit = () => {
+    if (!selectedAnswer) return;
+    const correct = selectedAnswer === exercise.correctAnswer;
+    setIsAnswered(true);
+    onComplete(correct);
+  };
+};
+```
+
+### 2. Enhanced Drag Drop Exercise (`src/components/exercises/DragDropExercise.jsx`)
 
 #### Features
 - **Click to Select:** Click on items to select them
@@ -158,6 +263,7 @@ const followTeacher = (slideIndex) => {
 - **Visual Feedback:** Clear selection indicators and hover effects
 - **Progress Tracking:** Real-time progress updates
 - **Answer Validation:** Automatic scoring and feedback
+- **Consistent Styling:** Standardized container sizes and spacing
 
 #### Implementation
 ```javascript
@@ -178,15 +284,43 @@ const DragDropExercise = ({ exercise, onComplete }) => {
 };
 ```
 
-### 2. Multiple Choice Exercise (`src/components/exercises/MultipleChoiceExercise.jsx`)
+### 3. Enhanced Video Slide (`src/components/slides/VideoSlide.jsx`)
 
 #### Features
-- **Single/Multiple Selection:** Support for single or multiple correct answers
-- **Visual Feedback:** Immediate feedback on selection
-- **Explanation:** Detailed explanations for correct answers
-- **Progress Tracking:** Save student responses
+- **YouTube Integration:** Enhanced iframe handling with retry options
+- **Error Recovery:** Automatic retry mechanisms for failed video loads
+- **Loading States:** Clear loading indicators and error messages
+- **Completion Tracking:** Automatic progress tracking when videos are watched
+- **Consistent Layout:** Standardized sizing and spacing
 
-### 3. Simulator Components
+#### Implementation
+```javascript
+const VideoSlide = ({ slide, onAnswer }) => {
+  const [videoStarted, setVideoStarted] = useState(false);
+  const [videoEnded, setVideoEnded] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const handleVideoStart = () => {
+    setIsLoading(false);
+    setVideoStarted(true);
+    onAnswer(slide.id, { started: true, isCorrect: true });
+  };
+
+  const handleVideoEnd = () => {
+    setVideoEnded(true);
+    onAnswer(slide.id, { completed: true, isCorrect: true });
+  };
+
+  const handleRetry = () => {
+    setVideoError(false);
+    setIsLoading(true);
+    // Force iframe reload
+  };
+};
+```
+
+### 4. Simulator Components
 
 #### Windows Simulator (`src/components/exercises/WindowsSimulator.jsx`)
 - **Desktop Interface:** Realistic Windows desktop simulation
@@ -198,276 +332,94 @@ const DragDropExercise = ({ exercise, onComplete }) => {
 - **Terminal Interface:** Command-line Linux simulation
 - **Command Execution:** Real Linux commands with safe execution
 - **File System:** Navigate and manipulate Linux file system
-- **Learning Path:** Progressive command learning
 
-#### Network Simulator (`src/components/exercises/NetworkSimulator.jsx`)
-- **Network Topology:** Visual network diagram creation
-- **Device Configuration:** Configure routers, switches, computers
-- **Traffic Simulation:** Visualize data flow through network
-- **Troubleshooting:** Identify and fix network issues
+## UI Consistency Improvements
 
-## Real-Time Features
+### 1. Standardized Sizing
+- **Container Sizes:** Consistent max-width and padding across all components
+- **Text Sizes:** Standardized heading and body text sizes
+- **Button Sizes:** Uniform button dimensions and spacing
+- **Icon Sizes:** Consistent icon sizing throughout the interface
 
-### 1. Live Polling (`src/components/slides/PollSlide.jsx`)
+### 2. Enhanced Styling
+- **Hover Effects:** Improved hover states with smooth transitions
+- **Focus States:** Better accessibility with clear focus indicators
+- **Color Consistency:** Unified color palette across all components
+- **Spacing:** Consistent margins and padding throughout
 
-#### Features
-- **Real-Time Results:** Live updates of poll results
-- **Anonymous Voting:** Student privacy protection
-- **Multiple Question Types:** Single choice, multiple choice, text input
-- **Result Visualization:** Charts and graphs for results
-
-#### Implementation
-```javascript
-const PollSlide = ({ slide, onSubmit }) => {
-  const [selectedOptions, setSelectedOptions] = useState([]);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [results, setResults] = useState(null);
-
-  const handleSubmit = async () => {
-    try {
-      await submitPollResponse(slide.id, selectedOptions);
-      setIsSubmitted(true);
-      onSubmit({ type: 'poll', response: selectedOptions });
-    } catch (error) {
-      setError('Failed to submit response');
-    }
-  };
-
-  // Listen for real-time results
-  useEffect(() => {
-    if (isSubmitted) {
-      const unsubscribe = onPollResults(slide.id, (results) => {
-        setResults(results);
-      });
-      return unsubscribe;
-    }
-  }, [isSubmitted, slide.id]);
-
-  return (
-    <div className="poll-slide">
-      <h2>{slide.content.question}</h2>
-      <div className="options">
-        {slide.content.options.map(option => (
-          <PollOption
-            key={option.id}
-            option={option}
-            isSelected={selectedOptions.includes(option.id)}
-            onSelect={() => handleOptionSelect(option.id)}
-            disabled={isSubmitted}
-          />
-        ))}
-      </div>
-      {!isSubmitted && (
-        <button onClick={handleSubmit} disabled={selectedOptions.length === 0}>
-          Submit Answer
-        </button>
-      )}
-      {results && <PollResults results={results} />}
-    </div>
-  );
-};
-```
-
-### 2. Live Session Synchronization
-
-#### Features
-- **Teacher Control:** Follow teacher's slide progression automatically
-- **Manual Override:** Students can navigate independently if needed
-- **State Synchronization:** Real-time session state updates
-- **Connection Recovery:** Automatic reconnection if connection lost
-
-## Progress Tracking
-
-### 1. Learning Analytics (`src/firebase/student-progress-service.js`)
-
-#### Tracked Metrics
-- **Lesson Completion:** Which lessons and slides completed
-- **Time Spent:** Duration spent on each slide
-- **Performance:** Quiz scores and exercise completion rates
-- **Engagement:** Interaction patterns and participation levels
-
-#### Data Structure
-```javascript
-const progressData = {
-  userId: 'student123',
-  lessonId: 'lesson1',
-  slides: [
-    {
-      slideId: 'slide1',
-      completed: true,
-      timeSpent: 120, // seconds
-      score: 85, // percentage
-      attempts: 2,
-      lastAccessed: timestamp
-    }
-  ],
-  overallProgress: 75, // percentage
-  lastActivity: timestamp
-};
-```
-
-### 2. Achievement System
-
-#### Features
-- **Badges:** Earn badges for completing lessons and exercises
-- **Streaks:** Maintain learning streaks for consistent progress
-- **Milestones:** Celebrate learning milestones
-- **Leaderboards:** Compare progress with classmates (optional)
-
-## Accessibility Features
-
-### 1. Screen Reader Support
-- **ARIA Labels:** Proper labeling for all interactive elements
-- **Keyboard Navigation:** Full keyboard accessibility
-- **Focus Management:** Clear focus indicators and logical tab order
-- **Alternative Text:** Descriptive text for images and visual elements
-
-### 2. Visual Accessibility
-- **High Contrast:** High contrast mode for better visibility
-- **Font Scaling:** Adjustable font sizes
-- **Color Blind Support:** Color-blind friendly design
-- **Motion Reduction:** Respect user's motion preferences
-
-## Error Handling
-
-### 1. Network Error Recovery
-```javascript
-const handleNetworkError = async (operation, retryCount = 0) => {
-  try {
-    return await operation();
-  } catch (error) {
-    if (error.code === 'network-error' && retryCount < 3) {
-      await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-      return handleNetworkError(operation, retryCount + 1);
-    }
-    throw error;
-  }
-};
-```
-
-### 2. Content Loading Fallbacks
-```javascript
-const ContentLoader = ({ slide, fallback }) => {
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  if (error) {
-    return <ErrorFallback error={error} onRetry={() => setError(null)} />;
-  }
-
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
-  return <SlideContent slide={slide} onError={setError} />;
-};
-```
+### 3. Error Handling
+- **Centralized Logging:** New logger utility for consistent error tracking
+- **User-Friendly Messages:** Clear, actionable error messages
+- **Retry Mechanisms:** Automatic retry options for failed operations
+- **Graceful Degradation:** Fallback options when features are unavailable
 
 ## Performance Optimizations
 
-### 1. Lazy Loading
-```javascript
-// Lazy load heavy components
-const InteractiveSlide = lazy(() => import('./InteractiveSlide'));
-const Simulator = lazy(() => import('./Simulator'));
+### 1. Component Optimization
+- **Memoization:** React.memo for expensive components
+- **Lazy Loading:** Code splitting for better initial load times
+- **Image Optimization:** Proper image sizing and lazy loading
+- **Bundle Optimization:** Reduced bundle size through tree shaking
 
-// Preload next slide
-useEffect(() => {
-  if (currentSlide < slides.length - 1) {
-    const nextSlide = slides[currentSlide + 1];
-    if (nextSlide.type === 'interactive') {
-      import('./InteractiveSlide');
-    }
-  }
-}, [currentSlide, slides]);
-```
+### 2. State Management
+- **Efficient Updates:** Minimal re-renders through proper state management
+- **Local Storage:** Caching of user preferences and progress
+- **Real-Time Updates:** Optimized WebSocket connections
+- **Memory Management:** Proper cleanup of event listeners and timers
 
-### 2. Caching Strategy
-```javascript
-// Cache lesson data locally
-const useCachedLesson = (lessonId) => {
-  const [lesson, setLesson] = useState(null);
-  
-  useEffect(() => {
-    const cached = localStorage.getItem(`lesson_${lessonId}`);
-    if (cached) {
-      setLesson(JSON.parse(cached));
-    }
-    
-    fetchLesson(lessonId).then(data => {
-      setLesson(data);
-      localStorage.setItem(`lesson_${lessonId}`, JSON.stringify(data));
-    });
-  }, [lessonId]);
-  
-  return lesson;
-};
-```
+## Accessibility Features
 
-## Mobile Responsiveness
+### 1. Keyboard Navigation
+- **Tab Order:** Logical tab order through all interactive elements
+- **Keyboard Shortcuts:** Common shortcuts for navigation and actions
+- **Focus Management:** Clear focus indicators and management
 
-### 1. Touch Interactions
-- **Touch-Friendly:** Large touch targets for mobile devices
-- **Gesture Support:** Swipe navigation between slides
-- **Orientation Handling:** Proper layout in portrait and landscape
-- **Virtual Keyboard:** Optimized for mobile keyboard input
+### 2. Screen Reader Support
+- **ARIA Labels:** Proper labeling for all interactive elements
+- **Semantic HTML:** Meaningful HTML structure for screen readers
+- **Alternative Text:** Descriptive alt text for images and icons
 
-### 2. Responsive Design
-```css
-/* Mobile-first responsive design */
-.lesson-container {
-  padding: 1rem;
-}
+### 3. Visual Accessibility
+- **Color Contrast:** High contrast ratios for text readability
+- **Font Sizing:** Scalable fonts that work with browser zoom
+- **Visual Indicators:** Clear visual feedback for all interactions
 
-@media (min-width: 768px) {
-  .lesson-container {
-    padding: 2rem;
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-}
+## Security Features
 
-@media (min-width: 1024px) {
-  .lesson-container {
-    padding: 3rem;
-  }
-}
-```
+### 1. Input Validation
+- **Client-Side Validation:** Immediate feedback for user input
+- **Server-Side Validation:** Secure validation on the backend
+- **XSS Prevention:** Proper sanitization of user-generated content
 
-## Security Considerations
-
-### 1. Content Security
-- **Input Sanitization:** All user inputs sanitized
-- **XSS Prevention:** Content Security Policy headers
-- **Data Validation:** Server-side validation of all data
-- **Access Control:** Role-based access to content
-
-### 2. Privacy Protection
-- **Data Minimization:** Collect only necessary data
-- **Anonymization:** Anonymous participation in polls
-- **Consent Management:** Clear consent for data collection
-- **Data Retention:** Automatic deletion of old data
+### 2. Session Management
+- **Secure Authentication:** JWT-based authentication with proper expiration
+- **Role-Based Access:** Strict role-based access control
+- **Session Monitoring:** Real-time session activity monitoring
 
 ## Future Enhancements
 
-### 1. AI-Powered Features
-- **Adaptive Learning:** Personalized learning paths
-- **Smart Recommendations:** Content recommendations based on progress
-- **Automated Assessment:** AI-powered quiz generation
-- **Learning Analytics:** Advanced analytics and insights
+### 1. Planned Features
+- **Offline Mode:** Full offline capability for lessons
+- **Advanced Analytics:** Detailed learning analytics and insights
+- **Gamification:** Achievement system and leaderboards
+- **Social Features:** Peer-to-peer learning and collaboration
 
-### 2. Social Learning
-- **Peer Collaboration:** Group exercises and projects
-- **Discussion Forums:** Student discussion boards
-- **Mentorship:** Peer-to-peer learning support
-- **Team Challenges:** Collaborative cybersecurity challenges
+### 2. Technical Improvements
+- **PWA Support:** Progressive Web App capabilities
+- **Mobile Optimization:** Enhanced mobile experience
+- **Performance Monitoring:** Real-time performance tracking
+- **A/B Testing:** Framework for testing new features
 
-### 3. Gamification
-- **Points System:** Earn points for completing activities
-- **Level Progression:** Unlock new content as you progress
-- **Competitions:** Friendly competitions between students
-- **Virtual Rewards:** Digital badges and certificates
+## Troubleshooting
 
-## Conclusion
+### Common Issues
+1. **Video Loading Problems:** Check internet connection and try refresh
+2. **Session Connection Issues:** Verify session code and try rejoining
+3. **Progress Not Saving:** Check browser storage and network connection
+4. **Display Issues:** Clear browser cache and refresh page
 
-The Student UI provides a comprehensive, engaging, and accessible learning experience for cybersecurity education. With robust error handling, real-time features, and extensive interactivity, students can learn effectively while having fun. The system is designed to scale and can accommodate future enhancements while maintaining performance and accessibility standards. 
+### Support Resources
+- **Help Documentation:** Comprehensive help articles
+- **Video Tutorials:** Step-by-step video guides
+- **Contact Support:** Direct support through chat or email
+- **Community Forum:** Peer-to-peer support and discussions 

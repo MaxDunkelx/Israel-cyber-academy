@@ -478,32 +478,6 @@ const SystemManagerDashboard = () => {
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
-        {/* Header */}
-        <div className="bg-gray-800/50 border-b border-gray-700 p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-3">
-                <Shield className="w-8 h-8 text-blue-400" />
-                <div>
-                  <h1 className="text-2xl font-bold text-white">מנהל המערכת</h1>
-                  <p className="text-gray-300 text-sm">
-                    ברוכים הבאים, {currentUser?.displayName || currentUser?.email}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button
-                onClick={() => navigate('/')}
-                variant="secondary"
-                size="sm"
-              >
-                חזור למערכת
-              </Button>
-            </div>
-          </div>
-        </div>
-
         <div className="flex h-screen">
           {/* Sidebar */}
           <div className="w-64 bg-gray-800/50 border-r border-gray-700 p-4">
