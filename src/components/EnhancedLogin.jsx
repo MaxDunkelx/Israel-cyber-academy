@@ -59,7 +59,7 @@ const logoVariants = {
   },
 };
 
-// Optimized Matrix Rain Effect
+// Revert MatrixRain back to original blue only
 const MatrixRain = () => {
   const canvasRef = useRef(null);
   
@@ -122,7 +122,7 @@ const MatrixRain = () => {
   );
 };
 
-// Optimized Particle System
+// Revert ParticleSystem back to original blue only
 const ParticleSystem = () => {
   const [particles, setParticles] = useState([]);
   
@@ -175,7 +175,7 @@ const ParticleSystem = () => {
   );
 };
 
-// Optimized Floating Icons
+// Revert FloatingIcons back to original blue only
 const FloatingIcons = () => {
   const icons = [
     { icon: Database, color: 'text-blue-300' },
@@ -219,68 +219,64 @@ const FloatingIcons = () => {
 // Government-style Role Card with reduced size
 const RoleCard = ({ role, icon: Icon, title, description, buttonText, onClick, isSelected }) => {
   const isStudent = role === 'student';
+  const isTeacher = role === 'teacher';
+  const isSystemManager = role === 'system_manager';
+  
+  // Different colors for each role
+  const getRoleColors = () => {
+    if (isStudent) {
+      return {
+        container: 'from-emerald-500/20 to-teal-600/20',
+        iconBg: 'from-emerald-500 to-teal-600',
+        border: 'border-emerald-500/30',
+        hover: 'hover:border-emerald-400/50'
+      };
+    } else if (isTeacher) {
+      return {
+        container: 'from-purple-500/20 to-indigo-600/20',
+        iconBg: 'from-purple-500 to-indigo-600',
+        border: 'border-purple-500/30',
+        hover: 'hover:border-purple-400/50'
+      };
+    } else {
+      return {
+        container: 'from-orange-500/20 to-red-600/20',
+        iconBg: 'from-orange-500 to-red-600',
+        border: 'border-orange-500/30',
+        hover: 'hover:border-orange-400/50'
+      };
+    }
+  };
+  
+  const colors = getRoleColors();
   
   return (
     <motion.div
-      variants={cardVariants}
-      whileHover={{ 
-        scale: 1.02,
-        boxShadow: "0 15px 30px rgba(59, 130, 246, 0.2)"
-      }}
+      className={`bg-slate-800/60 backdrop-blur-xl rounded-2xl p-6 border ${colors.border} ${colors.hover} transition-all duration-300 cursor-pointer relative overflow-hidden group max-w-sm w-full`}
+      whileHover={{ scale: 1.02, y: -5 }}
       whileTap={{ scale: 0.98 }}
-      className={`
-        relative cursor-pointer rounded-2xl transition-all duration-300 w-full h-[320px]
-        bg-gradient-to-br from-slate-800 via-slate-900 to-black border border-blue-500/20
-        ${isSelected ? 'ring-2 ring-blue-400 ring-opacity-60 shadow-xl' : ''}
-        backdrop-blur-sm flex flex-col justify-between overflow-hidden
-      `}
+      onClick={onClick}
     >
-      {/* Subtle overlay */}
-      <div className="absolute inset-0 bg-black/10" />
+      <div className={`absolute inset-0 bg-gradient-to-br ${colors.container} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
       
-      {/* Content */}
-      <div className="relative z-10 text-center flex flex-col items-center justify-start flex-1 pt-6">
-        {/* Icon */}
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-          className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-xl bg-blue-600/20 border border-blue-500/30 backdrop-blur-sm shadow-lg"
+      <div className="text-center relative z-10">
+        <motion.div 
+          className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br ${colors.iconBg} border border-white/20 backdrop-blur-sm shadow-lg`}
+          whileHover={{ rotate: 360, scale: 1.1 }}
+          transition={{ duration: 0.5 }}
         >
-          <Icon className="h-8 w-8 text-blue-300" />
+          <Icon className="h-8 w-8 text-white" />
         </motion.div>
         
-        {/* Title */}
-        <motion.h3
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="mb-3 text-2xl font-bold text-white"
-        >
-          {title}
-        </motion.h3>
-        
-        {/* Description */}
-        <motion.p
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="text-sm text-gray-300 leading-relaxed px-4 flex-1 max-w-xs"
-        >
+        <h3 className="text-2xl font-bold text-white mb-3">{title}</h3>
+        <p className="text-gray-300 mb-6 leading-relaxed text-sm">
           {description}
-        </motion.p>
-      </div>
-
-      {/* Button */}
-      <div className="relative z-10 mt-4 px-4 pb-4">
+        </p>
+        
         <motion.button 
-          onClick={onClick}
-          className="w-full py-3 px-6 rounded-xl font-semibold text-sm transition-all duration-300 bg-blue-600 hover:bg-blue-500 text-white shadow-lg hover:shadow-blue-500/25 border border-blue-500/30 hover:scale-[1.02] active:scale-[0.98]"
-          whileHover={{ 
-            y: -1,
-            boxShadow: "0 8px 20px rgba(59, 130, 246, 0.3)"
-          }}
-          whileTap={{ y: 0 }}
+          className={`w-full py-3 px-6 bg-gradient-to-r ${colors.iconBg} text-white rounded-xl font-semibold text-lg hover:shadow-lg transition-all duration-300`}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
         >
           {buttonText}
         </motion.button>
@@ -407,11 +403,11 @@ const EnhancedLogin = () => {
       )}
       
       {/* Large Background Logo */}
-      <div className="fixed inset-0 flex items-center justify-center opacity-10 pointer-events-none z-0">
+      <div className="fixed inset-0 flex items-center justify-center opacity-5 pointer-events-none z-0">
         <motion.img 
           src={cyberLogo} 
           alt="Israel Cyber Campus Background Logo" 
-          className="w-[2000px] h-[2000px] object-contain"
+          className="w-[2800px] h-[2800px] object-contain"
           animate={{
             rotate: [0, 360],
             scale: [1, 1.1, 1],
@@ -438,7 +434,7 @@ const EnhancedLogin = () => {
             variants={logoVariants}
           >
             <motion.div 
-              className="relative w-48 h-48 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-xl shadow-blue-500/30"
+              className="relative w-56 h-56 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-xl shadow-blue-500/30"
               whileHover={{ 
                 scale: 1.05,
                 boxShadow: "0 20px 40px rgba(59, 130, 246, 0.4)"
@@ -469,12 +465,12 @@ const EnhancedLogin = () => {
               <img 
                 src={cyberLogo} 
                 alt="Israel Cyber Campus Logo" 
-                className="w-40 h-40 object-contain relative z-10"
+                className="w-48 h-48 object-contain relative z-10"
               />
               <motion.div
-                className="absolute -inset-3 rounded-full border-2 border-blue-400/20"
+                className="absolute -inset-1 rounded-full border-2 border-blue-400/20"
                 animate={{
-                  scale: [1, 1.05, 1],
+                  scale: [1, 1.02, 1],
                   opacity: [0.2, 0, 0.2],
                 }}
                 transition={{
@@ -486,10 +482,29 @@ const EnhancedLogin = () => {
             </motion.div>
             
             <motion.h1 
-              className="text-6xl font-black text-white mb-6 bg-gradient-to-r from-blue-400 to-blue-300 bg-clip-text text-transparent relative"
+              className="text-7xl font-black text-white mb-6 relative"
               variants={itemVariants}
             >
               <motion.span
+                animate={{
+                  textShadow: [
+                    "0 0 20px rgba(59, 130, 246, 0.8), 0 0 40px rgba(59, 130, 246, 0.6), 0 0 60px rgba(59, 130, 246, 0.4)",
+                    "0 0 30px rgba(59, 130, 246, 1), 0 0 60px rgba(59, 130, 246, 0.8), 0 0 90px rgba(59, 130, 246, 0.6)",
+                    "0 0 20px rgba(59, 130, 246, 0.8), 0 0 40px rgba(59, 130, 246, 0.6), 0 0 60px rgba(59, 130, 246, 0.4)",
+                  ],
+                  backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+                className="bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-300 bg-[length:200%_200%] bg-clip-text text-transparent"
+              >
+                Israel Cyber Campus
+              </motion.span>
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-300 bg-[length:200%_200%] bg-clip-text text-transparent blur-sm opacity-50"
                 animate={{
                   backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
                 }}
@@ -498,72 +513,172 @@ const EnhancedLogin = () => {
                   repeat: Infinity,
                   ease: "linear",
                 }}
-                className="bg-gradient-to-r from-blue-400 to-blue-300 bg-[length:200%_200%] bg-clip-text text-transparent"
               >
                 Israel Cyber Campus
-              </motion.span>
+              </motion.div>
             </motion.h1>
             
-            <motion.p 
-              className="text-2xl text-gray-200 max-w-4xl mx-auto leading-relaxed mb-8"
+            <motion.div 
+              className="text-2xl text-gray-200 max-w-5xl mx-auto leading-relaxed mb-8 relative"
               variants={itemVariants}
             >
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-300 font-bold">
-                הקמפוס הגדול ביותר ללימודי סייבר בישראל
-              </span>
+              <motion.span 
+                className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-300 font-bold relative z-10"
+                animate={{
+                  textShadow: [
+                    "0 0 15px rgba(59, 130, 246, 0.6), 0 0 30px rgba(59, 130, 246, 0.4)",
+                    "0 0 25px rgba(59, 130, 246, 0.8), 0 0 50px rgba(59, 130, 246, 0.6)",
+                    "0 0 15px rgba(59, 130, 246, 0.6), 0 0 30px rgba(59, 130, 246, 0.4)",
+                  ],
+                  backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              >
+                ברוכים הבאים לישראל קמפוס סייבר
+              </motion.span>
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-blue-400 to-blue-300 bg-[length:200%_200%] bg-clip-text text-transparent blur-sm opacity-30"
+                animate={{
+                  backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+                }}
+                transition={{
+                  duration: 6,
+                  repeat: Infinity,
+                  ease: "linear",
+                }}
+              >
+                ברוכים הבאים לישראל קמפוס סייבר
+              </motion.div>
               <br />
-              <span className="text-blue-300 font-semibold text-xl">
-                אלפי תלמידים • מורים מעולים • חוויית למידה ייחודית
-              </span>
-            </motion.p>
+              <motion.span 
+                className="text-blue-300 font-semibold text-xl relative z-10"
+                animate={{
+                  textShadow: [
+                    "0 0 10px rgba(59, 130, 246, 0.5), 0 0 20px rgba(59, 130, 246, 0.3)",
+                    "0 0 15px rgba(59, 130, 246, 0.7), 0 0 30px rgba(59, 130, 246, 0.5)",
+                    "0 0 10px rgba(59, 130, 246, 0.5), 0 0 20px rgba(59, 130, 246, 0.3)",
+                  ],
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              >
+                בחר את הדרך שלך: תלמיד, מורה, או מנהל מערכת
+              </motion.span>
+            </motion.div>
 
             <motion.div 
-              className="text-lg text-gray-300 max-w-3xl mx-auto leading-relaxed"
+              className="text-lg text-gray-300 max-w-4xl mx-auto leading-relaxed"
               variants={itemVariants}
             >
-              <p className="mb-4">
-                ישראל קמפוס סייבר הוא מרכז הלמידה המתקדם ביותר ללימודי אבטחת מידע בישראל. 
-                עם אלפי תלמידים פעילים, צוות מורים מעולים ופלטפורמת למידה ייחודית שפותחה במיוחד עבורנו.
-              </p>
-              <p>
-                אנו מציעים חוויית למידה אינטראקטיבית, תרגולים מעשיים ותוכן עדכני 
-                המכין את התלמידים לעולם האבטחה הדיגיטלית של המחר.
-              </p>
+              <motion.div 
+                className="mb-6 relative"
+                animate={{
+                  textShadow: [
+                    "0 0 8px rgba(59, 130, 246, 0.3), 0 0 16px rgba(59, 130, 246, 0.2)",
+                    "0 0 12px rgba(59, 130, 246, 0.5), 0 0 24px rgba(59, 130, 246, 0.3)",
+                    "0 0 8px rgba(59, 130, 246, 0.3), 0 0 16px rgba(59, 130, 246, 0.2)",
+                  ],
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              >
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 font-semibold">
+                  פלטפורמת הלמידה המתקדמת ביותר בעולם הסייבר.
+                </span>
+                <br />
+                <span className="text-gray-200">
+                  הצטרפו אלינו למסע למידה אינטראקטיבי ומרתק עם הטכנולוגיות החדישות ביותר. 
+                  כאן תגלו עולם של אפשרויות אינסופיות, תפתחו כישורים מתקדמים ותצטרפו לקהילה של מומחי סייבר עתידיים.
+                </span>
+              </motion.div>
+              
+              <motion.div 
+                className="mb-6 relative"
+                animate={{
+                  textShadow: [
+                    "0 0 6px rgba(34, 197, 94, 0.3), 0 0 12px rgba(34, 197, 94, 0.2)",
+                    "0 0 10px rgba(34, 197, 94, 0.5), 0 0 20px rgba(34, 197, 94, 0.3)",
+                    "0 0 6px rgba(34, 197, 94, 0.3), 0 0 12px rgba(34, 197, 94, 0.2)",
+                  ],
+                }}
+                transition={{
+                  duration: 5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              >
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-300 font-semibold">
+                  עם מערכות סימולציה מתקדמות, תרגול מעשי אינטנסיבי, ומנטורים מקצועיים,
+                </span>
+                <br />
+                <span className="text-gray-200">
+                  אנו מבטיחים שכל תלמיד יקבל את הכלים הטובים ביותר להצלחה בעולם הסייבר.
+                </span>
+              </motion.div>
+              
+              <motion.div 
+                className="text-blue-300 font-bold text-xl relative"
+                animate={{
+                  textShadow: [
+                    "0 0 15px rgba(59, 130, 246, 0.6), 0 0 30px rgba(59, 130, 246, 0.4), 0 0 45px rgba(59, 130, 246, 0.2)",
+                    "0 0 25px rgba(59, 130, 246, 0.8), 0 0 50px rgba(59, 130, 246, 0.6), 0 0 75px rgba(59, 130, 246, 0.4)",
+                    "0 0 15px rgba(59, 130, 246, 0.6), 0 0 30px rgba(59, 130, 246, 0.4), 0 0 45px rgba(59, 130, 246, 0.2)",
+                  ],
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              >
+                🚀 אלפי תלמידים כבר בחרו בדרך שלנו להפוך למומחי סייבר מובילים - הגיע תורך להצטרף למהפכה! ⚡
+              </motion.div>
             </motion.div>
           </motion.div>
 
           {/* Stats Section */}
           <motion.div 
-            className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12 max-w-5xl mx-auto"
+            className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12 max-w-5xl mx-auto"
             variants={itemVariants}
           >
             {[
-              { icon: Users, number: '5,000+', label: 'תלמידים פעילים' },
-              { icon: Award, number: '50+', label: 'מורים מומחים' },
-              { icon: Code, number: '100%', label: 'תוכנה ייחודית' },
-              { icon: Lock, number: '24/7', label: 'גישה מתמדת' },
+              { icon: Users, number: '5,000+', label: 'האקרים צעירים', color: 'from-emerald-500 to-teal-600' },
+              { icon: Award, number: '50+', label: 'מומחי סייבר', color: 'from-purple-500 to-indigo-600' },
+              { icon: Code, number: '100%', label: 'טכנולוגיה מתקדמת', color: 'from-orange-500 to-red-600' },
+              { icon: Lock, number: '24/7', label: 'אבטחה מתמדת', color: 'from-cyan-500 to-blue-600' },
             ].map((stat, index) => (
               <motion.div 
                 key={index}
-                className="text-center text-gray-200 bg-slate-800/60 backdrop-blur-xl rounded-xl p-4 border border-slate-700/50 relative overflow-hidden group"
+                className="text-center text-gray-200 bg-slate-800/50 backdrop-blur-xl px-6 py-6 rounded-lg border border-slate-700/50 group cursor-pointer"
                 whileHover={{ 
-                  scale: 1.03, 
+                  scale: 1.02, 
                   backgroundColor: "rgba(59, 130, 246, 0.1)",
                   borderColor: "rgba(59, 130, 246, 0.4)"
                 }}
+                whileTap={{ scale: 0.98 }}
                 variants={itemVariants}
               >
                 <motion.div
-                  className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mx-auto mb-3 shadow-lg relative z-10"
+                  className={`w-12 h-12 bg-gradient-to-br ${stat.color} rounded-lg flex items-center justify-center mx-auto mb-4 shadow-lg`}
                   whileHover={{ rotate: 180, scale: 1.1 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <stat.icon className="w-5 h-5 text-white" />
+                  <stat.icon className="w-6 h-6 text-white" />
                 </motion.div>
-                <div className="text-2xl font-black text-white mb-1 relative z-10">
+                <div className="text-3xl font-black text-white mb-2">
                   {stat.number}
                 </div>
-                <div className="text-xs font-medium text-gray-300 relative z-10">{stat.label}</div>
+                <div className="text-sm font-medium text-white">{stat.label}</div>
               </motion.div>
             ))}
           </motion.div>
@@ -574,11 +689,11 @@ const EnhancedLogin = () => {
             variants={itemVariants}
           >
             {[
-              { icon: Zap, text: 'למידה אינטראקטיבית' },
-              { icon: Target, text: 'תרגול מעשי' },
-              { icon: Globe, text: 'תוכן עדכני' },
-              { icon: Brain, text: 'AI מתקדם' },
-              { icon: Rocket, text: 'חדשנות מתמדת' },
+              { icon: Zap, text: 'למידה אינטראקטיבית', color: 'from-yellow-500 to-orange-600' },
+              { icon: Target, text: 'תרגול מעשי', color: 'from-green-500 to-emerald-600' },
+              { icon: Globe, text: 'תוכן עדכני', color: 'from-blue-500 to-cyan-600' },
+              { icon: Brain, text: 'AI מתקדם', color: 'from-purple-500 to-pink-600' },
+              { icon: Rocket, text: 'חדשנות מתמדת', color: 'from-red-500 to-pink-600' },
             ].map((feature, index) => (
               <motion.div 
                 key={index}
@@ -591,7 +706,7 @@ const EnhancedLogin = () => {
                 whileTap={{ scale: 0.98 }}
               >
                 <motion.div
-                  className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center"
+                  className={`w-10 h-10 bg-gradient-to-br ${feature.color} rounded-lg flex items-center justify-center`}
                   whileHover={{ rotate: 180, scale: 1.1 }}
                   transition={{ duration: 0.3 }}
                 >
@@ -607,6 +722,28 @@ const EnhancedLogin = () => {
             variants={containerVariants}
             className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full max-w-6xl mx-auto mb-16"
           >
+          
+          {/* Student-specific engaging text */}
+          {selectedRole === 'student' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="col-span-full text-center mb-8"
+            >
+              <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-xl p-6 max-w-4xl mx-auto">
+                <h3 className="text-2xl font-bold text-blue-300 mb-4">
+                  🚀 האם אתה מוכן להפוך להאקר? 🚀
+                </h3>
+                <p className="text-lg text-gray-200 mb-3">
+                  ברוכים הבאים לעולם הסייבר! כאן תלמדו איך לפרוץ (למטרות טובות), להגן על מערכות, 
+                  ולפתור אתגרים טכנולוגיים מרתקים. איזה סוג האקר אתם רוצים להיות?
+                </p>
+                <p className="text-blue-300 font-semibold">
+                  הצטרפו למסע הרפתקאות דיגיטלי עם אלפי תלמידים שכבר בדרך להפוך למומחי סייבר! 🎮✨
+                </p>
+              </div>
+            </motion.div>
+          )}
             <div className="flex justify-center">
               <RoleCard
                 role="student"
@@ -872,10 +1009,10 @@ const EnhancedLogin = () => {
             variants={itemVariants}
           >
             {[
-              { icon: Star, text: 'דירוג 4.9/5' },
-              { icon: TrendingUp, text: '95% הצלחה' },
-              { icon: Clock, text: 'זמין 24/7' },
-              { icon: ShieldCheck, text: 'אבטחה מתקדמת' },
+              { icon: Star, text: 'דירוג 4.9/5', color: 'from-yellow-500 to-orange-600' },
+              { icon: TrendingUp, text: '95% הצלחה', color: 'from-green-500 to-emerald-600' },
+              { icon: Clock, text: 'זמין 24/7', color: 'from-purple-500 to-pink-600' },
+              { icon: ShieldCheck, text: 'אבטחה מתקדמת', color: 'from-cyan-500 to-blue-600' },
             ].map((feature, index) => (
               <motion.div 
                 key={index}
@@ -887,7 +1024,7 @@ const EnhancedLogin = () => {
                 }}
               >
                 <motion.div
-                  className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center"
+                  className={`w-8 h-8 bg-gradient-to-br ${feature.color} rounded-lg flex items-center justify-center`}
                   whileHover={{ rotate: 180, scale: 1.1 }}
                   transition={{ duration: 0.3 }}
                 >
@@ -904,22 +1041,22 @@ const EnhancedLogin = () => {
             variants={itemVariants}
           >
             <div className="bg-slate-800/40 backdrop-blur-xl rounded-xl p-4 border border-slate-700/50 max-w-2xl mx-auto">
-              <motion.p 
+              <motion.div 
                 className="text-gray-300 text-base font-medium"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6, duration: 0.4 }}
               >
                 ישראל קמפוס סייבר - כל הזכויות שמורות
-              </motion.p>
-              <motion.p 
+              </motion.div>
+              <motion.div 
                 className="text-gray-400 text-xs mt-1"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.8, duration: 0.4 }}
               >
                 Israel Cyber Campus - All Rights Reserved
-              </motion.p>
+              </motion.div>
             </div>
           </motion.footer>
         </section>

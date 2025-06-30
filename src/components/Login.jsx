@@ -6,11 +6,12 @@
  * - Role-based routing
  * - Error handling
  * - Responsive design
+ * - Kid-friendly design with cool animations
  */
 
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Eye, EyeOff, User, Shield, GraduationCap, BookOpen, ArrowRight, Zap, Target, Globe, Users, Award, Code, Lock, Star, TrendingUp, Clock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Eye, EyeOff, User, Shield, GraduationCap, BookOpen, ArrowRight, Zap, Target, Globe, Users, Award, Code, Lock, Star, TrendingUp, Clock, Rocket, Brain, Gamepad2, Sparkles, ShieldCheck, Trophy, Crown, Lightning, Fire, Heart, BrainCircuit, Cpu, Database, Network, Bug, Virus, Key, Fingerprint, Smartphone, Laptop, Monitor, Server, Wifi, Satellite, Cloud, ShieldAlert, Sword, Armor, Helmet, SwordCross, Target as TargetIcon, Zap as ZapIcon, Brain as BrainIcon, Rocket as RocketIcon } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { validateForm } from '../utils/validation';
 import toast from 'react-hot-toast';
@@ -30,6 +31,7 @@ const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentAnimation, setCurrentAnimation] = useState(0);
   
   // Form data and validation
   const [formData, setFormData] = useState({
@@ -44,6 +46,46 @@ const Login = () => {
   });
   const [errors, setErrors] = useState({});
 
+  // Cool Hebrew text for kids
+  const coolTexts = {
+    hero: {
+      title: "🏆 קמפוס הסייבר של ישראל 🏆",
+      subtitle: "המקום הכי מגניב ללמוד סייבר בישראל!",
+      description: "בואו להיות האקרים הטובים! למדו איך להגן על העולם הדיגיטלי עם משחקים, אתגרים וכלים מגניבים!",
+      features: [
+        "🎮 משחקים אינטראקטיביים מגניבים",
+        "⚡ אתגרים ומיסיונים מרגשים", 
+        "🏅 תעודות ומדליות להשגה",
+        "👥 חברים חדשים מכל הארץ",
+        "🚀 טכנולוגיות הכי מתקדמות"
+      ]
+    },
+    stats: [
+      { icon: Users, number: "5,000+", label: "האקרים צעירים", color: "from-blue-500 to-cyan-500", bgColor: "bg-gradient-to-br from-blue-500/20 to-cyan-500/20" },
+      { icon: Trophy, number: "50+", label: "מורים מומחים", color: "from-purple-500 to-pink-500", bgColor: "bg-gradient-to-br from-purple-500/20 to-pink-500/20" },
+      { icon: Crown, number: "100%", label: "כיף מובטח", color: "from-yellow-500 to-orange-500", bgColor: "bg-gradient-to-br from-yellow-500/20 to-orange-500/20" },
+      { icon: Rocket, number: "24/7", label: "זמינות מלאה", color: "from-green-500 to-emerald-500", bgColor: "bg-gradient-to-br from-green-500/20 to-emerald-500/20" }
+    ],
+    roles: {
+      student: {
+        title: "🎓 תלמידים",
+        subtitle: "בואו להיות האקרים של המחר!",
+        description: "הצטרפו למסע הרפתקאות בעולם הסייבר! למדו איך לפרוץ (למטרות טובות), להגן על מערכות ולפתור אתגרים מגניבים!",
+        features: ["🎮 משחקי האקינג", "🏆 תחרויות", "📚 שיעורים אינטראקטיביים", "👥 חברים חדשים"],
+        buttonText: "התחבר כתלמיד",
+        gradient: "from-blue-600 via-purple-600 to-cyan-600"
+      },
+      teacher: {
+        title: "🛡️ מורים",
+        subtitle: "הדריכו את הדור הבא של האקרים!",
+        description: "הצטרפו לצוות המורים המוביל! עזרו לתלמידים לגלות את העולם המרתק של אבטחת מידע וטכנולוגיה!",
+        features: ["📊 ניהול כיתות", "📈 מעקב התקדמות", "🎯 יצירת תוכן", "🏅 הדרכה מתקדמת"],
+        buttonText: "התחבר כמורה", 
+        gradient: "from-emerald-600 via-teal-600 to-cyan-600"
+      }
+    }
+  };
+
   // Form validation rules for different scenarios
   const validationRules = {
     email: { required: true, type: 'email' },
@@ -53,6 +95,14 @@ const Login = () => {
     lastName: { required: !isLogin, minLength: 2, maxLength: 30 },
     age: { required: !isLogin, type: 'number', min: 1, max: 120 }
   };
+
+  // Rotate through cool animations
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentAnimation(prev => (prev + 1) % 4);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   /**
    * Handle form input changes
@@ -97,7 +147,7 @@ const Login = () => {
       if (isLogin) {
         // Attempt user login
         await login(formData.email, formData.password);
-        toast.success('התחברת בהצלחה!');
+        toast.success('🎉 התחברת בהצלחה! ברוך שובך!');
       } else {
         // Prepare credentials object for signup
         const credentials = {
@@ -109,15 +159,15 @@ const Login = () => {
         
         // Attempt user registration with credentials
         await signup(formData.email, formData.password, formData.displayName, selectedRole, credentials);
-        toast.success('נרשמת בהצלחה!');
+        toast.success('🎊 נרשמת בהצלחה! ברוך הבא למשפחה!');
       }
     } catch (error) {
       console.error('Authentication error:', error);
       // Provide user-friendly error messages in Hebrew
-      const errorMessage = error.code === 'auth/user-not-found' ? 'משתמש לא נמצא' :
-                          error.code === 'auth/wrong-password' ? 'סיסמה שגויה' :
-                          error.code === 'auth/email-already-in-use' ? 'אימייל כבר קיים במערכת' :
-                          'אירעה שגיאה בהתחברות';
+      const errorMessage = error.code === 'auth/user-not-found' ? '❌ משתמש לא נמצא' :
+                          error.code === 'auth/wrong-password' ? '🔒 סיסמה שגויה' :
+                          error.code === 'auth/email-already-in-use' ? '📧 אימייל כבר קיים במערכת' :
+                          '⚠️ אירעה שגיאה בהתחברות';
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -135,14 +185,14 @@ const Login = () => {
     setShowLoginForm(true);
   };
 
-  // Animation variants for smooth page transitions
+  // Enhanced animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        duration: 1,
-        staggerChildren: 0.2
+        duration: 1.2,
+        staggerChildren: 0.15
       }
     }
   };
@@ -154,15 +204,15 @@ const Login = () => {
       rotate: 0,
       transition: {
         type: "spring",
-        stiffness: 260,
-        damping: 20,
-        duration: 1.2
+        stiffness: 200,
+        damping: 15,
+        duration: 1.5
       }
     }
   };
 
   const itemVariants = {
-    hidden: { y: 40, opacity: 0 },
+    hidden: { y: 50, opacity: 0 },
     visible: {
       y: 0,
       opacity: 1,
@@ -174,67 +224,58 @@ const Login = () => {
   };
 
   const cardVariants = {
-    hidden: { scale: 0.8, opacity: 0, y: 30 },
+    hidden: { scale: 0.8, opacity: 0, y: 40 },
     visible: {
       scale: 1,
       opacity: 1,
       y: 0,
       transition: {
-        duration: 0.6,
+        duration: 0.7,
         ease: "easeOut"
       }
     },
     hover: {
-      scale: 1.05,
-      y: -10,
+      scale: 1.08,
+      y: -15,
+      rotateY: 5,
       transition: {
-        duration: 0.3
+        duration: 0.4,
+        ease: "easeOut"
+      }
+    }
+  };
+
+  const floatingVariants = {
+    float: {
+      y: [-10, 10, -10],
+      transition: {
+        duration: 3,
+        repeat: Infinity,
+        ease: "easeInOut"
       }
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/20 to-purple-900/20 relative overflow-x-hidden">
-      {/* Large Background Logo - Creates immersive cyber atmosphere */}
-      <div className="fixed inset-0 flex items-center justify-center opacity-25 pointer-events-none z-0">
-        <img 
-          src={cyberLogo} 
-          alt="Israel Cyber Campus Background Logo" 
-          className="w-[1500px] h-[1500px] object-contain"
-        />
-      </div>
-
-      {/* Animated Background Elements - Floating orbs for visual appeal */}
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/30 to-purple-900/30 relative overflow-x-hidden">
+      {/* Enhanced Background Elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        {/* Animated Grid Pattern */}
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `radial-gradient(circle at 25% 25%, rgba(59, 130, 246, 0.3) 0%, transparent 50%),
+                             radial-gradient(circle at 75% 75%, rgba(168, 85, 247, 0.3) 0%, transparent 50%)`,
+            backgroundSize: '100px 100px, 150px 150px'
+          }} />
+        </div>
+
+        {/* Floating Cyber Elements */}
         <motion.div
-          className="absolute top-20 left-20 w-40 h-40 bg-blue-500/10 rounded-full blur-xl"
+          className="absolute top-20 left-20 w-32 h-32 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-full blur-xl"
           animate={{
             x: [0, 100, 0],
-            y: [0, -60, 0],
-          }}
-          transition={{
-            duration: 25,
-            repeat: Infinity,
-            ease: "linear"
-          }}
-        />
-        <motion.div
-          className="absolute bottom-20 right-20 w-60 h-60 bg-purple-500/10 rounded-full blur-xl"
-          animate={{
-            x: [0, -120, 0],
-            y: [0, 80, 0],
-          }}
-          transition={{
-            duration: 30,
-            repeat: Infinity,
-            ease: "linear"
-          }}
-        />
-        <motion.div
-          className="absolute top-1/3 right-1/4 w-32 h-32 bg-cyan-500/10 rounded-full blur-xl"
-          animate={{
-            scale: [1, 1.8, 1],
-            opacity: [0.2, 0.5, 0.2],
+            y: [0, -80, 0],
+            scale: [1, 1.2, 1],
           }}
           transition={{
             duration: 20,
@@ -243,13 +284,81 @@ const Login = () => {
           }}
         />
         <motion.div
-          className="absolute top-1/2 left-1/4 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl"
+          className="absolute bottom-20 right-20 w-48 h-48 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-full blur-xl"
           animate={{
-            scale: [1, 1.5, 1],
-            opacity: [0.1, 0.3, 0.1],
+            x: [0, -150, 0],
+            y: [0, 100, 0],
+            scale: [1, 1.3, 1],
+          }}
+          transition={{
+            duration: 25,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+        <motion.div
+          className="absolute top-1/3 right-1/4 w-24 h-24 bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-full blur-xl"
+          animate={{
+            scale: [1, 1.8, 1],
+            opacity: [0.3, 0.6, 0.3],
           }}
           transition={{
             duration: 18,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+        <motion.div
+          className="absolute top-1/2 left-1/4 w-20 h-20 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-full blur-xl"
+          animate={{
+            scale: [1, 1.5, 1],
+            opacity: [0.2, 0.5, 0.2],
+          }}
+          transition={{
+            duration: 22,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+
+        {/* Floating Icons */}
+        <motion.div
+          className="absolute top-1/4 left-1/6 text-blue-400/30"
+          variants={floatingVariants}
+          animate="float"
+        >
+          <Shield className="w-8 h-8" />
+        </motion.div>
+        <motion.div
+          className="absolute top-3/4 right-1/6 text-purple-400/30"
+          variants={floatingVariants}
+          animate="float"
+          style={{ animationDelay: '1s' }}
+        >
+          <Code className="w-8 h-8" />
+        </motion.div>
+        <motion.div
+          className="absolute top-1/2 left-1/3 text-cyan-400/30"
+          variants={floatingVariants}
+          animate="float"
+          style={{ animationDelay: '2s' }}
+        >
+          <Brain className="w-8 h-8" />
+        </motion.div>
+      </div>
+
+      {/* Large Background Logo */}
+      <div className="fixed inset-0 flex items-center justify-center opacity-20 pointer-events-none z-0">
+        <motion.img 
+          src={cyberLogo} 
+          alt="Israel Cyber Campus Background Logo" 
+          className="w-[1200px] h-[1200px] object-contain"
+          animate={{
+            scale: [1, 1.05, 1],
+            opacity: [0.2, 0.25, 0.2],
+          }}
+          transition={{
+            duration: 8,
             repeat: Infinity,
             ease: "easeInOut"
           }}
@@ -271,420 +380,457 @@ const Login = () => {
             variants={logoVariants}
           >
             <motion.div 
-              className="w-40 h-40 bg-gradient-to-br from-blue-500 via-purple-600 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-blue-500/30"
+              className="w-44 h-44 bg-gradient-to-br from-blue-500 via-purple-600 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-blue-500/40 relative overflow-hidden"
               whileHover={{ 
-                scale: 1.1,
-                boxShadow: "0 35px 60px -12px rgba(59, 130, 246, 0.5)"
+                scale: 1.15,
+                boxShadow: "0 40px 80px -12px rgba(59, 130, 246, 0.6)"
               }}
-              transition={{ duration: 0.4 }}
+              transition={{ duration: 0.5 }}
             >
+              {/* Animated ring */}
+              <motion.div
+                className="absolute inset-0 rounded-full border-4 border-white/20"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+              />
               <img 
                 src={cyberLogo} 
                 alt="Israel Cyber Campus Logo" 
-                className="w-24 h-24 object-contain"
+                className="w-28 h-28 object-contain relative z-10"
               />
             </motion.div>
             
             <motion.h1 
-              className="text-7xl font-bold text-white mb-6 bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent"
+              className="text-8xl font-black text-white mb-6 bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent leading-tight"
               variants={itemVariants}
             >
-              Israel Cyber Campus
+              {coolTexts.hero.title}
             </motion.h1>
             
             <motion.p 
-              className="text-2xl text-gray-300 max-w-4xl mx-auto leading-relaxed mb-8"
+              className="text-3xl text-gray-200 max-w-5xl mx-auto leading-relaxed mb-8 font-bold"
               variants={itemVariants}
             >
-              הקמפוס הגדול ביותר ללימודי סייבר בישראל
-              <br />
-              <span className="text-blue-400 font-semibold">אלפי תלמידים • מורים מעולים • חוויית למידה ייחודית</span>
+              {coolTexts.hero.subtitle}
             </motion.p>
 
             <motion.div 
-              className="text-lg text-gray-400 max-w-3xl mx-auto leading-relaxed"
+              className="text-xl text-gray-300 max-w-4xl mx-auto leading-relaxed mb-12"
               variants={itemVariants}
             >
-              <p className="mb-4">
-                ישראל קמפוס סייבר הוא מרכז הלמידה המתקדם ביותר ללימודי אבטחת מידע בישראל. 
-                עם אלפי תלמידים פעילים, צוות מורים מעולים ופלטפורמת למידה ייחודית שפותחה במיוחד עבורנו.
+              <p className="mb-6 text-lg">
+                {coolTexts.hero.description}
               </p>
-              <p>
-                אנו מציעים חוויית למידה אינטראקטיבית, תרגולים מעשיים ותוכן עדכני 
-                המכין את התלמידים לעולם האבטחה הדיגיטלית של המחר.
-              </p>
+            </motion.div>
+
+            {/* Cool Features List */}
+            <motion.div 
+              className="flex flex-wrap justify-center gap-4 mb-16"
+              variants={itemVariants}
+            >
+              {coolTexts.hero.features.map((feature, index) => (
+                <motion.div 
+                  key={index}
+                  className="flex items-center space-x-3 text-gray-200 bg-gray-800/50 backdrop-blur-sm px-6 py-4 rounded-2xl border border-gray-700/50 hover:border-blue-500/50 transition-all duration-300"
+                  whileHover={{ scale: 1.05, backgroundColor: "rgba(59, 130, 246, 0.1)" }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <span className="text-2xl">{feature.split(' ')[0]}</span>
+                  <span className="font-semibold text-lg">{feature.split(' ').slice(1).join(' ')}</span>
+                </motion.div>
+              ))}
             </motion.div>
           </motion.div>
 
-          {/* Stats Section */}
+          {/* Enhanced Stats Section */}
           <motion.div 
-            className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16 max-w-4xl mx-auto"
+            className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16 max-w-6xl mx-auto"
             variants={itemVariants}
           >
-            <motion.div 
-              className="text-center text-gray-300 bg-gray-800/30 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/30"
-              whileHover={{ scale: 1.05, backgroundColor: "rgba(59, 130, 246, 0.1)" }}
-            >
-              <Users className="w-8 h-8 text-blue-400 mx-auto mb-3" />
-              <div className="text-3xl font-bold text-white mb-1">5,000+</div>
-              <div className="text-sm">תלמידים פעילים</div>
-            </motion.div>
-            <motion.div 
-              className="text-center text-gray-300 bg-gray-800/30 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/30"
-              whileHover={{ scale: 1.05, backgroundColor: "rgba(168, 85, 247, 0.1)" }}
-            >
-              <Award className="w-8 h-8 text-purple-400 mx-auto mb-3" />
-              <div className="text-3xl font-bold text-white mb-1">50+</div>
-              <div className="text-sm">מורים מומחים</div>
-            </motion.div>
-            <motion.div 
-              className="text-center text-gray-300 bg-gray-800/30 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/30"
-              whileHover={{ scale: 1.05, backgroundColor: "rgba(6, 182, 212, 0.1)" }}
-            >
-              <Code className="w-8 h-8 text-cyan-400 mx-auto mb-3" />
-              <div className="text-3xl font-bold text-white mb-1">100%</div>
-              <div className="text-sm">תוכנה ייחודית</div>
-            </motion.div>
-            <motion.div 
-              className="text-center text-gray-300 bg-gray-800/30 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/30"
-              whileHover={{ scale: 1.05, backgroundColor: "rgba(34, 197, 94, 0.1)" }}
-            >
-              <Lock className="w-8 h-8 text-green-400 mx-auto mb-3" />
-              <div className="text-3xl font-bold text-white mb-1">24/7</div>
-              <div className="text-sm">גישה מתמדת</div>
-            </motion.div>
-          </motion.div>
-
-          {/* Features Section */}
-          <motion.div 
-            className="flex flex-wrap justify-center gap-6 mb-20"
-            variants={itemVariants}
-          >
-            <motion.div 
-              className="flex items-center space-x-3 text-gray-300 bg-gray-800/40 backdrop-blur-sm px-6 py-3 rounded-full border border-gray-700/50"
-              whileHover={{ scale: 1.05, backgroundColor: "rgba(59, 130, 246, 0.1)" }}
-            >
-              <Zap className="w-5 h-5 text-yellow-400" />
-              <span className="font-medium">למידה אינטראקטיבית</span>
-            </motion.div>
-            <motion.div 
-              className="flex items-center space-x-3 text-gray-300 bg-gray-800/40 backdrop-blur-sm px-6 py-3 rounded-full border border-gray-700/50"
-              whileHover={{ scale: 1.05, backgroundColor: "rgba(239, 68, 68, 0.1)" }}
-            >
-              <Target className="w-5 h-5 text-red-400" />
-              <span className="font-medium">תרגול מעשי</span>
-            </motion.div>
-            <motion.div 
-              className="flex items-center space-x-3 text-gray-300 bg-gray-800/40 backdrop-blur-sm px-6 py-3 rounded-full border border-gray-700/50"
-              whileHover={{ scale: 1.05, backgroundColor: "rgba(34, 197, 94, 0.1)" }}
-            >
-              <Globe className="w-5 h-5 text-green-400" />
-              <span className="font-medium">תוכן עדכני</span>
-            </motion.div>
+            {coolTexts.stats.map((stat, index) => (
+              <motion.div 
+                key={index}
+                className={`text-center text-gray-200 ${stat.bgColor} backdrop-blur-sm rounded-3xl p-8 border border-gray-700/30 relative overflow-hidden group`}
+                whileHover={{ 
+                  scale: 1.1, 
+                  y: -10,
+                  boxShadow: "0 20px 40px rgba(0,0,0,0.3)"
+                }}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                {/* Animated background gradient */}
+                <div className={`absolute inset-0 bg-gradient-to-br ${stat.color} opacity-0 group-hover:opacity-20 transition-opacity duration-500`} />
+                
+                <motion.div 
+                  className="relative z-10"
+                  whileHover={{ rotate: 360 }}
+                  transition={{ duration: 0.8 }}
+                >
+                  <stat.icon className={`w-12 h-12 mx-auto mb-4 bg-gradient-to-br ${stat.color} p-2 rounded-2xl text-white`} />
+                </motion.div>
+                <div className="text-4xl font-black text-white mb-2 relative z-10">{stat.number}</div>
+                <div className="text-lg font-semibold relative z-10">{stat.label}</div>
+              </motion.div>
+            ))}
           </motion.div>
 
           {/* Role Selection Cards */}
           {!showLoginForm && (
             <motion.div 
-              className="flex flex-col lg:flex-row gap-12 max-w-6xl mx-auto"
+              className="flex flex-col lg:flex-row gap-12 max-w-7xl mx-auto"
               variants={itemVariants}
             >
               {/* Student Card */}
               <motion.div
-                className="bg-gray-800/60 backdrop-blur-xl rounded-3xl p-8 border border-gray-700/50 hover:border-blue-500/50 transition-all duration-300 cursor-pointer flex-1"
+                className="bg-gray-800/70 backdrop-blur-xl rounded-3xl p-10 border border-gray-700/50 hover:border-blue-500/50 transition-all duration-300 cursor-pointer flex-1 relative overflow-hidden group"
                 variants={cardVariants}
                 whileHover="hover"
                 onClick={() => handleRoleSelect('student')}
               >
-                <div className="text-center">
+                {/* Animated background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 to-purple-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                
+                <div className="text-center relative z-10">
                   <motion.div 
-                    className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl"
-                    whileHover={{ rotate: 360 }}
+                    className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl group-hover:shadow-blue-500/50"
+                    whileHover={{ rotate: 360, scale: 1.2 }}
                     transition={{ duration: 0.8 }}
                   >
-                    <GraduationCap className="w-10 h-10 text-white" />
+                    <GraduationCap className="w-12 h-12 text-white" />
                   </motion.div>
-                  <h3 className="text-3xl font-bold text-white mb-4">תלמידים</h3>
-                  <p className="text-gray-300 mb-6 leading-relaxed text-lg">
-                    הצטרף לאלפי התלמידים שכבר לומדים אצלנו! 
-                    התחל את מסע הלמידה שלך בעולם הסייבר עם שיעורים אינטראקטיביים, 
-                    תרגולים מעשיים ומעקב התקדמות אישי מתקדם.
+                  <h3 className="text-4xl font-black text-white mb-6">{coolTexts.roles.student.title}</h3>
+                  <p className="text-gray-300 mb-8 leading-relaxed text-xl font-medium">
+                    {coolTexts.roles.student.description}
                   </p>
-                  <div className="space-y-4">
-                    <button className="w-full py-4 px-8 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg">
-                      <BookOpen className="w-6 h-6 inline ml-3" />
-                      התחבר כתלמיד
-                    </button>
+                  
+                  {/* Features */}
+                  <div className="grid grid-cols-2 gap-4 mb-8">
+                    {coolTexts.roles.student.features.map((feature, index) => (
+                      <div key={index} className="flex items-center space-x-2 text-gray-300">
+                        <span className="text-xl">{feature.split(' ')[0]}</span>
+                        <span className="text-sm font-medium">{feature.split(' ').slice(1).join(' ')}</span>
+                      </div>
+                    ))}
                   </div>
+                  
+                  <motion.button 
+                    className={`w-full py-6 px-8 bg-gradient-to-r ${coolTexts.roles.student.gradient} text-white rounded-2xl font-bold text-xl hover:shadow-2xl transition-all duration-300 shadow-lg group-hover:shadow-blue-500/50`}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <BookOpen className="w-7 h-7 inline ml-3" />
+                    {coolTexts.roles.student.buttonText}
+                  </motion.button>
                 </div>
               </motion.div>
 
               {/* Teacher Card */}
               <motion.div
-                className="bg-gray-800/60 backdrop-blur-xl rounded-3xl p-8 border border-gray-700/50 hover:border-emerald-500/50 transition-all duration-300 cursor-pointer flex-1"
+                className="bg-gray-800/70 backdrop-blur-xl rounded-3xl p-10 border border-gray-700/50 hover:border-emerald-500/50 transition-all duration-300 cursor-pointer flex-1 relative overflow-hidden group"
                 variants={cardVariants}
                 whileHover="hover"
                 onClick={() => handleRoleSelect('teacher')}
               >
-                <div className="text-center">
+                {/* Animated background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/10 to-teal-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                
+                <div className="text-center relative z-10">
                   <motion.div 
-                    className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl"
-                    whileHover={{ rotate: 360 }}
+                    className="w-24 h-24 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl group-hover:shadow-emerald-500/50"
+                    whileHover={{ rotate: 360, scale: 1.2 }}
                     transition={{ duration: 0.8 }}
                   >
-                    <Shield className="w-10 h-10 text-white" />
+                    <Shield className="w-12 h-12 text-white" />
                   </motion.div>
-                  <h3 className="text-3xl font-bold text-white mb-4">מורים</h3>
-                  <p className="text-gray-300 mb-6 leading-relaxed text-lg">
-                    הצטרף לצוות המורים המוביל שלנו! 
-                    נהל את הכיתה שלך, עקוב אחר התקדמות התלמידים, 
-                    צור שיעורים מותאמים אישית וקבל תובנות מפורטות על הביצועים.
+                  <h3 className="text-4xl font-black text-white mb-6">{coolTexts.roles.teacher.title}</h3>
+                  <p className="text-gray-300 mb-8 leading-relaxed text-xl font-medium">
+                    {coolTexts.roles.teacher.description}
                   </p>
-                  <div className="space-y-4">
-                    <button className="w-full py-4 px-8 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-semibold text-lg hover:from-emerald-700 hover:to-teal-700 transition-all duration-300 shadow-lg">
-                      <Shield className="w-6 h-6 inline ml-3" />
-                      התחבר כמורה
-                    </button>
+                  
+                  {/* Features */}
+                  <div className="grid grid-cols-2 gap-4 mb-8">
+                    {coolTexts.roles.teacher.features.map((feature, index) => (
+                      <div key={index} className="flex items-center space-x-2 text-gray-300">
+                        <span className="text-xl">{feature.split(' ')[0]}</span>
+                        <span className="text-sm font-medium">{feature.split(' ').slice(1).join(' ')}</span>
+                      </div>
+                    ))}
                   </div>
+                  
+                  <motion.button 
+                    className={`w-full py-6 px-8 bg-gradient-to-r ${coolTexts.roles.teacher.gradient} text-white rounded-2xl font-bold text-xl hover:shadow-2xl transition-all duration-300 shadow-lg group-hover:shadow-emerald-500/50`}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Shield className="w-7 h-7 inline ml-3" />
+                    {coolTexts.roles.teacher.buttonText}
+                  </motion.button>
                 </div>
               </motion.div>
             </motion.div>
           )}
 
-          {/* Login Form */}
-          {showLoginForm && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              className="bg-gray-800/95 backdrop-blur-xl rounded-3xl p-10 shadow-2xl border border-gray-700 max-w-md w-full"
-            >
-              <div className="text-center mb-8">
-                <button
-                  onClick={() => setShowLoginForm(false)}
-                  className="text-gray-400 hover:text-white transition-colors mb-6 text-lg"
-                >
-                  ← חזור לבחירת תפקיד
-                </button>
-                <h3 className="text-3xl font-bold text-white mb-3">
-                  {isLogin ? 'התחברות' : 'הרשמה'}
-                </h3>
-                <p className="text-gray-400 text-lg">
-                  {isLogin ? 'ברוך שובך לישראל קמפוס סייבר!' : 'צור חשבון חדש והצטרף אלינו'}
-                </p>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {!isLogin && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-3">
-                        שם מלא
-                      </label>
-                      <input
-                        type="text"
-                        name="displayName"
-                        value={formData.displayName}
-                        onChange={handleInputChange}
-                        className={`w-full px-5 py-4 bg-gray-700/50 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-300 text-lg ${
-                          errors.displayName 
-                            ? 'border-red-500 focus:ring-red-500' 
-                            : 'border-gray-600 focus:ring-blue-500'
-                        }`}
-                        placeholder="הכנס את שמך המלא"
-                      />
-                      {errors.displayName && (
-                        <p className="text-red-400 text-sm mt-2">{errors.displayName[0]}</p>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-3">
-                          שם פרטי
-                        </label>
-                        <input
-                          type="text"
-                          name="firstName"
-                          value={formData.firstName}
-                          onChange={handleInputChange}
-                          className={`w-full px-5 py-4 bg-gray-700/50 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-300 text-lg ${
-                            errors.firstName 
-                              ? 'border-red-500 focus:ring-red-500' 
-                              : 'border-gray-600 focus:ring-blue-500'
-                          }`}
-                          placeholder="שם פרטי"
-                        />
-                        {errors.firstName && (
-                          <p className="text-red-400 text-sm mt-2">{errors.firstName[0]}</p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-3">
-                          שם משפחה
-                        </label>
-                        <input
-                          type="text"
-                          name="lastName"
-                          value={formData.lastName}
-                          onChange={handleInputChange}
-                          className={`w-full px-5 py-4 bg-gray-700/50 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-300 text-lg ${
-                            errors.lastName 
-                              ? 'border-red-500 focus:ring-red-500' 
-                              : 'border-gray-600 focus:ring-blue-500'
-                          }`}
-                          placeholder="שם משפחה"
-                        />
-                        {errors.lastName && (
-                          <p className="text-red-400 text-sm mt-2">{errors.lastName[0]}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-3">
-                          גיל
-                        </label>
-                        <input
-                          type="number"
-                          name="age"
-                          value={formData.age}
-                          onChange={handleInputChange}
-                          min="1"
-                          max="120"
-                          className={`w-full px-5 py-4 bg-gray-700/50 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-300 text-lg ${
-                            errors.age 
-                              ? 'border-red-500 focus:ring-red-500' 
-                              : 'border-gray-600 focus:ring-blue-500'
-                          }`}
-                          placeholder="גיל"
-                        />
-                        {errors.age && (
-                          <p className="text-red-400 text-sm mt-2">{errors.age[0]}</p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-3">
-                          מגדר
-                        </label>
-                        <select
-                          name="sex"
-                          value={formData.sex}
-                          onChange={handleInputChange}
-                          className="w-full px-5 py-4 bg-gray-700/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 text-lg"
-                        >
-                          <option value="male">זכר</option>
-                          <option value="female">נקבה</option>
-                        </select>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-3">
-                    אימייל
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    className={`w-full px-5 py-4 bg-gray-700/50 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-300 text-lg ${
-                      errors.email 
-                        ? 'border-red-500 focus:ring-red-500' 
-                        : 'border-gray-600 focus:ring-blue-500'
-                    }`}
-                    placeholder="הכנס את האימייל שלך"
-                  />
-                  {errors.email && (
-                    <p className="text-red-400 text-sm mt-2">{errors.email[0]}</p>
-                  )}
+          {/* Enhanced Login Form */}
+          <AnimatePresence>
+            {showLoginForm && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8, y: 50 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.8, y: 50 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                className="bg-gray-800/95 backdrop-blur-xl rounded-3xl p-12 shadow-2xl border border-gray-700 max-w-lg w-full relative overflow-hidden"
+              >
+                {/* Animated background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-purple-600/5" />
+                
+                <div className="text-center mb-10 relative z-10">
+                  <motion.button
+                    onClick={() => setShowLoginForm(false)}
+                    className="text-gray-400 hover:text-white transition-colors mb-8 text-lg font-medium hover:scale-110"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                  >
+                    ← חזור לבחירת תפקיד
+                  </motion.button>
+                  <h3 className="text-4xl font-black text-white mb-4">
+                    {isLogin ? '🎉 התחברות' : '🚀 הרשמה'}
+                  </h3>
+                  <p className="text-gray-400 text-xl font-medium">
+                    {isLogin ? 'ברוך שובך! מוכנים להתחיל?' : 'בואו להצטרף למשפחה!'}
+                  </p>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-3">
-                    סיסמה
-                  </label>
-                  <div className="relative">
+                <form onSubmit={handleSubmit} className="space-y-8 relative z-10">
+                  {!isLogin && (
+                    <>
+                      <div>
+                        <label className="block text-lg font-bold text-gray-200 mb-4">
+                          👤 שם מלא
+                        </label>
+                        <input
+                          type="text"
+                          name="displayName"
+                          value={formData.displayName}
+                          onChange={handleInputChange}
+                          className={`w-full px-6 py-5 bg-gray-700/60 border-2 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:ring-4 transition-all duration-300 text-lg font-medium ${
+                            errors.displayName 
+                              ? 'border-red-500 focus:ring-red-500/30' 
+                              : 'border-gray-600 focus:ring-blue-500/30 focus:border-blue-500'
+                          }`}
+                          placeholder="הכנס את שמך המלא"
+                        />
+                        {errors.displayName && (
+                          <p className="text-red-400 text-sm mt-3 font-medium">{errors.displayName[0]}</p>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-lg font-bold text-gray-200 mb-4">
+                            📝 שם פרטי
+                          </label>
+                          <input
+                            type="text"
+                            name="firstName"
+                            value={formData.firstName}
+                            onChange={handleInputChange}
+                            className={`w-full px-6 py-5 bg-gray-700/60 border-2 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:ring-4 transition-all duration-300 text-lg font-medium ${
+                              errors.firstName 
+                                ? 'border-red-500 focus:ring-red-500/30' 
+                                : 'border-gray-600 focus:ring-blue-500/30 focus:border-blue-500'
+                            }`}
+                            placeholder="שם פרטי"
+                          />
+                          {errors.firstName && (
+                            <p className="text-red-400 text-sm mt-3 font-medium">{errors.firstName[0]}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-lg font-bold text-gray-200 mb-4">
+                            👨‍👩‍👧‍👦 שם משפחה
+                          </label>
+                          <input
+                            type="text"
+                            name="lastName"
+                            value={formData.lastName}
+                            onChange={handleInputChange}
+                            className={`w-full px-6 py-5 bg-gray-700/60 border-2 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:ring-4 transition-all duration-300 text-lg font-medium ${
+                              errors.lastName 
+                                ? 'border-red-500 focus:ring-red-500/30' 
+                                : 'border-gray-600 focus:ring-blue-500/30 focus:border-blue-500'
+                            }`}
+                            placeholder="שם משפחה"
+                          />
+                          {errors.lastName && (
+                            <p className="text-red-400 text-sm mt-3 font-medium">{errors.lastName[0]}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-lg font-bold text-gray-200 mb-4">
+                            🎂 גיל
+                          </label>
+                          <input
+                            type="number"
+                            name="age"
+                            value={formData.age}
+                            onChange={handleInputChange}
+                            min="1"
+                            max="120"
+                            className={`w-full px-6 py-5 bg-gray-700/60 border-2 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:ring-4 transition-all duration-300 text-lg font-medium ${
+                              errors.age 
+                                ? 'border-red-500 focus:ring-red-500/30' 
+                                : 'border-gray-600 focus:ring-blue-500/30 focus:border-blue-500'
+                            }`}
+                            placeholder="גיל"
+                          />
+                          {errors.age && (
+                            <p className="text-red-400 text-sm mt-3 font-medium">{errors.age[0]}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-lg font-bold text-gray-200 mb-4">
+                            👥 מגדר
+                          </label>
+                          <select
+                            name="sex"
+                            value={formData.sex}
+                            onChange={handleInputChange}
+                            className="w-full px-6 py-5 bg-gray-700/60 border-2 border-gray-600 rounded-2xl text-white focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-300 text-lg font-medium"
+                          >
+                            <option value="male">👨 זכר</option>
+                            <option value="female">👩 נקבה</option>
+                          </select>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  <div>
+                    <label className="block text-lg font-bold text-gray-200 mb-4">
+                      📧 אימייל
+                    </label>
                     <input
-                      type={showPassword ? 'text' : 'password'}
-                      name="password"
-                      value={formData.password}
+                      type="email"
+                      name="email"
+                      value={formData.email}
                       onChange={handleInputChange}
-                      className={`w-full px-5 py-4 pr-14 bg-gray-700/50 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-300 text-lg ${
-                        errors.password 
-                          ? 'border-red-500 focus:ring-red-500' 
-                          : 'border-gray-600 focus:ring-blue-500'
+                      className={`w-full px-6 py-5 bg-gray-700/60 border-2 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:ring-4 transition-all duration-300 text-lg font-medium ${
+                        errors.email 
+                          ? 'border-red-500 focus:ring-red-500/30' 
+                          : 'border-gray-600 focus:ring-blue-500/30 focus:border-blue-500'
                       }`}
-                      placeholder="הכנס את הסיסמה שלך"
+                      placeholder="הכנס את האימייל שלך"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-                    >
-                      {showPassword ? <EyeOff className="w-6 h-6" /> : <Eye className="w-6 h-6" />}
-                    </button>
+                    {errors.email && (
+                      <p className="text-red-400 text-sm mt-3 font-medium">{errors.email[0]}</p>
+                    )}
                   </div>
-                  {errors.password && (
-                    <p className="text-red-400 text-sm mt-2">{errors.password[0]}</p>
-                  )}
+
+                  <div>
+                    <label className="block text-lg font-bold text-gray-200 mb-4">
+                      🔒 סיסמה
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        name="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        className={`w-full px-6 py-5 pr-16 bg-gray-700/60 border-2 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:ring-4 transition-all duration-300 text-lg font-medium ${
+                          errors.password 
+                            ? 'border-red-500 focus:ring-red-500/30' 
+                            : 'border-gray-600 focus:ring-blue-500/30 focus:border-blue-500'
+                        }`}
+                        placeholder="הכנס את הסיסמה שלך"
+                      />
+                      <motion.button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                        whileHover={{ scale: 1.2 }}
+                        whileTap={{ scale: 0.9 }}
+                      >
+                        {showPassword ? <EyeOff className="w-7 h-7" /> : <Eye className="w-7 h-7" />}
+                      </motion.button>
+                    </div>
+                    {errors.password && (
+                      <p className="text-red-400 text-sm mt-3 font-medium">{errors.password[0]}</p>
+                    )}
+                  </div>
+
+                  <motion.button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full py-6 px-8 bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 text-white rounded-2xl font-black text-xl hover:shadow-2xl focus:outline-none focus:ring-4 focus:ring-blue-500/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-blue-500/50"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    {isLoading ? (
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-white mr-4"></div>
+                        <span className="text-lg font-bold">{isLogin ? 'מתחבר...' : 'נרשם...'}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center">
+                        <span className="text-lg font-bold">{isLogin ? 'התחבר' : 'הרשם'}</span>
+                        <ArrowRight className="w-6 h-6 mr-4" />
+                      </div>
+                    )}
+                  </motion.button>
+                </form>
+
+                <div className="mt-10 text-center relative z-10">
+                  <motion.button
+                    onClick={() => setIsLogin(!isLogin)}
+                    className="text-gray-400 hover:text-white transition-colors text-lg font-medium hover:scale-110"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                  >
+                    {isLogin ? '❓ אין לך חשבון? הירשם כאן' : '✅ יש לך חשבון? התחבר כאן'}
+                  </motion.button>
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full py-4 px-8 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-                >
-                  {isLoading ? (
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-3"></div>
-                      {isLogin ? 'מתחבר...' : 'נרשם...'}
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center">
-                      {isLogin ? 'התחבר' : 'הרשם'}
-                      <ArrowRight className="w-5 h-5 mr-3" />
-                    </div>
-                  )}
-                </button>
-              </form>
-
-              <div className="mt-8 text-center">
-                <button
-                  onClick={() => setIsLogin(!isLogin)}
-                  className="text-gray-400 hover:text-white transition-colors text-lg"
-                >
-                  {isLogin ? 'אין לך חשבון? הירשם כאן' : 'יש לך חשבון? התחבר כאן'}
-                </button>
-              </div>
-            </motion.div>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </section>
 
-        {/* Footer Section */}
-        <footer className="bg-gray-900/50 backdrop-blur-sm border-t border-gray-700/50 py-8">
+        {/* Enhanced Footer Section */}
+        <footer className="bg-gray-900/60 backdrop-blur-sm border-t border-gray-700/50 py-12">
           <div className="max-w-6xl mx-auto px-6 text-center">
-            <div className="flex flex-wrap justify-center items-center gap-8 mb-6">
-              <div className="flex items-center space-x-2 text-gray-400">
-                <Star className="w-5 h-5 text-yellow-400" />
-                <span>דירוג 4.9/5</span>
-              </div>
-              <div className="flex items-center space-x-2 text-gray-400">
-                <TrendingUp className="w-5 h-5 text-green-400" />
-                <span>95% הצלחה</span>
-              </div>
-              <div className="flex items-center space-x-2 text-gray-400">
-                <Clock className="w-5 h-5 text-blue-400" />
-                <span>זמין 24/7</span>
-              </div>
+            <div className="flex flex-wrap justify-center items-center gap-10 mb-8">
+              <motion.div 
+                className="flex items-center space-x-3 text-gray-300 bg-gray-800/50 px-6 py-3 rounded-2xl border border-gray-700/50"
+                whileHover={{ scale: 1.05, backgroundColor: "rgba(59, 130, 246, 0.1)" }}
+              >
+                <Star className="w-6 h-6 text-yellow-400" />
+                <span className="font-bold">דירוג 4.9/5 ⭐</span>
+              </motion.div>
+              <motion.div 
+                className="flex items-center space-x-3 text-gray-300 bg-gray-800/50 px-6 py-3 rounded-2xl border border-gray-700/50"
+                whileHover={{ scale: 1.05, backgroundColor: "rgba(34, 197, 94, 0.1)" }}
+              >
+                <TrendingUp className="w-6 h-6 text-green-400" />
+                <span className="font-bold">95% הצלחה 🏆</span>
+              </motion.div>
+              <motion.div 
+                className="flex items-center space-x-3 text-gray-300 bg-gray-800/50 px-6 py-3 rounded-2xl border border-gray-700/50"
+                whileHover={{ scale: 1.05, backgroundColor: "rgba(6, 182, 212, 0.1)" }}
+              >
+                <Clock className="w-6 h-6 text-blue-400" />
+                <span className="font-bold">זמין 24/7 ⚡</span>
+              </motion.div>
             </div>
-            <p className="text-gray-500 text-sm">
-              © 2024 Israel Cyber Campus. כל הזכויות שמורות.
+            <p className="text-gray-500 text-lg font-medium">
+              © 2024 Israel Cyber Campus. כל הזכויות שמורות. 🚀
             </p>
           </div>
         </footer>
