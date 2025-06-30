@@ -52,7 +52,7 @@ const SystemManagerDashboard = () => {
   });
   
   const [recentActivity, setRecentActivity] = useState([]);
-  const [systemAlerts, setSystemAlerts] = useState([]);
+  const [systemAlerts, setSyste mAlerts] = useState([]);
 
   useEffect(() => {
     loadSystemStats();
@@ -394,7 +394,7 @@ const ContentManagement = () => {
 ### 4. Advanced Slide Editor (`src/components/system-manager/AdvancedSlideEditor.jsx`)
 
 #### Features
-- **Visual Editor:** Drag-and-drop slide creation interface
+- **Visual Editor:** Click-based slide creation interface
 - **Component Library:** Pre-built interactive components and templates
 - **JSON Editor:** Advanced JSON editing for custom configurations
 - **Live Preview:** Real-time preview of slide content and interactions

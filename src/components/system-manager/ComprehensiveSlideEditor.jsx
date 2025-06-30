@@ -822,7 +822,7 @@ const ComprehensiveSlideEditor = ({ slide, onSave, onCancel }) => {
           onChange={(e) => handleContentChange('type', e.target.value)}
           className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
         >
-          <option value="drag-drop">Drag & Drop</option>
+          <option value="drag-drop">Click-Based Exercise</option>
           <option value="matching">Matching</option>
           <option value="multiple-choice">Multiple Choice</option>
           <option value="windows-simulator">Windows Simulator</option>

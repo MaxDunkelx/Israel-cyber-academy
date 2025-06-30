@@ -24,7 +24,7 @@ export const LESSON_TYPES = {
 
 // Exercise types
 export const EXERCISE_TYPES = {
-  DRAG_DROP: 'drag-drop',
+  CLICK_BASED_EXERCISE: 'drag-drop',
   MATCHING: 'matching',
   MULTIPLE_CHOICE: 'multiple-choice'
 };

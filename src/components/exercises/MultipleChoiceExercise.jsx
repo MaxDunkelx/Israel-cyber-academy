@@ -137,19 +137,7 @@ const MultipleChoiceExercise = ({ exercise, onComplete }) => {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="text-center">
-        <h3 className="text-3xl font-bold text-white mb-4">
-          {isQuiz ? `שאלה ${currentQuestionIndex + 1} מתוך ${totalQuestions}` : (exercise?.title || "שאלה רב-ברירתית")}
-        </h3>
-        {currentQuestion?.question && (
-          <p className="text-xl text-gray-200 leading-relaxed mb-6">
-            {currentQuestion.question}
-          </p>
-        )}
-      </div>
-
+    <div className="space-y-4 max-w-4xl mx-auto h-full flex flex-col">
       {/* Quiz Navigation */}
       {isQuiz && !quizCompleted && (
         <div className="flex justify-between items-center">
@@ -176,25 +164,10 @@ const MultipleChoiceExercise = ({ exercise, onComplete }) => {
       )}
 
       {/* Content */}
-      {currentQuestion?.content && (
-        <div className="bg-gray-800/50 p-6 rounded-xl border-2 border-gray-600">
-          {currentQuestion.content.image && (
-            <img 
-              src={currentQuestion.content.image} 
-              alt={currentQuestion.content.text || "תמונה"} 
-              className="w-full max-w-md mx-auto rounded-lg mb-4"
-            />
-          )}
-          {currentQuestion.content.text && (
-            <p className="text-lg text-white text-center">
-              {currentQuestion.content.text}
-            </p>
-          )}
-        </div>
-      )}
+      {/* Removed image and text content section */}
 
       {/* Answer Options */}
-      <div className="space-y-3">
+      <div className="space-y-2 flex-1">
         {currentQuestion?.options?.map((option, index) => {
           // Handle both string options and object options
           const optionText = typeof option === 'string' ? option : option.text;
@@ -203,15 +176,15 @@ const MultipleChoiceExercise = ({ exercise, onComplete }) => {
           return (
             <motion.div
               key={optionId}
-              className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+              className={`p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
                 getAnswerClass(optionId)
               }`}
               onClick={() => handleAnswerSelect(optionId)}
               whileHover={!isAnswered && !quizCompleted ? { scale: 1.02 } : {}}
               whileTap={!isAnswered && !quizCompleted ? { scale: 0.98 } : {}}
             >
-              <div className="flex items-center gap-4">
-                <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-lg ${
+              <div className="flex items-center gap-3">
+                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center font-bold text-base ${
                   (isQuiz ? quizAnswers[currentQuestionIndex] : selectedAnswer) === optionId
                     ? 'border-blue-400 bg-blue-400 text-white'
                     : 'border-gray-500 bg-gray-600 text-gray-300'
@@ -220,9 +193,9 @@ const MultipleChoiceExercise = ({ exercise, onComplete }) => {
                 </div>
                 <div className="flex items-center gap-3 flex-1">
                   {typeof option === 'object' && option.icon && (
-                    <span className="text-2xl">{option.icon}</span>
+                    <span className="text-xl">{option.icon}</span>
                   )}
-                  <span className="font-semibold text-white text-lg">
+                  <span className="font-semibold text-white text-base">
                     {optionText}
                   </span>
                 </div>
@@ -231,7 +204,7 @@ const MultipleChoiceExercise = ({ exercise, onComplete }) => {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                   >
-                    <CheckCircle className="h-6 w-6 text-green-400" />
+                    <CheckCircle className="h-5 w-5 text-green-400" />
                   </motion.div>
                 )}
                 {((isQuiz && quizCompleted) || (!isQuiz && isAnswered)) && optionId === (isQuiz ? quizAnswers[currentQuestionIndex] : selectedAnswer) && optionId !== currentQuestion.correctAnswer && (
@@ -239,7 +212,7 @@ const MultipleChoiceExercise = ({ exercise, onComplete }) => {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                   >
-                    <XCircle className="h-6 w-6 text-red-400" />
+                    <XCircle className="h-5 w-5 text-red-400" />
                   </motion.div>
                 )}
               </div>
@@ -255,16 +228,16 @@ const MultipleChoiceExercise = ({ exercise, onComplete }) => {
             onClick={() => setShowHint(!showHint)}
             className="flex items-center gap-2 mx-auto text-purple-300 hover:text-purple-200 transition-colors"
           >
-            <Lightbulb className="h-5 w-5" />
-            <span className="font-medium">רמז</span>
+            <Lightbulb className="h-4 w-4" />
+            <span className="font-medium text-sm">רמז</span>
           </button>
           {showHint && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mt-3 p-4 bg-yellow-900/30 border-2 border-yellow-500 rounded-lg"
+              className="mt-2 p-3 bg-yellow-900/30 border-2 border-yellow-500 rounded-lg"
             >
-              <p className="text-yellow-200 font-medium">{currentQuestion.hint}</p>
+              <p className="text-yellow-200 font-medium text-sm">{currentQuestion.hint}</p>
             </motion.div>
           )}
         </div>
@@ -302,24 +275,24 @@ const MultipleChoiceExercise = ({ exercise, onComplete }) => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`text-center p-6 rounded-xl border-2 ${
+          className={`text-center p-4 rounded-xl border-2 ${
             isCorrect 
               ? 'bg-green-900/30 text-green-200 border-green-500' 
               : 'bg-red-900/30 text-red-200 border-red-500'
           }`}
         >
-          <div className="flex items-center justify-center gap-3 mb-4">
+          <div className="flex items-center justify-center gap-3 mb-3">
             {isCorrect ? (
-              <CheckCircle className="h-8 w-8" />
+              <CheckCircle className="h-6 w-6" />
             ) : (
-              <XCircle className="h-8 w-8" />
+              <XCircle className="h-6 w-6" />
             )}
-            <span className="text-2xl font-bold">
+            <span className="text-xl font-bold">
               {isCorrect ? 'מעולה! תשובה נכונה!' : 'נסה שוב!'}
             </span>
           </div>
           {currentQuestion?.explanation && (
-            <p className="text-lg">
+            <p className="text-base">
               {currentQuestion.explanation}
             </p>
           )}

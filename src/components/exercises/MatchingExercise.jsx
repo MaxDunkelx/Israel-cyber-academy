@@ -113,29 +113,19 @@ const MatchingExercise = ({ exercise, onComplete }) => {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="text-center">
-        <h3 className="text-3xl font-bold text-white mb-4">
-          {exercise?.title || "משחק התאמה"}
-        </h3>
-        <p className="text-xl text-gray-200 leading-relaxed">
-          {exercise?.instructions || "לחץ על פריט ואז על התיאור המתאים לו"}
-        </p>
-      </div>
-
+    <div className="space-y-4 max-w-6xl mx-auto h-full flex flex-col">
       {/* Main Game Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1">
         {/* Left Column - Tools */}
-        <div className="space-y-4">
-          <h4 className="text-2xl font-bold text-purple-300 text-center mb-4">
+        <div className="space-y-3">
+          <h4 className="text-xl font-bold text-purple-300 text-center mb-3">
             {getLeftHeader()}
           </h4>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {pairs.map((pair, index) => (
               <motion.div
                 key={`left-${index}`}
-                className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                className={`p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
                   selectedLeft === index
                     ? 'border-blue-400 bg-blue-800/50 shadow-lg scale-105'
                     : matches[index] !== undefined
@@ -149,8 +139,8 @@ const MatchingExercise = ({ exercise, onComplete }) => {
                 whileTap={matches[index] === undefined ? { scale: 0.98 } : {}}
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">{getLeftIcon(pair)}</span>
-                  <span className="font-semibold text-white text-lg">
+                  <span className="text-xl">{getLeftIcon(pair)}</span>
+                  <span className="font-semibold text-white text-base">
                     {getLeftText(pair)}
                   </span>
                   {matches[index] !== undefined && (
@@ -160,9 +150,9 @@ const MatchingExercise = ({ exercise, onComplete }) => {
                       className="ml-auto"
                     >
                       {isMatchCorrect(index) ? (
-                        <CheckCircle className="h-6 w-6 text-green-400" />
+                        <CheckCircle className="h-5 w-5 text-green-400" />
                       ) : (
-                        <XCircle className="h-6 w-6 text-red-400" />
+                        <XCircle className="h-5 w-5 text-red-400" />
                       )}
                     </motion.div>
                   )}
@@ -173,15 +163,15 @@ const MatchingExercise = ({ exercise, onComplete }) => {
         </div>
 
         {/* Right Column - Descriptions */}
-        <div className="space-y-4">
-          <h4 className="text-2xl font-bold text-green-300 text-center mb-4">
+        <div className="space-y-3">
+          <h4 className="text-xl font-bold text-green-300 text-center mb-3">
             {getRightHeader()}
           </h4>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {pairs.map((pair, index) => (
               <motion.div
                 key={`right-${index}`}
-                className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                className={`p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
                   selectedRight === index
                     ? 'border-blue-400 bg-blue-800/50 shadow-lg scale-105'
                     : isRightMatched(index)
@@ -193,7 +183,7 @@ const MatchingExercise = ({ exercise, onComplete }) => {
                 whileTap={!isRightMatched(index) ? { scale: 0.98 } : {}}
               >
                 <div className="flex items-center gap-3">
-                  <span className="font-semibold text-white text-lg">
+                  <span className="font-semibold text-white text-base">
                     {getRightText(pair)}
                   </span>
                 </div>
@@ -223,7 +213,7 @@ const MatchingExercise = ({ exercise, onComplete }) => {
       )}
 
       {/* Action Buttons */}
-      <div className="flex justify-center space-x-4 space-x-reverse pt-6">
+      <div className="flex justify-center space-x-4 space-x-reverse pt-4">
         <motion.button
           onClick={shuffleItems}
           className="px-6 py-3 bg-gray-700/50 hover:bg-gray-600/50 text-white rounded-lg border border-gray-600 hover:border-gray-500 transition-all duration-200 flex items-center gap-2"
@@ -248,11 +238,11 @@ const MatchingExercise = ({ exercise, onComplete }) => {
 
       {/* Progress */}
       <div className="text-center">
-        <p className="text-lg text-gray-300">
+        <p className="text-base text-gray-300">
           התאמות: {Object.keys(matches).length} / {pairs.length}
         </p>
         {score > 0 && (
-          <p className="text-lg text-green-400 font-semibold">
+          <p className="text-base text-green-400 font-semibold">
             נכון: {score} / {Object.keys(matches).length}
           </p>
         )}

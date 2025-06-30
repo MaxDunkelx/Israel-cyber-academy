@@ -46,9 +46,6 @@ import {
   SkipBack
 } from 'lucide-react';
 import { PresentationSlide, PollSlide, VideoSlide, InteractiveSlide, BreakSlide, ReflectionSlide, QuizSlide } from './slides';
-import DragDropExercise from './exercises/DragDropExercise';
-import MatchingExercise from './exercises/MatchingExercise';
-import MultipleChoiceExercise from './exercises/MultipleChoiceExercise';
 import Confetti from 'react-confetti';
 import toast from 'react-hot-toast';
 import { 
@@ -529,48 +526,8 @@ const InteractiveLesson = () => {
         </>
       )}
 
-      {/* Header */}
-      <div className="bg-gray-800/50 backdrop-blur-sm border-b border-gray-700/50 p-4 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          {/* Lesson Info */}
-          <div className="flex items-center space-x-4 space-x-reverse">
-            <button
-              onClick={() => navigate('/roadmap')}
-              className="p-2 rounded-lg bg-gray-700/50 hover:bg-gray-600/50 transition-colors"
-            >
-              <Home className="h-6 w-6 text-white" />
-            </button>
-            <div>
-              <h1 className="text-xl font-bold text-white">{lesson.title}</h1>
-              <p className="text-sm text-gray-300">
-                שקופית {currentSlide + 1} מתוך {lesson.content.slides.length}
-                {isCompletedLesson.current && (
-                  <span className="ml-2 text-green-400">(שיעור הושלם)</span>
-                )}
-              </p>
-            </div>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="flex-1 max-w-md mx-4">
-            <div className="bg-gray-700/50 rounded-full h-2">
-              <div 
-                className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${progressPercentage}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Timer */}
-          <div className="flex items-center space-x-2 space-x-reverse">
-            <Clock className="h-5 w-5 text-blue-400" />
-            <span className="text-white font-mono">{formatTime(timeLeft)}</span>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content Area */}
-      <div className="flex h-[calc(100vh-80px)]">
+      <div className="flex h-screen">
         {/* Lesson Content - Main Area */}
         <div className="flex-1 overflow-y-auto">
           <div className="p-6">
@@ -599,15 +556,6 @@ const InteractiveLesson = () => {
                 <span className="text-white font-semibold">דפים צפו</span>
               </div>
               <p className="text-2xl font-bold text-green-400">{pagesWatched.size}</p>
-            </div>
-
-            {/* Minutes Learned */}
-            <div className="bg-gray-700/30 rounded-lg p-4">
-              <div className="flex items-center gap-3 mb-2">
-                <BookOpen className="h-5 w-5 text-purple-400" />
-                <span className="text-white font-semibold">דקות למדו</span>
-              </div>
-              <p className="text-2xl font-bold text-purple-400">{minutesLearned}</p>
             </div>
 
             {/* Progress */}

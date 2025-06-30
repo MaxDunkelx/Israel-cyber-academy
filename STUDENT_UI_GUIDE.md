@@ -57,13 +57,13 @@ const updateProgress = async (lessonId, slideIndex) => {
 
 #### Features
 - **Slide Navigation:** Forward/backward navigation with progress tracking
-- **Interactive Elements:** Clickable components, drag-and-drop exercises
+- **Interactive Elements:** Clickable components, click-based exercises
 - **Real-Time Updates:** Live content updates from teacher sessions
 - **Accessibility:** Keyboard navigation and screen reader support
 
 #### Slide Types Supported
 1. **Presentation Slides:** Text, images, videos with navigation
-2. **Interactive Exercises:** Drag-and-drop, matching, multiple choice
+2. **Interactive Exercises:** Click-based, matching, multiple choice
 3. **Simulators:** Windows, Linux, network, and protocol simulators
 4. **Polls & Quizzes:** Real-time voting and assessment
 5. **Video Content:** Embedded educational videos
@@ -150,59 +150,31 @@ const followTeacher = (slideIndex) => {
 
 ## Interactive Exercise Components
 
-### 1. Drag & Drop Exercise (`src/components/exercises/DragDropExercise.jsx`)
+### 1. Click-Based Exercise (`src/components/exercises/DragDropExercise.jsx`)
 
 #### Features
-- **Visual Categories:** Color-coded drop zones
-- **Drag Feedback:** Visual feedback during dragging
-- **Validation:** Immediate feedback on correct/incorrect placement
-- **Retry Capability:** Multiple attempts allowed
+- **Click to Select:** Click on items to select them
+- **Click to Place:** Click on categories to place selected items
+- **Visual Feedback:** Clear selection indicators and hover effects
+- **Progress Tracking:** Real-time progress updates
+- **Answer Validation:** Automatic scoring and feedback
 
 #### Implementation
 ```javascript
 const DragDropExercise = ({ exercise, onComplete }) => {
-  const [draggedItem, setDraggedItem] = useState(null);
-  const [placedItems, setPlacedItems] = useState({});
-  const [isComplete, setIsComplete] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [categories, setCategories] = useState({});
 
-  const handleDrop = (itemId, categoryId) => {
-    const newPlacedItems = { ...placedItems, [itemId]: categoryId };
-    setPlacedItems(newPlacedItems);
-    
-    // Check if all items are placed correctly
-    const allCorrect = exercise.items.every(item => 
-      newPlacedItems[item.id] === item.correctCategory
-    );
-    
-    if (allCorrect) {
-      setIsComplete(true);
-      onComplete({ score: 100, time: Date.now() - startTime });
-    }
+  const handleItemSelect = (item) => {
+    setSelectedItem(item);
   };
 
-  return (
-    <div className="drag-drop-exercise">
-      <div className="items-container">
-        {exercise.items.map(item => (
-          <DraggableItem 
-            key={item.id}
-            item={item}
-            onDragStart={() => setDraggedItem(item)}
-          />
-        ))}
-      </div>
-      <div className="categories-container">
-        {exercise.categories.map(category => (
-          <DropZone
-            key={category.id}
-            category={category}
-            onDrop={(itemId) => handleDrop(itemId, category.id)}
-            isCorrect={placedItems[itemId] === category.id}
-          />
-        ))}
-      </div>
-    </div>
-  );
+  const handleCategoryClick = (categoryId) => {
+    if (!selectedItem) return;
+    // Place item in category
+    // Remove from source
+    setSelectedItem(null);
+  };
 };
 ```
 

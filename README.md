@@ -118,7 +118,7 @@ Israel Cyber Campus is a comprehensive, real-time learning management system des
 9. **כלי פיתוח** - Development tools
 
 ### **Interactive Elements**
-- **Drag & Drop Exercises** - Component matching
+- **Click-Based Exercises** - Component matching
 - **Code Editors** - Live coding practice
 - **Simulators** - OS and network simulations
 - **Quizzes & Polls** - Knowledge assessment

@@ -55,7 +55,7 @@ const InteractiveSlide = ({ slide, onAnswer, answers }) => {
             {slide?.title || 'Interactive Exercise'}
           </h2>
           <p className="text-xl text-gray-200" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
-            {content.instructions || 'Complete the interactive exercise below'}
+            {content.instructions || 'השלם את התרגיל האינטראקטיבי למטה'}
           </p>
         </div>
 

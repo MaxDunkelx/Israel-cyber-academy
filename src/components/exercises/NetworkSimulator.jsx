@@ -81,25 +81,15 @@ const NetworkSimulator = ({ exercise, onComplete }) => {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="text-center">
-        <h3 className="text-3xl font-bold text-white mb-4">
-          סימולטור רשת
-        </h3>
-        <p className="text-xl text-gray-200 mb-6">
-          {exercise.instructions}
-        </p>
-      </div>
-
+    <div className="space-y-4 max-w-6xl mx-auto h-full flex flex-col">
       {/* Network Canvas */}
-      <div className="bg-gray-800/50 p-8 rounded-xl border-2 border-gray-600 min-h-[500px] relative">
+      <div className="bg-gray-800/50 p-4 rounded-xl border-2 border-gray-600 flex-1 relative">
         {/* Components */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           {components.map((component, index) => (
             <motion.div
               key={component.name}
-              className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+              className={`p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
                 selectedComponent?.name === component.name
                   ? 'border-yellow-400 bg-yellow-500/20'
                   : 'border-gray-600 bg-gray-700/50 hover:border-blue-400 hover:bg-blue-800/30'
@@ -109,13 +99,13 @@ const NetworkSimulator = ({ exercise, onComplete }) => {
               whileTap={{ scale: 0.95 }}
             >
               <div className="text-center">
-                <div className={`${getComponentColor(component.type)} rounded-lg p-3 mb-3 mx-auto w-fit`}>
+                <div className={`${getComponentColor(component.type)} rounded-lg p-2 mb-2 mx-auto w-fit`}>
                   {getComponentIcon(component.type)}
                 </div>
-                <h4 className="font-bold text-white text-lg mb-1">
+                <h4 className="font-bold text-white text-base mb-1">
                   {component.name}
                 </h4>
-                <p className="text-gray-300 text-sm">
+                <p className="text-gray-300 text-xs">
                   {component.ip}
                 </p>
               </div>
@@ -124,11 +114,11 @@ const NetworkSimulator = ({ exercise, onComplete }) => {
         </div>
 
         {/* Connections */}
-        <div className="space-y-4">
+        <div className="space-y-2">
           {connections.map((connection, index) => (
             <motion.div
               key={`${connection.from}-${connection.to}`}
-              className={`flex items-center justify-between p-4 rounded-lg border-2 ${
+              className={`flex items-center justify-between p-3 rounded-lg border-2 ${
                 isSimulating && index < simulationStep
                   ? 'border-green-400 bg-green-800/30'
                   : 'border-gray-600 bg-gray-700/50'
@@ -136,20 +126,20 @@ const NetworkSimulator = ({ exercise, onComplete }) => {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
             >
-              <div className="flex items-center gap-4">
-                <div className="text-blue-400 font-bold">
+              <div className="flex items-center gap-3">
+                <div className="text-blue-400 font-bold text-sm">
                   {connection.from}
                 </div>
-                <Activity className="h-5 w-5 text-blue-400" />
-                <div className="text-green-400 font-bold">
+                <Activity className="h-4 w-4 text-blue-400" />
+                <div className="text-green-400 font-bold text-sm">
                   {connection.to}
                 </div>
               </div>
-              <div className="text-purple-400 font-mono">
+              <div className="text-purple-400 font-mono text-sm">
                 {connection.protocol}
               </div>
               {isSimulating && index < simulationStep && (
-                <CheckCircle className="h-6 w-6 text-green-400" />
+                <CheckCircle className="h-5 w-5 text-green-400" />
               )}
             </motion.div>
           ))}
@@ -160,9 +150,9 @@ const NetworkSimulator = ({ exercise, onComplete }) => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-6 p-4 bg-blue-900/30 border-2 border-blue-500 rounded-lg"
+            className="mt-4 p-3 bg-blue-900/30 border-2 border-blue-500 rounded-lg"
           >
-            <p className="text-blue-200 text-center">
+            <p className="text-blue-200 text-center text-sm">
               בחר מכשיר נוסף כדי ליצור חיבור עם {selectedComponent.name}
             </p>
           </motion.div>
@@ -174,22 +164,22 @@ const NetworkSimulator = ({ exercise, onComplete }) => {
         <motion.button
           onClick={startSimulation}
           disabled={connections.length === 0 || isSimulating}
-          className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg border border-green-500 hover:border-green-400 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg border border-green-500 hover:border-green-400 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           whileHover={connections.length > 0 && !isSimulating ? { scale: 1.05 } : {}}
           whileTap={connections.length > 0 && !isSimulating ? { scale: 0.95 } : {}}
         >
-          <Activity className="h-5 w-5" />
+          <Activity className="h-4 w-4" />
           הפעל סימולציה
         </motion.button>
         
         <motion.button
           onClick={resetSimulation}
           disabled={isSimulating}
-          className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg border border-red-500 hover:border-red-400 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg border border-red-500 hover:border-red-400 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           whileHover={!isSimulating ? { scale: 1.05 } : {}}
           whileTap={!isSimulating ? { scale: 0.95 } : {}}
         >
-          <Globe className="h-5 w-5" />
+          <Globe className="h-4 w-4" />
           אפס
         </motion.button>
       </div>
@@ -197,28 +187,26 @@ const NetworkSimulator = ({ exercise, onComplete }) => {
       {/* Status */}
       {isSimulating && (
         <div className="text-center">
-          <p className="text-yellow-200 text-lg">
-            סימולציה פעילה... שלב {simulationStep + 1} מתוך {connections.length}
+          <p className="text-yellow-200 text-base">
+            סימולציה פועלת... שלב {simulationStep + 1} מתוך {connections.length}
           </p>
         </div>
       )}
 
       {completed && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center p-6 bg-green-900/30 border-2 border-green-500 rounded-xl"
-        >
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <CheckCircle className="h-8 w-8 text-green-400" />
-            <span className="text-2xl font-bold text-green-200">
-              סימולציה הושלמה!
-            </span>
+        <div className="text-center">
+          <div className="bg-green-900/30 border-2 border-green-500 rounded-lg p-4">
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <CheckCircle className="h-6 w-6 text-green-400" />
+              <span className="text-xl font-bold text-green-200">
+                סימולציה הושלמה בהצלחה!
+              </span>
+            </div>
+            <p className="text-green-200">
+              כל החיבורים פועלים כראוי
+            </p>
           </div>
-          <p className="text-green-200">
-            כל החיבורים ברשת עובדים בצורה תקינה
-          </p>
-        </motion.div>
+        </div>
       )}
     </div>
   );

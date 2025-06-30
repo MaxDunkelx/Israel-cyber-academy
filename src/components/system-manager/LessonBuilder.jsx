@@ -897,7 +897,7 @@ const SlideEditor = ({ slide, onSave, onCancel }) => {
                     className="w-full p-2 border border-gray-300 rounded-md"
                   >
                     <option value="">בחר סוג תרגיל</option>
-                    <option value="drag-drop">גרירה והתאמה</option>
+                    <option value="drag-drop">תרגיל לחיצה</option>
                     <option value="matching">התאמת זוגות</option>
                     <option value="multiple-choice">בחירה מרובה</option>
                     <option value="windows-simulator">סימולטור Windows</option>

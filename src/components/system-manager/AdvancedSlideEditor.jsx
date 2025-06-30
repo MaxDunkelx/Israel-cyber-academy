@@ -89,16 +89,19 @@ const INTERACTIVE_TEMPLATES = {
     }
   },
   dragDrop: {
-    name: 'Drag & Drop',
+    name: 'Click-Based Exercise',
     template: {
       type: 'interactive',
       component: 'DragDropExercise',
       content: {
         items: [
-          { id: '1', text: 'Item 1', category: 'A' },
-          { id: '2', text: 'Item 2', category: 'B' }
+          { id: '1', text: 'Item 1', correctCategory: 'A' },
+          { id: '2', text: 'Item 2', correctCategory: 'B' }
         ],
-        categories: ['A', 'B']
+        categories: [
+          { id: 'A', name: 'Category A', color: '#4CAF50', description: 'First category' },
+          { id: 'B', name: 'Category B', color: '#2196F3', description: 'Second category' }
+        ]
       }
     }
   },

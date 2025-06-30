@@ -61,9 +61,8 @@ const LinuxSimulator = ({ commands = [], instructions = 'Try Linux commands in t
     .slice(0, 3);
 
   return (
-    <div className="linux-simulator bg-black text-green-400 p-6 rounded-lg font-mono">
-      <div className="mb-4">
-        <h3 className="text-xl font-bold mb-2 text-white">{instructions}</h3>
+    <div className="linux-simulator bg-black text-green-400 p-4 rounded-lg font-mono h-full flex flex-col">
+      <div className="mb-3">
         <div className="text-sm text-gray-400">
           נסה פקודות כמו: {suggestedCommands.map(cmd => 
             <span key={cmd.command} className="bg-gray-800 px-2 py-1 rounded mx-1">
@@ -74,7 +73,7 @@ const LinuxSimulator = ({ commands = [], instructions = 'Try Linux commands in t
       </div>
 
       {/* Terminal Output */}
-      <div className="terminal-output bg-gray-900 p-4 rounded mb-4 h-64 overflow-y-auto">
+      <div className="terminal-output bg-gray-900 p-3 rounded mb-3 h-48 overflow-y-auto flex-1">
         <div className="mb-2 text-gray-500">
           student@linux:~$ <span className="text-green-400">welcome to Linux simulator!</span>
         </div>
@@ -88,7 +87,7 @@ const LinuxSimulator = ({ commands = [], instructions = 'Try Linux commands in t
               {output.output}
             </div>
             {output.description && (
-              <div className="ml-4 text-blue-400 text-sm italic">
+              <div className="ml-4 text-blue-400 text-xs italic">
                 💡 {output.description}
               </div>
             )}
@@ -96,14 +95,14 @@ const LinuxSimulator = ({ commands = [], instructions = 'Try Linux commands in t
         ))}
         
         {showHint && (
-          <div className="text-yellow-400 text-sm">
+          <div className="text-yellow-400 text-xs">
             💡 נסה פקודות בסיסיות כמו: ls, pwd, whoami, date
           </div>
         )}
       </div>
 
       {/* Command Input */}
-      <form onSubmit={handleCommandSubmit} className="flex items-center">
+      <form onSubmit={handleCommandSubmit} className="flex items-center mb-3">
         <span className="text-gray-500 mr-2">student@linux:~$</span>
         <input
           ref={inputRef}
@@ -117,9 +116,9 @@ const LinuxSimulator = ({ commands = [], instructions = 'Try Linux commands in t
       </form>
 
       {/* Progress */}
-      <div className="mt-4 text-sm text-gray-400">
+      <div className="text-xs text-gray-400 mb-3">
         התקדמות: {currentIndex} / {safeCommands.length} פקודות
-        <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
+        <div className="w-full bg-gray-700 rounded-full h-2 mt-1">
           <div 
             className="bg-green-500 h-2 rounded-full transition-all duration-300"
             style={{ width: `${safeCommands.length > 0 ? (currentIndex / safeCommands.length) * 100 : 0}%` }}
@@ -128,13 +127,13 @@ const LinuxSimulator = ({ commands = [], instructions = 'Try Linux commands in t
       </div>
 
       {/* Available Commands */}
-      <div className="mt-4">
-        <h4 className="text-sm font-bold text-white mb-2">פקודות זמינות:</h4>
-        <div className="grid grid-cols-2 gap-2 text-xs">
+      <div>
+        <h4 className="text-xs font-bold text-white mb-2">פקודות זמינות:</h4>
+        <div className="grid grid-cols-2 gap-1 text-xs">
           {safeCommands.map((cmd, index) => (
             <div 
               key={index}
-              className={`p-2 rounded ${
+              className={`p-1 rounded ${
                 commandHistory.includes(cmd.command) 
                   ? 'bg-green-900 text-green-300' 
                   : 'bg-gray-800 text-gray-400'

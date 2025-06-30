@@ -6,7 +6,6 @@ export const slide12ThreatIdentification = {
     type: "multiple-choice",
     question: "אימייל שמבקש ממך ללחוץ על קישור ולזין פרטי בנק הוא דוגמה ל:",
     content: {
-      image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400",
       text: "תמונה של אימייל חשוד"
     },
     options: [

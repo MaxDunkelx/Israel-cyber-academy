@@ -1,9 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { PresentationSlide, PollSlide, VideoSlide, InteractiveSlide, BreakSlide, ReflectionSlide, QuizSlide } from '../slides';
-import DragDropExercise from '../exercises/DragDropExercise';
-import MatchingExercise from '../exercises/MatchingExercise';
-import MultipleChoiceExercise from '../exercises/MultipleChoiceExercise';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const TeacherLessonPreview = ({ lesson, currentSlideIndex, onSlideChange, isPreviewMode = true }) => {

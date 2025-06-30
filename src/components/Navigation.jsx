@@ -1,49 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import { 
-  Home, 
-  BookOpen, 
   User, 
-  LogOut, 
-  Menu, 
-  X, 
-  Shield, 
-  GraduationCap,
-  Settings
+  Terminal
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { useUserProfile } from '../hooks/useAuth';
-import toast from 'react-hot-toast';
+import cyberLogo from '../assets/cyber-logo.png';
 
-/**
- * Navigation Component - Main navigation bar with user menu and role-based access
- */
 const Navigation = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { logout } = useAuth();
-  const { displayName, role } = useUserProfile();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const userMenuRef = useRef(null);
+  const { currentUser, logout } = useAuth();
 
-  // Handle click outside to close dropdown
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
-        setIsUserMenuOpen(false);
-      }
-    };
-
-    if (isUserMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isUserMenuOpen]);
+  // Get user display name and role
+  const displayName = currentUser?.displayName || currentUser?.email || 'User';
+  const role = currentUser?.role || 'student';
 
   // Handle logout
   const handleLogout = async () => {
@@ -56,168 +26,54 @@ const Navigation = () => {
     }
   };
 
-  // Navigation items based on user role
-  const getNavItems = () => {
-    const baseItems = [
-      { name: 'דף הבית', path: '/student/roadmap', icon: Home }
-    ];
-
-    if (role === 'teacher') {
-      return [
-        ...baseItems,
-        { name: 'לוח בקרה למורה', path: '/instructor/dashboard', icon: Shield }
-      ];
-    }
-
-    return baseItems;
-  };
-
-  const navItems = getNavItems();
-
-  // Check if current path is active
-  const isActivePath = (path) => {
-    return location.pathname === path;
-  };
-
   return (
-    <nav className="bg-gray-900/95 backdrop-blur-xl border-b border-gray-700 shadow-lg sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo and Brand */}
-          <div className="flex items-center">
-            <Link to={role === 'teacher' ? '/instructor/dashboard' : '/student/roadmap'} className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <Shield className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold text-white">Israel Cyber Campus</span>
-            </Link>
+    <header className="bg-black/80 backdrop-blur-xl border-b border-green-500/30 p-6">
+      <div className="max-w-7xl mx-auto flex items-center justify-between">
+        {/* Left Side - Logo and Brand */}
+        <div className="flex items-center space-x-4 space-x-reverse">
+          <div className="relative">
+            <img src={cyberLogo} alt="Cyber Logo" className="w-16 h-16 animate-pulse" />
+            <div className="absolute inset-0 bg-green-500/20 rounded-full animate-ping"></div>
           </div>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            {navItems.map((item) => (
-              <Link
-                key={item.name}
-                to={item.path}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  isActivePath(item.path)
-                    ? 'bg-blue-600 text-white shadow-lg'
-                    : 'text-gray-300 hover:text-white hover:bg-gray-800'
-                }`}
-              >
-                <item.icon className="w-4 h-4" />
-                <span>{item.name}</span>
-              </Link>
-            ))}
-          </div>
-
-          {/* User Menu */}
-          <div className="flex items-center space-x-4">
-            {/* User Profile Menu */}
-            <div className="relative" ref={userMenuRef}>
-              <button
-                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="flex items-center space-x-3 bg-gray-800/50 hover:bg-gray-700/50 px-4 py-2 rounded-lg text-white transition-all duration-200"
-              >
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                  {role === 'teacher' ? (
-                    <Shield className="w-4 h-4 text-white" />
-                  ) : (
-                    <GraduationCap className="w-4 h-4 text-white" />
-                  )}
-                </div>
-                <span className="text-sm font-medium">{displayName}</span>
-              </button>
-
-              {/* User Dropdown Menu */}
-              {isUserMenuOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-xl border border-gray-700 py-2 z-50"
-                >
-                  <div className="px-4 py-2 border-b border-gray-700">
-                    <p className="text-sm text-gray-300">{displayName}</p>
-                    <p className="text-xs text-gray-500">
-                      {role === 'teacher' ? 'מורה' : 'תלמיד'}
-                    </p>
-                  </div>
-                  
-                  <Link
-                    to={role === 'teacher' ? '/instructor/profile' : '/student/profile'}
-                    className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 transition-colors w-full text-right"
-                    onClick={() => setIsUserMenuOpen(false)}
-                  >
-                    <User className="w-4 h-4" />
-                    <span>פרופיל</span>
-                  </Link>
-                  
-                  <button
-                    onClick={() => {
-                      setIsUserMenuOpen(false);
-                      handleLogout();
-                    }}
-                    className="flex items-center space-x-2 px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-colors w-full text-right"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span>{'התנתק'}</span>
-                  </button>
-                </motion.div>
-              )}
-            </div>
-
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
-            >
-              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">
+              Israel Cyber Campus
+            </h1>
+            <p className="text-green-400 text-sm font-mono">Terminal v2.0.1</p>
           </div>
         </div>
 
-        {/* Mobile Navigation */}
-        {isMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden py-4 border-t border-gray-700"
-          >
-            <div className="space-y-2">
-              {navItems.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.path}
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    isActivePath(item.path)
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-300 hover:text-white hover:bg-gray-800'
-                  }`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <item.icon className="w-4 h-4" />
-                  <span>{item.name}</span>
-                </Link>
-              ))}
-              
-              {/* Mobile Logout Button */}
-              <button
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  handleLogout();
-                }}
-                className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-colors w-full text-right"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>{'התנתק'}</span>
-              </button>
-            </div>
-          </motion.div>
-        )}
+        {/* Right Side - Home Button, Profile Button and User Info */}
+        <div className="flex items-center space-x-4 space-x-reverse">
+          <Link to={role === 'teacher' ? '/teacher/dashboard' : '/student/roadmap'}>
+            <button className="group relative bg-gradient-to-r from-green-600 to-cyan-600 hover:from-green-500 hover:to-cyan-500 text-white px-6 py-3 rounded-lg font-bold transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-green-500/25 border border-green-400/30">
+              <div className="absolute inset-0 bg-green-500/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <span className="relative flex items-center space-x-2 space-x-reverse">
+                <Terminal className="w-5 h-5" />
+                <span>בית</span>
+              </span>
+            </button>
+          </Link>
+          
+          <Link to="/profile">
+            <button className="group relative bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-6 py-3 rounded-lg font-bold transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-blue-500/25 border border-blue-400/30">
+              <div className="absolute inset-0 bg-blue-500/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <span className="relative flex items-center space-x-2 space-x-reverse">
+                <User className="w-5 h-5" />
+                <span>פרופיל</span>
+              </span>
+            </button>
+          </Link>
+          
+          <div className="text-right">
+            <p className="text-white font-semibold">{displayName}</p>
+            <p className="text-green-400 text-sm font-mono">
+              {role === 'teacher' ? 'TEACHER' : 'STUDENT'}
+            </p>
+          </div>
+        </div>
       </div>
-    </nav>
+    </header>
   );
 };
 
