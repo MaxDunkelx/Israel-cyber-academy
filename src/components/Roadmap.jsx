@@ -399,59 +399,24 @@ const Roadmap = () => {
       )}
 
       <div className="relative z-10">
-        {/* Header with improved home button positioning */}
-        <header className="bg-black/80 backdrop-blur-xl border-b border-green-500/30 p-6">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            {/* Logo and Title */}
-            <div className="flex items-center space-x-4 space-x-reverse">
-              <div className="relative">
-                <img src={cyberLogo} alt="Cyber Logo" className="w-16 h-16 animate-pulse" />
-                <div className="absolute inset-0 bg-green-500/20 rounded-full animate-ping" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">
-                  Israel Cyber Campus
-                </h1>
-                <p className="text-green-400 text-sm font-mono">Terminal v2.0.1</p>
-              </div>
-            </div>
-
-            {/* Home Button - Centered and styled */}
-            <div className="flex items-center space-x-4 space-x-reverse">
-              <button
-                onClick={() => navigate('/')}
-                className="group relative bg-gradient-to-r from-green-600 to-cyan-600 hover:from-green-500 hover:to-cyan-500 text-white px-6 py-3 rounded-lg font-bold transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-green-500/25 border border-green-400/30"
-              >
-                <div className="absolute inset-0 bg-green-500/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <span className="relative flex items-center space-x-2 space-x-reverse">
-                  <Terminal className="w-5 h-5" />
-                  <span>בית</span>
-                </span>
-              </button>
-              
-              {/* User Info */}
-              <div className="text-right">
-                <p className="text-white font-semibold">{displayName || 'משתמש'}</p>
-                <p className="text-green-400 text-sm font-mono">{role === 'teacher' ? 'ADMIN' : 'USER'}</p>
-              </div>
-            </div>
-          </div>
-        </header>
-
         {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="max-w-[78%] mx-auto px-8 py-12">
           {/* Welcome Section */}
-          <div className="text-center mb-12">
+          <div className="text-center mb-16">
             <motion.h2 
-              className="text-4xl font-bold text-white mb-4"
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
+              className="text-6xl font-bold mb-6 bg-gradient-to-r from-green-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(16,185,129,0.5)] animate-pulse"
+              style={{
+                textShadow: '0 0 30px rgba(16,185,129,0.8), 0 0 60px rgba(34,211,238,0.6), 0 0 90px rgba(59,130,246,0.4)',
+                filter: 'drop-shadow(0 0 20px rgba(16,185,129,0.3))'
+              }}
+              initial={{ opacity: 0, y: -20, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
             >
               ברוכים הבאים למרכז השליטה
             </motion.h2>
             <motion.p 
-              className="text-xl text-green-400 font-mono"
+              className="text-2xl text-green-400 font-mono"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.2 }}
@@ -465,20 +430,20 @@ const Roadmap = () => {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
-                className="mb-8"
+                className="mb-12"
               >
                 <button
                   onClick={handleContinueLastLesson}
-                  className="group relative bg-gradient-to-r from-green-600 to-cyan-600 hover:from-green-500 hover:to-cyan-500 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-2xl hover:shadow-green-500/25 transform hover:scale-105 transition-all duration-300 flex items-center justify-center mx-auto space-x-3 border border-green-400/30"
+                  className="group relative bg-gradient-to-r from-green-600 to-cyan-600 hover:from-green-500 hover:to-cyan-500 text-white px-12 py-6 rounded-xl font-bold text-xl shadow-2xl hover:shadow-green-500/25 transform hover:scale-105 transition-all duration-300 flex items-center justify-center mx-auto space-x-4 border border-green-400/30"
                 >
                   <div className="absolute inset-0 bg-green-500/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <span className="relative flex items-center space-x-3 space-x-reverse">
-                    <Terminal className="w-6 h-6 group-hover:animate-pulse" />
+                  <span className="relative flex items-center space-x-4 space-x-reverse">
+                    <Terminal className="w-8 h-8 group-hover:animate-pulse" />
                     <span>המשך שיעור אחרון: {lastLesson.lesson.title}</span>
-                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
                   </span>
                 </button>
-                <p className="text-green-400 text-sm mt-2 font-mono">
+                <p className="text-green-400 text-lg mt-3 font-mono">
                   {'>'} נעצרת בסלייד {lastLesson.progress.lastSlide + 1}
                 </p>
               </motion.div>
@@ -486,66 +451,66 @@ const Roadmap = () => {
             
             {/* Statistics Dashboard */}
             <motion.div 
-              className="bg-black/60 backdrop-blur-xl rounded-2xl p-8 shadow-2xl border border-green-500/30 mb-12"
+              className="bg-black/60 backdrop-blur-xl rounded-3xl p-12 shadow-2xl border border-green-500/30 mb-16"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
             >
-              <h3 className="text-2xl font-bold text-white mb-6 text-center">סטטיסטיקות מערכת</h3>
+              <h3 className="text-3xl font-bold text-white mb-8 text-center">סטטיסטיקות מערכת</h3>
               
               {/* Statistics Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
                 {/* Completed Lessons */}
-                <div className="group relative bg-gradient-to-br from-green-900/30 to-cyan-900/30 rounded-xl border border-green-500/30 p-6 hover:border-green-400/50 transition-all duration-300">
-                  <div className="absolute inset-0 bg-green-500/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="group relative bg-gradient-to-br from-green-900/30 to-cyan-900/30 rounded-2xl border border-green-500/30 p-8 hover:border-green-400/50 transition-all duration-300">
+                  <div className="absolute inset-0 bg-green-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className="relative flex flex-col items-center text-center">
-                    <Trophy className="h-10 w-10 text-yellow-500 mb-3 group-hover:scale-110 transition-transform" />
-                    <div className="text-3xl font-bold text-white mb-2">
+                    <Trophy className="h-14 w-14 text-yellow-500 mb-4 group-hover:scale-110 transition-transform" />
+                    <div className="text-4xl font-bold text-white mb-3">
                       {userProfile?.completedLessons?.length || 0}
                     </div>
-                    <div className="text-sm text-green-400 font-mono">
+                    <div className="text-base text-green-400 font-mono">
                       שיעורים הושלמו
                     </div>
                   </div>
                 </div>
 
                 {/* Progress Percentage */}
-                <div className="group relative bg-gradient-to-br from-purple-900/30 to-pink-900/30 rounded-xl border border-purple-500/30 p-6 hover:border-purple-400/50 transition-all duration-300">
-                  <div className="absolute inset-0 bg-purple-500/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="group relative bg-gradient-to-br from-purple-900/30 to-pink-900/30 rounded-2xl border border-purple-500/30 p-8 hover:border-purple-400/50 transition-all duration-300">
+                  <div className="absolute inset-0 bg-purple-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className="relative flex flex-col items-center text-center">
-                    <Star className="h-10 w-10 text-purple-400 mb-3 group-hover:scale-110 transition-transform" />
-                    <div className="text-3xl font-bold text-white mb-2">
+                    <Star className="h-14 w-14 text-purple-400 mb-4 group-hover:scale-110 transition-transform" />
+                    <div className="text-4xl font-bold text-white mb-3">
                       {getProgressPercentage()}%
                     </div>
-                    <div className="text-sm text-purple-400 font-mono">
+                    <div className="text-base text-purple-400 font-mono">
                       התקדמות
                     </div>
                   </div>
                 </div>
 
                 {/* Pages Engaged */}
-                <div className="group relative bg-gradient-to-br from-blue-900/30 to-indigo-900/30 rounded-xl border border-blue-500/30 p-6 hover:border-blue-400/50 transition-all duration-300">
-                  <div className="absolute inset-0 bg-blue-500/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="group relative bg-gradient-to-br from-blue-900/30 to-indigo-900/30 rounded-2xl border border-blue-500/30 p-8 hover:border-blue-400/50 transition-all duration-300">
+                  <div className="absolute inset-0 bg-blue-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className="relative flex flex-col items-center text-center">
-                    <Eye className="h-10 w-10 text-blue-400 mb-3 group-hover:scale-110 transition-transform" />
-                    <div className="text-3xl font-bold text-white mb-2">
+                    <Eye className="h-14 w-14 text-blue-400 mb-4 group-hover:scale-110 transition-transform" />
+                    <div className="text-4xl font-bold text-white mb-3">
                       {getTotalPagesEngaged()}
                     </div>
-                    <div className="text-sm text-blue-400 font-mono">
+                    <div className="text-base text-blue-400 font-mono">
                       עמודים נצפו
                     </div>
                   </div>
                 </div>
 
                 {/* Total Time Spent */}
-                <div className="group relative bg-gradient-to-br from-orange-900/30 to-red-900/30 rounded-xl border border-orange-500/30 p-6 hover:border-orange-400/50 transition-all duration-300">
-                  <div className="absolute inset-0 bg-orange-500/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="group relative bg-gradient-to-br from-orange-900/30 to-red-900/30 rounded-2xl border border-orange-500/30 p-8 hover:border-orange-400/50 transition-all duration-300">
+                  <div className="absolute inset-0 bg-orange-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className="relative flex flex-col items-center text-center">
-                    <Timer className="h-10 w-10 text-orange-400 mb-3 group-hover:scale-110 transition-transform" />
-                    <div className="text-3xl font-bold text-white mb-2">
+                    <Timer className="h-14 w-14 text-orange-400 mb-4 group-hover:scale-110 transition-transform" />
+                    <div className="text-4xl font-bold text-white mb-3">
                       {getTotalTimeSpent()}
                     </div>
-                    <div className="text-sm text-orange-400 font-mono">
+                    <div className="text-base text-orange-400 font-mono">
                       דקות למידה
                     </div>
                   </div>
@@ -553,14 +518,14 @@ const Roadmap = () => {
               </div>
               
               {/* Progress Bar */}
-              <div className="w-full bg-gray-800/50 rounded-full h-4 mb-4 border border-gray-700">
+              <div className="w-full bg-gray-800/50 rounded-full h-6 mb-6 border border-gray-700">
                 <div 
-                  className="bg-gradient-to-r from-green-500 to-cyan-500 h-4 rounded-full transition-all duration-500 shadow-lg shadow-green-500/25"
+                  className="bg-gradient-to-r from-green-500 to-cyan-500 h-6 rounded-full transition-all duration-500 shadow-lg shadow-green-500/25"
                   style={{ width: `${getProgressPercentage()}%` }}
                 />
               </div>
               
-              <p className="text-center text-green-400 text-sm font-mono">
+              <p className="text-center text-green-400 text-base font-mono">
                 {'>'} התקדמות כללית: {getProgressPercentage()}% ({userProfile?.completedLessons?.length || 0} מתוך {lessons?.length || 0} שיעורים)
               </p>
             </motion.div>
@@ -568,7 +533,7 @@ const Roadmap = () => {
 
           {/* Lessons Grid */}
           <motion.div 
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.6 }}
