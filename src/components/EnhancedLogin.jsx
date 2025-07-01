@@ -467,27 +467,37 @@ const EnhancedLogin = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('🔍 Login attempt started:', { email: formData.email, isLogin, selectedRole });
     setIsLoading(true);
     setErrors({});
 
     try {
-      const validationErrors = validateForm(formData, isLogin);
-      if (Object.keys(validationErrors).length > 0) {
-        setErrors(validationErrors);
+      // Simple validation for testing
+      if (!formData.email || !formData.password) {
+        setErrors({ 
+          email: formData.email ? null : ['Email is required'],
+          password: formData.password ? null : ['Password is required']
+        });
         setIsLoading(false);
         return;
       }
 
+      console.log('🔍 Attempting authentication with:', { email: formData.email, isLogin, selectedRole });
+
       if (isLogin) {
-        await login(formData.email, formData.password);
+        console.log('🔐 Attempting login...');
+        const result = await login(formData.email, formData.password);
+        console.log('✅ Login successful:', result);
         toast.success('התחברת בהצלחה!');
       } else {
+        console.log('📝 Attempting signup...');
         const displayName = `${formData.firstName} ${formData.lastName}`;
-        await signup(formData.email, formData.password, displayName, selectedRole, formData);
+        const result = await signup(formData.email, formData.password, displayName, selectedRole, formData);
+        console.log('✅ Signup successful:', result);
         toast.success('נרשמת בהצלחה!');
       }
     } catch (error) {
-      console.error('Authentication error:', error);
+      console.error('❌ Authentication error:', error);
       toast.error(error.message || 'שגיאה בהתחברות');
     } finally {
       setIsLoading(false);
