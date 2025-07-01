@@ -40,4 +40,20 @@
 .animate-gradient-move {
   background-size: 200% 200%;
   animation: gradient-move 8s ease-in-out infinite;
+}
+
+/* Optimized smooth spinning animation for background logo */
+@keyframes smooth-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-smooth-spin {
+  animation: smooth-spin 120s linear infinite;
+  will-change: transform;
+  transform-origin: center center;
 } 

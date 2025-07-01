@@ -2,22 +2,22 @@
  * Enhanced Login Component - Modern Landing Page with Interactive Elements
  * 
  * Features:
- * - Responsive design with animated background effects
+ * - Responsive design with optimized background effects
  * - Role-based authentication system
  * - Interactive statistics display
  * - Form validation and error handling
  * - Accessibility features
+ * - Performance optimized
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Eye, EyeOff, GraduationCap, Zap, Target, Globe, Users, Award, 
-  Code, Lock, Star, TrendingUp, Clock, Brain, Rocket, ShieldCheck, 
+  Code, Lock, Star, TrendingUp, Clock, Brain, ShieldCheck, 
   Database, Network, Bug, UserCheck, ArrowRight, Shield 
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { validateForm } from '../utils/validation';
 import toast from 'react-hot-toast';
 import cyberLogo from '../assets/cyber-logo.png';
 import './EnhancedLogin.css';
@@ -106,19 +106,11 @@ const ROLE_CONFIG = {
   },
 };
 
-const FLOATING_ICONS = [
-  { icon: Database, color: 'text-blue-300' },
-  { icon: Network, color: 'text-blue-400' },
-  { icon: Code, color: 'text-blue-300' },
-  { icon: Lock, color: 'text-blue-400' },
-  { icon: Bug, color: 'text-blue-300' },
-  { icon: ShieldCheck, color: 'text-blue-400' },
-];
-
 // ============================================================================
-// BACKGROUND EFFECTS COMPONENTS
+// OPTIMIZED BACKGROUND EFFECTS
 // ============================================================================
 
+// Simplified Matrix Rain - Reduced performance impact
 const MatrixRain = () => {
   const canvasRef = useRef(null);
   
@@ -130,15 +122,16 @@ const MatrixRain = () => {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     
+    // Simplified character set for better performance
     const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
     const charArray = chars.split('');
-    const fontSize = 12;
+    const fontSize = 16;
     const columns = canvas.width / fontSize;
     const drops = new Array(Math.floor(columns)).fill(1);
-    const maxDrops = Math.min(columns, 30);
+    const maxDrops = Math.min(columns, 15); // Further reduced for better performance
     
     const draw = () => {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       
       ctx.fillStyle = '#3B82F6';
@@ -148,14 +141,14 @@ const MatrixRain = () => {
         const text = charArray[Math.floor(Math.random() * charArray.length)];
         ctx.fillText(text, i * fontSize, drops[i] * fontSize);
         
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.98) {
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.995) {
           drops[i] = 0;
         }
         drops[i]++;
       }
     };
     
-    const interval = setInterval(draw, 60);
+    const interval = setInterval(draw, 150); // Further reduced for better performance
     
     const handleResize = () => {
       canvas.width = window.innerWidth;
@@ -173,90 +166,34 @@ const MatrixRain = () => {
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 z-0 opacity-20"
+      className="fixed inset-0 z-0 opacity-10"
       style={{ pointerEvents: 'none' }}
     />
   );
 };
 
-const ParticleSystem = () => {
-  const [particles, setParticles] = useState([]);
-  
-  useEffect(() => {
-    const particleCount = 10;
-    const newParticles = Array.from({ length: particleCount }, (_, i) => ({
-      id: i,
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight,
-      size: Math.random() * 2 + 1,
-      speedX: (Math.random() - 0.5) * 0.3,
-      speedY: (Math.random() - 0.5) * 0.3,
-      opacity: Math.random() * 0.3 + 0.1,
-    }));
-    
-    setParticles(newParticles);
-    
-    const animate = () => {
-      setParticles(prev => 
-        prev.map(particle => ({
-          ...particle,
-          x: particle.x + particle.speedX,
-          y: particle.y + particle.speedY,
-          opacity: particle.opacity + (Math.random() - 0.5) * 0.05,
-        }))
-      );
-    };
-    
-    const interval = setInterval(animate, 120);
-    
-    return () => clearInterval(interval);
-  }, []);
-  
-  return (
-    <div className="fixed inset-0 pointer-events-none z-0">
-      {particles.map(particle => (
-        <div
-          key={particle.id}
-          className="absolute w-1 h-1 bg-blue-300 rounded-full"
-          style={{
-            left: particle.x,
-            top: particle.y,
-            opacity: Math.max(0.1, Math.min(0.4, particle.opacity)),
-            transform: `scale(${particle.size})`,
-          }}
-        />
-      ))}
-    </div>
-  );
-};
-
+// Static floating icons - No animations for better performance
 const FloatingIcons = () => {
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-      {FLOATING_ICONS.map((item, index) => {
-        const Icon = item.icon;
-        return (
-          <motion.div
-            key={index}
-            className={`absolute ${item.color} opacity-5`}
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-            animate={{
-              y: [0, -20, 0],
-              opacity: [0.05, 0.1, 0.05],
-            }}
-            transition={{
-              duration: Math.random() * 10 + 10,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          >
-            <Icon size={Math.random() * 40 + 20} />
-          </motion.div>
-        );
-      })}
+      <div className="absolute top-10 left-10 text-blue-300 opacity-10">
+        <Database size={24} />
+      </div>
+      <div className="absolute top-20 right-20 text-blue-400 opacity-10">
+        <Network size={28} />
+      </div>
+      <div className="absolute bottom-20 left-20 text-blue-300 opacity-10">
+        <Code size={22} />
+      </div>
+      <div className="absolute bottom-10 right-10 text-blue-400 opacity-10">
+        <Lock size={26} />
+      </div>
+      <div className="absolute top-1/2 left-1/4 text-blue-300 opacity-10">
+        <Bug size={24} />
+      </div>
+      <div className="absolute top-1/3 right-1/3 text-blue-400 opacity-10">
+        <ShieldCheck size={30} />
+      </div>
     </div>
   );
 };
@@ -265,37 +202,53 @@ const FloatingIcons = () => {
 // UI COMPONENTS
 // ============================================================================
 
-const StatisticsCard = ({ item, index, variants }) => (
+// Optimized border color calculation
+const getBorderColor = (color) => {
+  if (color.includes('emerald')) return '#10b981';
+  if (color.includes('purple')) return '#8b5cf6';
+  if (color.includes('orange')) return '#f97316';
+  if (color.includes('cyan')) return '#06b6d4';
+  if (color.includes('yellow')) return '#eab308';
+  if (color.includes('green')) return '#22c55e';
+  if (color.includes('blue')) return '#3b82f6';
+  if (color.includes('pink')) return '#ec4899';
+  if (color.includes('lime')) return '#84cc16';
+  if (color.includes('violet')) return '#8b5cf6';
+  if (color.includes('sky')) return '#0ea5e9';
+  return '#3b82f6';
+};
+
+const StatisticsCard = memo(({ item, index, variants }) => (
   <motion.div 
-    key={index}
-    className="text-center text-gray-200 bg-slate-800/50 backdrop-blur-xl px-5 py-7 rounded-lg border border-slate-700/50 group cursor-pointer"
-    whileHover={{ 
-      scale: 1.02, 
-      backgroundColor: "rgba(59, 130, 246, 0.1)",
-      borderColor: "rgba(59, 130, 246, 0.4)"
+    className={`relative overflow-hidden rounded-xl p-4 bg-slate-800/50 backdrop-blur-xl border-2 hover:bg-slate-800/70 transition-all duration-300`}
+    style={{
+      borderColor: getBorderColor(item.color)
     }}
-    whileTap={{ scale: 0.98 }}
     variants={variants}
   >
-    <motion.div
-      className={`w-14 h-14 bg-gradient-to-br ${item.color} rounded-lg flex items-center justify-center mx-auto mb-4 shadow-lg`}
-      whileHover={{ rotate: 180, scale: 1.1 }}
-      transition={{ duration: 0.3 }}
-    >
-      <item.icon className="w-7 h-7 text-white" />
-    </motion.div>
+    {/* Consistent background for all statistics cards */}
+    <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-600 opacity-10" />
+    
+    <div className="relative z-10 text-center">
     {item.number ? (
       <>
-        <div className="text-xs font-medium text-white leading-tight mb-1">
-          {item.number}
+          <div className={`w-12 h-12 bg-gradient-to-br ${item.color} rounded-lg flex items-center justify-center mx-auto mb-3 shadow-lg`}>
+            <item.icon className="w-6 h-6 text-white" />
         </div>
-        <div className="text-xs font-medium text-white leading-tight">{item.label}</div>
+          <div className="text-2xl font-bold text-white mb-1">{item.number}</div>
+          <div className="text-xs text-gray-300">{item.label}</div>
       </>
     ) : (
-      <div className="text-xs font-medium text-white leading-tight">{item.text}</div>
-    )}
+        <>
+          <div className={`w-12 h-12 bg-gradient-to-br ${item.color} rounded-lg flex items-center justify-center mx-auto mb-3 shadow-lg`}>
+            <item.icon className="w-6 h-6 text-white" />
+          </div>
+          <div className="text-sm text-gray-300 font-medium">{item.text}</div>
+        </>
+      )}
+    </div>
   </motion.div>
-);
+));
 
 const RoleCard = ({ role, icon: Icon, title, description, buttonText, onClick, isSelected }) => {
   const getRoleColors = () => {
@@ -335,29 +288,24 @@ const RoleCard = ({ role, icon: Icon, title, description, buttonText, onClick, i
 
   return (
     <motion.div
-      className={`relative overflow-hidden rounded-2xl p-8 cursor-pointer transition-all duration-300 ${
+      className={`relative overflow-hidden rounded-2xl p-8 cursor-pointer transition-all duration-300 border-2 ${
         isSelected 
-          ? 'bg-slate-800/95 backdrop-blur-2xl border-2 shadow-xl' 
-          : 'bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 hover:bg-slate-800/70'
-      } ${isSelected ? colors.border : 'border-slate-700/50'}`}
+          ? 'bg-slate-800/95 backdrop-blur-2xl shadow-xl' 
+          : 'bg-slate-800/50 backdrop-blur-xl hover:bg-slate-800/70'
+      } ${colors.border}`}
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
     >
-      <motion.div
-        className={`absolute inset-0 bg-gradient-to-br ${colors.gradient} opacity-5`}
-        animate={isSelected ? { opacity: [0.05, 0.1, 0.05] } : {}}
-        transition={{ duration: 2, repeat: Infinity }}
-      />
+      {/* Removed infinite animation for better performance */}
+      <div className={`absolute inset-0 bg-gradient-to-br ${colors.gradient} opacity-5`} />
       
       <div className="relative z-10 text-center">
-        <motion.div
+        <div
           className={`w-16 h-16 bg-gradient-to-br ${colors.gradient} rounded-xl flex items-center justify-center mx-auto mb-6 shadow-lg ${colors.glow}`}
-          whileHover={{ rotate: 180, scale: 1.1 }}
-          transition={{ duration: 0.3 }}
         >
           <Icon className="w-8 h-8 text-white" />
-        </motion.div>
+        </div>
         
         <h3 className="text-xl font-bold text-white mb-4">{title}</h3>
         <p className="text-gray-300 text-sm leading-relaxed mb-6">{description}</p>
@@ -513,25 +461,14 @@ const EnhancedLogin = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden">
       {/* Background Effects */}
       <MatrixRain />
-      <ParticleSystem />
       <FloatingIcons />
-
-
       
-      {/* Background Logo */}
-      <div className="fixed inset-0 flex items-center justify-center opacity-5 pointer-events-none z-0">
-        <motion.img 
+      {/* Background Logo - Optimized for smooth performance */}
+      <div className="fixed inset-0 flex items-center justify-center opacity-25 pointer-events-none z-0">
+        <img 
           src={cyberLogo} 
           alt="Background Logo" 
-          className="w-[2800px] h-[2800px] object-contain"
-          animate={{
-            rotate: [0, 360],
-            scale: [1, 1.1, 1],
-          }}
-          transition={{
-            rotate: { duration: 60, repeat: Infinity, ease: "linear" },
-            scale: { duration: 10, repeat: Infinity, ease: "easeInOut" },
-          }}
+          className="w-[2800px] h-[2800px] object-contain drop-shadow-[0_0_80px_rgba(59,130,246,0.5)] animate-smooth-spin"
         />
       </div>
 
@@ -638,7 +575,7 @@ const EnhancedLogin = () => {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 30 }}
                 transition={{ duration: 0.5, ease: "easeOut" }}
-                className="bg-slate-800/95 backdrop-blur-2xl rounded-2xl p-8 shadow-xl border border-slate-700 max-w-md w-full relative overflow-hidden"
+                className="bg-slate-800/95 backdrop-blur-2xl rounded-2xl p-8 shadow-xl border-2 border-blue-500/50 max-w-md w-full relative overflow-hidden"
               >
                 <motion.div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-blue-600/5" />
                 
