@@ -795,22 +795,22 @@ const EnhancedLogin = () => {
             className="mt-16 mb-6 text-center"
             variants={ANIMATION_VARIANTS.item}
           >
-            <div className="bg-slate-800/40 backdrop-blur-xl rounded-xl p-4 border border-slate-700/50 max-w-2xl mx-auto">
+            <div className="bg-slate-800/40 backdrop-blur-xl rounded-xl p-5 border border-slate-700/50 max-w-2xl mx-auto">
               <motion.div 
-                className="text-gray-300 text-base font-medium"
+                className="text-gray-300 text-lg font-medium"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6, duration: 0.4 }}
               >
-                כל הזכויות שמורות
+                ישראל קמפוס סייבר - כל הזכויות שמורות
               </motion.div>
               <motion.div 
-                className="text-gray-400 text-xs mt-1"
+                className="text-gray-400 text-sm mt-1"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.8, duration: 0.4 }}
               >
-                All Rights Reserved
+                Israel Cyber Campus - All Rights Reserved
               </motion.div>
             </div>
           </motion.footer>
