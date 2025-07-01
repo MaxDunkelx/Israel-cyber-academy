@@ -326,7 +326,7 @@ const Profile = () => {
         id: 'three_lessons',
         title: 'לומד מתמיד',
         description: 'השלמת 3 שיעורים',
-        icon: '📚',
+        icon: '��',
         color: 'from-blue-500 to-cyan-500',
         unlocked: userAchievements.includes('three_lessons')
       },
