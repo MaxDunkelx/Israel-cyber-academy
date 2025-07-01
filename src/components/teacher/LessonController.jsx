@@ -38,7 +38,6 @@ import { isTeacher, validateTeacherAccess, logSecurityEvent } from '../../utils/
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
-import TeacherLessonPreview from './TeacherLessonPreview';
 import { getSession, updateSessionSlide, endSession } from '../../firebase/session-service';
 import { getTeacherNotesForLesson } from '../../firebase/teacher-service';
 import { getLessonWithSlides } from '../../firebase/content-service';
@@ -310,12 +309,54 @@ const LessonController = () => {
           {/* Slide Display */}
           <div className="flex-1 bg-gray-900 p-8 flex items-center justify-center relative">
             <div className="w-full max-w-4xl">
-              <TeacherLessonPreview
-                lesson={lesson}
-                currentSlideIndex={currentSlide}
-                onSlideChange={handleSlideSelect}
-                isPreviewMode={true}
-              />
+              {lesson && lesson.content && lesson.content.slides && lesson.content.slides[currentSlide] ? (
+                <div className="bg-white rounded-lg shadow-2xl p-8 min-h-96">
+                  <div className="text-center mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                      {lesson.content.slides[currentSlide].title || `שקופית ${currentSlide + 1}`}
+                    </h2>
+                    <p className="text-gray-600 text-sm">
+                      {lesson.title} • שקופית {currentSlide + 1} מתוך {lesson.content.slides.length}
+                    </p>
+                  </div>
+                  
+                  <div className="prose prose-lg max-w-none">
+                    {lesson.content.slides[currentSlide].content && (
+                      <div 
+                        className="text-gray-700"
+                        dangerouslySetInnerHTML={{ 
+                          __html: typeof lesson.content.slides[currentSlide].content === 'string' 
+                            ? lesson.content.slides[currentSlide].content 
+                            : JSON.stringify(lesson.content.slides[currentSlide].content)
+                        }}
+                      />
+                    )}
+                    
+                    {lesson.content.slides[currentSlide].type === 'video' && lesson.content.slides[currentSlide].videoUrl && (
+                      <div className="mt-4">
+                        <video 
+                          className="w-full rounded-lg"
+                          controls
+                          src={lesson.content.slides[currentSlide].videoUrl}
+                        >
+                          Your browser does not support the video tag.
+                        </video>
+                      </div>
+                    )}
+                    
+                    {lesson.content.slides[currentSlide].type === 'quiz' && (
+                      <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                        <h3 className="font-semibold text-blue-800 mb-2">שאלה:</h3>
+                        <p className="text-blue-700">{lesson.content.slides[currentSlide].question}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center text-gray-400">
+                  <p>אין תוכן להצגה</p>
+                </div>
+              )}
             </div>
 
             {/* Fullscreen Button */}

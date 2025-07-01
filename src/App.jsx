@@ -37,13 +37,8 @@ import LiveSessionNotification from './components/student/LiveSessionNotificatio
 // Teacher Components
 import TeacherNavigation from './components/teacher/TeacherNavigation';
 import TeacherDashboard from './components/teacher/TeacherDashboard';
-import ClassManagement from './components/teacher/ClassManagement';
-import StudentManagement from './components/teacher/StudentManagement';
-import TeacherAnalytics from './components/teacher/TeacherAnalytics';
-import TeacherComments from './components/teacher/TeacherComments';
 import SessionHosting from './components/teacher/SessionHosting';
 import SessionCreation from './components/teacher/SessionCreation';
-import StudentMonitor from './components/teacher/StudentMonitor';
 import LessonController from './components/teacher/LessonController';
 import SlidePreviewManager from './components/teacher/SlidePreviewManager';
 import StudentSession from './components/student/StudentSession';
@@ -345,41 +340,7 @@ const AppContent = () => {
             }
           />
           
-          <Route
-            path="/teacher/classes"
-            element={
-              <TeacherRoute>
-                <ClassManagement />
-              </TeacherRoute>
-            }
-          />
-          
-          <Route
-            path="/teacher/students"
-            element={
-              <TeacherRoute>
-                <StudentManagement />
-              </TeacherRoute>
-            }
-          />
-          
-          <Route
-            path="/teacher/analytics"
-            element={
-              <TeacherRoute>
-                <TeacherAnalytics />
-              </TeacherRoute>
-            }
-          />
-          
-          <Route
-            path="/teacher/comments"
-            element={
-              <TeacherRoute>
-                <TeacherComments />
-              </TeacherRoute>
-            }
-          />
+
           
           <Route
             path="/teacher/session/:sessionId"
@@ -390,14 +351,7 @@ const AppContent = () => {
             }
           />
           
-          <Route
-            path="/teacher/monitor/:sessionId"
-            element={
-              <TeacherRoute>
-                <StudentMonitor />
-              </TeacherRoute>
-            }
-          />
+
           
           <Route
             path="/teacher/controller/:sessionId"

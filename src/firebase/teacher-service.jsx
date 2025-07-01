@@ -55,8 +55,7 @@ export const getAllAvailableStudents = async () => {
     const usersRef = collection(db, 'users');
     const q = query(
       usersRef,
-      where('role', 'in', ['student']),
-      orderBy('displayName', 'asc')
+      where('role', 'in', ['student'])
     );
     
     const querySnapshot = await getDocs(q);
@@ -75,6 +74,13 @@ export const getAllAvailableStudents = async () => {
         totalTimeSpent: userData.totalTimeSpent || 0,
         profileComplete: userData.profileComplete || false
       });
+    });
+    
+    // Sort in JavaScript instead of Firestore to avoid composite index requirement
+    students.sort((a, b) => {
+      const nameA = (a.displayName || '').toLowerCase();
+      const nameB = (b.displayName || '').toLowerCase();
+      return nameA.localeCompare(nameB);
     });
     
     logSecurityEvent('AVAILABLE_STUDENTS_FETCHED', {
@@ -449,8 +455,7 @@ export const getClassStudents = async (classId) => {
     const usersRef = collection(db, 'users');
     const q = query(
       usersRef, 
-      where('classId', '==', classId),
-      orderBy('displayName')
+      where('classId', '==', classId)
     );
     
     const querySnapshot = await getDocs(q);
@@ -459,9 +464,24 @@ export const getClassStudents = async (classId) => {
     querySnapshot.forEach((doc) => {
       const data = doc.data();
       students.push({
-        id: doc.id,
-        ...data
+        uid: doc.id,
+        displayName: data.displayName || data.email,
+        email: data.email,
+        role: data.role,
+        classId: data.classId,
+        progress: data.progress || 0,
+        completedLessons: data.completedLessons || [],
+        totalTimeSpent: data.totalTimeSpent || 0,
+        lastActivityAt: data.lastActivityAt?.toDate?.()?.toISOString() || null,
+        createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString()
       });
+    });
+    
+    // Sort in JavaScript instead of Firestore to avoid composite index requirement
+    students.sort((a, b) => {
+      const nameA = (a.displayName || '').toLowerCase();
+      const nameB = (b.displayName || '').toLowerCase();
+      return nameA.localeCompare(nameB);
     });
     
     return students;
@@ -551,8 +571,7 @@ export const getLessonComments = async (lessonId, teacherId = null) => {
     let q = query(
       collection(db, 'teacherComments'),
       where('lessonId', '==', lessonId),
-      where('isActive', '==', true),
-      orderBy('createdAt', 'desc')
+      where('isActive', '==', true)
     );
     
     if (teacherId) {
@@ -560,8 +579,7 @@ export const getLessonComments = async (lessonId, teacherId = null) => {
         collection(db, 'teacherComments'),
         where('lessonId', '==', lessonId),
         where('teacherId', '==', teacherId),
-        where('isActive', '==', true),
-        orderBy('createdAt', 'desc')
+        where('isActive', '==', true)
       );
     }
     
@@ -573,6 +591,13 @@ export const getLessonComments = async (lessonId, teacherId = null) => {
         id: doc.id,
         ...doc.data()
       });
+    });
+    
+    // Sort in JavaScript instead of Firestore to avoid composite index requirement
+    comments.sort((a, b) => {
+      const dateA = a.createdAt?.toDate?.() || new Date(0);
+      const dateB = b.createdAt?.toDate?.() || new Date(0);
+      return dateB - dateA; // Descending order (newest first)
     });
     
     return comments;

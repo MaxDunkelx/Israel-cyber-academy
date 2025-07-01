@@ -31,7 +31,7 @@ const firebaseConfig = {
 };
 
 // Check if we're in development mode
-const isDevelopment = import.meta.env.DEV;
+const isDevelopment = typeof import.meta !== 'undefined' && import.meta.env?.DEV;
 
 console.log('🔥 Firebase Config:', {
   projectId: firebaseConfig.projectId,

@@ -453,14 +453,19 @@ export const checkAndEndStaleSession = async (sessionId) => {
 
     const sessionData = sessionDoc.data();
     
-    // Check if session has been inactive for more than 15 minutes
+    // Check if session has been inactive for more than 5 minutes (reduced from 15)
     const lastActivity = sessionData.lastActivity?.toDate?.() || new Date(sessionData.lastActivity);
     const now = new Date();
     const timeDiff = now.getTime() - lastActivity.getTime();
-    const maxInactiveTime = 15 * 60 * 1000; // 15 minutes in milliseconds
+    const maxInactiveTime = 5 * 60 * 1000; // 5 minutes in milliseconds
 
-    if (timeDiff > maxInactiveTime && sessionData.status === 'active') {
-      console.log(`Auto-ending stale session ${sessionId}, inactive for ${timeDiff / 1000} seconds`);
+    // Also check if session has been running for more than 4 hours
+    const startTime = sessionData.startTime?.toDate?.() || new Date(sessionData.startTime);
+    const sessionDuration = now.getTime() - startTime.getTime();
+    const maxSessionDuration = 4 * 60 * 60 * 1000; // 4 hours in milliseconds
+
+    if ((timeDiff > maxInactiveTime || sessionDuration > maxSessionDuration) && sessionData.status === 'active') {
+      console.log(`Auto-ending stale session ${sessionId}, inactive for ${timeDiff / 1000} seconds, duration: ${sessionDuration / 1000 / 60} minutes`);
       await endSession(sessionId);
       return true;
     }
@@ -469,6 +474,38 @@ export const checkAndEndStaleSession = async (sessionId) => {
   } catch (error) {
     console.error('Error checking stale session:', error);
     return false;
+  }
+};
+
+/**
+ * Clean up all stale sessions for a teacher
+ * @param {string} teacherId - Teacher ID
+ * @returns {Promise<number>} Number of sessions cleaned up
+ */
+export const cleanupStaleSessions = async (teacherId) => {
+  try {
+    const sessionsRef = collection(db, 'sessions');
+    const q = query(
+      sessionsRef,
+      where('teacherId', '==', teacherId),
+      where('status', '==', 'active')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    let cleanedCount = 0;
+    
+    for (const doc of querySnapshot.docs) {
+      const wasEnded = await checkAndEndStaleSession(doc.id);
+      if (wasEnded) {
+        cleanedCount++;
+      }
+    }
+    
+    console.log(`Cleaned up ${cleanedCount} stale sessions for teacher ${teacherId}`);
+    return cleanedCount;
+  } catch (error) {
+    console.error('Error cleaning up stale sessions:', error);
+    return 0;
   }
 };
 

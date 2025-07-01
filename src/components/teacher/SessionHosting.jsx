@@ -30,7 +30,6 @@ import { isTeacher, validateTeacherAccess, logSecurityEvent } from '../../utils/
 import { getSession, updateSessionSlide, unlockSlide, endSession, listenToSession } from '../../firebase/session-service';
 import { getLessonWithSlides } from '../../firebase/content-service';
 import { getLessonById as getLocalLessonById } from '../../data/lessons';
-import TeacherLessonPreview from './TeacherLessonPreview';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
@@ -331,7 +330,7 @@ const SessionHosting = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
       {/* Header */}
       <div className="bg-gray-800/50 border-b border-gray-700 p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between space-y-4 lg:space-y-0">
           <div className="flex items-center space-x-4">
             <Button
               onClick={() => navigate('/teacher/dashboard')}
@@ -350,7 +349,7 @@ const SessionHosting = () => {
             </div>
           </div>
           
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               onClick={() => setShowStudentList(!showStudentList)}
               variant="secondary"
@@ -362,7 +361,7 @@ const SessionHosting = () => {
             </Button>
             
             <Button
-              onClick={() => navigate(`/teacher/monitor/${sessionId}`)}
+                              onClick={() => navigate(`/teacher/dashboard`)}
               variant="secondary"
               size="sm"
               className="flex items-center space-x-2"
@@ -382,18 +381,60 @@ const SessionHosting = () => {
         </div>
       </div>
 
-      <div className="flex h-screen">
+      <div className="flex flex-col lg:flex-row min-h-screen">
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col">
           {/* Slide Display */}
-          <div className="flex-1 bg-gray-900 p-8 flex items-center justify-center relative">
+          <div className="flex-1 bg-gray-900 p-4 lg:p-8 flex items-center justify-center relative min-h-0">
             <div className="w-full max-w-4xl">
-              <TeacherLessonPreview
-                lesson={lesson}
-                currentSlideIndex={currentSlide}
-                onSlideChange={handleSlideSelect}
-                isPreviewMode={false}
-              />
+              {lesson && lesson.content && lesson.content.slides && lesson.content.slides[currentSlide] ? (
+                <div className="bg-white rounded-lg shadow-2xl p-8 min-h-96">
+                  <div className="text-center mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                      {lesson.content.slides[currentSlide].title || `שקופית ${currentSlide + 1}`}
+                    </h2>
+                    <p className="text-gray-600 text-sm">
+                      {lesson.title} • שקופית {currentSlide + 1} מתוך {lesson.content.slides.length}
+                    </p>
+                  </div>
+                  
+                  <div className="prose prose-lg max-w-none">
+                    {lesson.content.slides[currentSlide].content && (
+                      <div 
+                        className="text-gray-700"
+                        dangerouslySetInnerHTML={{ 
+                          __html: typeof lesson.content.slides[currentSlide].content === 'string' 
+                            ? lesson.content.slides[currentSlide].content 
+                            : JSON.stringify(lesson.content.slides[currentSlide].content)
+                        }}
+                      />
+                    )}
+                    
+                    {lesson.content.slides[currentSlide].type === 'video' && lesson.content.slides[currentSlide].videoUrl && (
+                      <div className="mt-4">
+                        <video 
+                          className="w-full rounded-lg"
+                          controls
+                          src={lesson.content.slides[currentSlide].videoUrl}
+                        >
+                          Your browser does not support the video tag.
+                        </video>
+                      </div>
+                    )}
+                    
+                    {lesson.content.slides[currentSlide].type === 'quiz' && (
+                      <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                        <h3 className="font-semibold text-blue-800 mb-2">שאלה:</h3>
+                        <p className="text-blue-700">{lesson.content.slides[currentSlide].question}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center text-gray-400">
+                  <p>אין תוכן להצגה</p>
+                </div>
+              )}
             </div>
 
             {/* Fullscreen Button */}
@@ -407,7 +448,7 @@ const SessionHosting = () => {
 
           {/* Control Bar */}
           <div className="bg-gray-800/50 border-t border-gray-700 p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col lg:flex-row items-center justify-between space-y-4 lg:space-y-0">
               {/* Playback Controls */}
               <div className="flex items-center space-x-4">
                 <Button
@@ -466,7 +507,7 @@ const SessionHosting = () => {
                 <span className="text-sm text-gray-300">
                   {currentSlide + 1} / {lesson.content.slides.length}
                 </span>
-                <div className="w-32 bg-gray-700 rounded-full h-2">
+                <div className="w-24 lg:w-32 bg-gray-700 rounded-full h-2">
                   <div 
                     className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                     style={{ width: `${((currentSlide + 1) / lesson.content.slides.length) * 100}%` }}
@@ -478,7 +519,7 @@ const SessionHosting = () => {
         </div>
 
         {/* Sidebar */}
-        <div className={`w-80 bg-gray-800/50 border-l border-gray-700 transition-all duration-300 ${
+        <div className={`w-full lg:w-80 bg-gray-800/50 border-t lg:border-l border-gray-700 transition-all duration-300 ${
           showStudentList ? 'block' : 'hidden'
         }`}>
           <div className="p-4">

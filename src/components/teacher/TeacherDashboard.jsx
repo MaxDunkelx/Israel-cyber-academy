@@ -23,13 +23,11 @@ import { toast } from 'react-hot-toast';
 import { 
   Users, 
   BarChart3, 
-  BookOpen, 
   Shield,
   AlertCircle,
   CheckCircle,
   Settings,
   Calendar,
-  MessageSquare,
   FileText,
   Monitor,
   Play,
@@ -38,7 +36,8 @@ import {
   Trophy,
   Target,
   TrendingUp,
-  Activity
+  Activity,
+  Bell
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { logSecurityEvent } from '../../utils/security';
@@ -46,6 +45,8 @@ import { getTeacherClasses, getTeacherStudents, getTeacherRecentActivities } fro
 import { formatTimestamp } from '../../utils/helpers';
 import StudentPool from './StudentPool';
 import SlidePreviewManager from './SlidePreviewManager';
+import ClassroomInterface from './ClassroomInterface';
+import RealAnalytics from './RealAnalytics';
 import LoadingSpinner from '../common/LoadingSpinner';
 import Card from '../ui/Card';
 import ErrorBoundary from '../common/ErrorBoundary';
@@ -80,46 +81,32 @@ const TeacherDashboard = () => {
       color: 'blue'
     },
     {
+      id: 'classroom',
+      label: 'ממשק כיתה',
+      icon: Monitor,
+      description: 'ניהול כיתות ותלמידים בזמן אמת',
+      color: 'green'
+    },
+    {
+      id: 'realAnalytics',
+      label: 'ניתוח נתונים אמיתי',
+      icon: TrendingUp,
+      description: 'ניתוח מבוסס על נתונים אמיתיים מהמסד נתונים',
+      color: 'cyan'
+    },
+    {
       id: 'studentPool',
       label: 'בריכת תלמידים',
       icon: Users,
       description: 'ניהול הקצאת תלמידים לכיתות',
-      color: 'green'
+      color: 'indigo'
     },
     {
       id: 'slidePreview',
       label: 'מנהל שקופיות',
       icon: FileText,
       description: 'צפייה וניהול שקופיות שיעורים עם הערות אישיות',
-      color: 'purple'
-    },
-    {
-      id: 'analytics',
-      label: 'אנליטיקה',
-      icon: BarChart3,
-      description: 'ניתוח התקדמות וסטטיסטיקות',
       color: 'yellow'
-    },
-    {
-      id: 'lessons',
-      label: 'שיעורים',
-      icon: BookOpen,
-      description: 'ניהול שיעורים ותכנים',
-      color: 'purple'
-    },
-    {
-      id: 'classes',
-      label: 'כיתות',
-      icon: Target,
-      description: 'ניהול כיתות ופעילויות',
-      color: 'indigo'
-    },
-    {
-      id: 'communications',
-      label: 'תקשורת',
-      icon: MessageSquare,
-      description: 'הודעות ותקשורת עם תלמידים',
-      color: 'pink'
     }
   ];
 
@@ -266,11 +253,11 @@ const TeacherDashboard = () => {
                 </button>
                 
                 <button 
-                  onClick={() => handleTabChange('studentPool')}
+                  onClick={() => handleTabChange('classroom')}
                   className="flex items-center space-x-3 p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
                 >
-                  <Users className="w-6 h-6 text-blue-400" />
-                  <span className="text-white">ניהול תלמידים</span>
+                  <Monitor className="w-6 h-6 text-green-400" />
+                  <span className="text-white">ממשק כיתה</span>
                 </button>
                 
                 <button 
@@ -282,7 +269,7 @@ const TeacherDashboard = () => {
                 </button>
                 
                 <button 
-                  onClick={() => handleTabChange('analytics')}
+                  onClick={() => handleTabChange('realAnalytics')}
                   className="flex items-center space-x-3 p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
                 >
                   <BarChart3 className="w-6 h-6 text-yellow-400" />
@@ -324,42 +311,14 @@ const TeacherDashboard = () => {
             </div>
           </div>
         );
+      case 'classroom':
+        return <ClassroomInterface />;
+      case 'realAnalytics':
+        return <RealAnalytics />;
       case 'studentPool':
         return <StudentPool />;
       case 'slidePreview':
         return <SlidePreviewManager />;
-      case 'analytics':
-        return (
-          <div className="text-center py-12">
-            <BarChart3 className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-xl font-semibold text-gray-300 mb-2">אנליטיקת תלמידים</h3>
-            <p className="text-gray-400">תכונה זו תהיה זמינה בקרוב</p>
-          </div>
-        );
-      case 'lessons':
-        return (
-          <div className="text-center py-12">
-            <BookOpen className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-xl font-semibold text-gray-300 mb-2">ניהול שיעורים</h3>
-            <p className="text-gray-400">תכונה זו תהיה זמינה בקרוב</p>
-          </div>
-        );
-      case 'classes':
-        return (
-          <div className="text-center py-12">
-            <Target className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-xl font-semibold text-gray-300 mb-2">ניהול כיתות</h3>
-            <p className="text-gray-400">תכונה זו תהיה זמינה בקרוב</p>
-          </div>
-        );
-      case 'communications':
-        return (
-          <div className="text-center py-12">
-            <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-xl font-semibold text-gray-300 mb-2">תקשורת</h3>
-            <p className="text-gray-400">תכונה זו תהיה זמינה בקרוב</p>
-          </div>
-        );
       default:
         return (
           <div className="text-center py-12">
@@ -381,7 +340,10 @@ const TeacherDashboard = () => {
       yellow: 'border-yellow-500 bg-yellow-500/10 text-yellow-400',
       purple: 'border-purple-500 bg-purple-500/10 text-purple-400',
       indigo: 'border-indigo-500 bg-indigo-500/10 text-indigo-400',
-      pink: 'border-pink-500 bg-pink-500/10 text-pink-400'
+      pink: 'border-pink-500 bg-pink-500/10 text-pink-400',
+      orange: 'border-orange-500 bg-orange-500/10 text-orange-400',
+      cyan: 'border-cyan-500 bg-cyan-500/10 text-cyan-400',
+      red: 'border-red-500 bg-red-500/10 text-red-400'
     };
     return colorMap[color] || colorMap.blue;
   };
@@ -389,7 +351,7 @@ const TeacherDashboard = () => {
   // Show loading spinner while checking access
   if (isLoading || authLoading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <LoadingSpinner size="lg" />
       </div>
     );
@@ -397,7 +359,7 @@ const TeacherDashboard = () => {
 
   if (error) {
     return (
-      <div className="text-center text-red-600 p-4">
+      <div className="text-center text-red-600 p-4 bg-black min-h-screen flex items-center justify-center">
         <p>{error}</p>
       </div>
     );
@@ -405,7 +367,7 @@ const TeacherDashboard = () => {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gray-900 text-white">
+      <div className="min-h-screen bg-black text-white">
         {/* Main Content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Tab Navigation */}

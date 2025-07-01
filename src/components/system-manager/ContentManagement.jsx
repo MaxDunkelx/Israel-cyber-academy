@@ -627,6 +627,7 @@ const ContentManagement = () => {
       console.error('❌ Error saving quick edit:', err);
       setError(`Failed to save changes: ${err.message}`);
     }
+
   };
 
   const handleDragStart = (e, slide) => {

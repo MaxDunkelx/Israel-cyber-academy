@@ -30,11 +30,12 @@ const Card = ({
   
   // Variant-specific classes
   const variantClasses = {
-    default: 'bg-white border border-gray-200',
-    elevated: 'bg-white shadow-lg border border-gray-200',
-    outlined: 'bg-transparent border-2 border-gray-300',
+    default: 'bg-gray-900 border border-gray-700 text-white',
+    elevated: 'bg-gray-800 shadow-lg border border-gray-600 text-white',
+    outlined: 'bg-transparent border-2 border-gray-600 text-white',
     gradient: 'bg-gradient-to-br from-cyber-blue to-cyber-purple text-white border-0',
-    dark: 'bg-gray-800 border border-gray-700 text-white'
+    dark: 'bg-gray-800 border border-gray-700 text-white',
+    light: 'bg-white border border-gray-200 text-gray-900'
   };
   
   // Padding-specific classes

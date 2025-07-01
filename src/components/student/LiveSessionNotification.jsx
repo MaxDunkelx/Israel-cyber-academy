@@ -49,14 +49,24 @@ const LiveSessionNotification = () => {
       return false;
     }
 
-    // Check if session has been inactive for more than 10 minutes
+    // Check if session has been inactive for more than 5 minutes (reduced from 10)
     const lastActivity = session.lastActivity?.toDate?.() || new Date(session.lastActivity);
     const now = new Date();
     const timeDiff = now.getTime() - lastActivity.getTime();
-    const maxInactiveTime = 10 * 60 * 1000; // 10 minutes in milliseconds
+    const maxInactiveTime = 5 * 60 * 1000; // 5 minutes in milliseconds
 
     if (timeDiff > maxInactiveTime) {
       console.log('Session is stale, last activity was', timeDiff / 1000, 'seconds ago');
+      return false;
+    }
+
+    // Check if session has been running for more than 4 hours (auto-end long sessions)
+    const startTime = session.startTime?.toDate?.() || new Date(session.startTime);
+    const sessionDuration = now.getTime() - startTime.getTime();
+    const maxSessionDuration = 4 * 60 * 60 * 1000; // 4 hours in milliseconds
+
+    if (sessionDuration > maxSessionDuration) {
+      console.log('Session has been running too long, auto-ending');
       return false;
     }
 

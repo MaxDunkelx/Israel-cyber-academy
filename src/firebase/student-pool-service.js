@@ -770,8 +770,7 @@ class StudentPoolService {
   subscribeToUnassignedStudents(teacherId, callback) {
     const q = query(
       this.usersRef,
-      where('role', '==', 'student'),
-      orderBy('displayName')
+      where('role', '==', 'student')
     );
 
     return onSnapshot(q, async (snapshot) => {
@@ -782,6 +781,14 @@ class StudentPoolService {
 
       // Filter unassigned students client-side
       const unassignedStudents = students.filter(student => !student.assignedClass);
+      
+      // Sort in JavaScript instead of Firestore to avoid composite index requirement
+      unassignedStudents.sort((a, b) => {
+        const nameA = (a.displayName || '').toLowerCase();
+        const nameB = (b.displayName || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+      
       callback(unassignedStudents);
     });
   }
@@ -796,8 +803,7 @@ class StudentPoolService {
     const q = query(
       this.classesRef,
       where('instructorId', '==', teacherId),
-      where('status', '==', 'active'),
-      orderBy('classNumber')
+      where('status', '==', 'active')
     );
 
     return onSnapshot(q, async (snapshot) => {
@@ -805,6 +811,13 @@ class StudentPoolService {
         classId: doc.id,
         ...doc.data()
       }));
+
+      // Sort in JavaScript instead of Firestore to avoid composite index requirement
+      classes.sort((a, b) => {
+        const numberA = a.classNumber || 0;
+        const numberB = b.classNumber || 0;
+        return numberA - numberB;
+      });
 
       // Enrich with student information
       for (let classObj of classes) {

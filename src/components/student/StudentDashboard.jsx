@@ -19,7 +19,6 @@ import { lessons } from '../../data/lessons';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
-import LiveSessionNotification from './LiveSessionNotification';
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -103,9 +102,6 @@ const StudentDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
-      {/* Live Session Notification */}
-      <LiveSessionNotification />
-      
       <div className="p-6 max-w-7xl mx-auto">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

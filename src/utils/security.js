@@ -18,7 +18,7 @@
  */
 
 import { doc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase/firebase-config';
+import { db } from '../firebase/firebase-config.js';
 
 /**
  * Available user roles in the system
