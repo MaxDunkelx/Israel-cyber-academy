@@ -802,7 +802,7 @@ const EnhancedLogin = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6, duration: 0.4 }}
               >
-                ישראל קמפוס סייבר - כל הזכויות שמורות
+                כל הזכויות שמורות
               </motion.div>
               <motion.div 
                 className="text-gray-400 text-sm mt-1"
