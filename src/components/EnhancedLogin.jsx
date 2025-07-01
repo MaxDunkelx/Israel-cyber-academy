@@ -432,7 +432,7 @@ const FormInput = ({
 // ============================================================================
 
 const EnhancedLogin = () => {
-  const { login, register } = useAuth();
+  const { login, signup } = useAuth();
   const [selectedRole, setSelectedRole] = useState('student');
   const [showLoginForm, setShowLoginForm] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
@@ -479,10 +479,11 @@ const EnhancedLogin = () => {
       }
 
       if (isLogin) {
-        await login(formData.email, formData.password, selectedRole);
+        await login(formData.email, formData.password);
         toast.success('התחברת בהצלחה!');
       } else {
-        await register(formData, selectedRole);
+        const displayName = `${formData.firstName} ${formData.lastName}`;
+        await signup(formData.email, formData.password, displayName, selectedRole, formData);
         toast.success('נרשמת בהצלחה!');
       }
     } catch (error) {
