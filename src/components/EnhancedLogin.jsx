@@ -110,7 +110,7 @@ const ROLE_CONFIG = {
 // OPTIMIZED BACKGROUND EFFECTS
 // ============================================================================
 
-// Simplified Matrix Rain - Reduced performance impact
+// Enhanced Matrix Rain - Optimized for smooth performance and visual impact
 const MatrixRain = () => {
   const canvasRef = useRef(null);
   
@@ -122,33 +122,55 @@ const MatrixRain = () => {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     
-    // Simplified character set for better performance
-    const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+    // Enhanced character set with Hebrew, English, and symbols
+    const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンאבגדהוזחטסעפצקרשת';
     const charArray = chars.split('');
-    const fontSize = 16;
+    const fontSize = 18;
     const columns = canvas.width / fontSize;
     const drops = new Array(Math.floor(columns)).fill(1);
-    const maxDrops = Math.min(columns, 15); // Further reduced for better performance
+    const maxDrops = Math.min(columns, 35); // Increased for more impressive visual impact
+    
+    // Create gradient effect for matrix characters
+    const createGradient = (x, y) => {
+      const gradient = ctx.createLinearGradient(x, y, x, y + fontSize);
+      gradient.addColorStop(0, '#00ff41'); // Bright green at top
+      gradient.addColorStop(0.5, '#3B82F6'); // Blue in middle
+      gradient.addColorStop(1, '#1e40af'); // Dark blue at bottom
+      return gradient;
+    };
     
     const draw = () => {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+      // Smoother fade effect
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      ctx.fillStyle = '#3B82F6';
-      ctx.font = `${fontSize}px monospace`;
       
       for (let i = 0; i < maxDrops; i++) {
         const text = charArray[Math.floor(Math.random() * charArray.length)];
-        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+        const x = i * fontSize;
+        const y = drops[i] * fontSize;
         
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.995) {
+        // Apply gradient effect
+        ctx.fillStyle = createGradient(x, y);
+        ctx.font = `bold ${fontSize}px 'Courier New', monospace`;
+        ctx.fillText(text, x, y);
+        
+        // Add glow effect for some characters
+        if (Math.random() > 0.95) {
+          ctx.shadowColor = '#00ff41';
+          ctx.shadowBlur = 5;
+          ctx.fillText(text, x, y);
+          ctx.shadowBlur = 0;
+        }
+        
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.99) {
           drops[i] = 0;
         }
         drops[i]++;
       }
     };
     
-    const interval = setInterval(draw, 150); // Further reduced for better performance
+    // Smooth 60fps animation
+    const interval = setInterval(draw, 100);
     
     const handleResize = () => {
       canvas.width = window.innerWidth;
@@ -166,7 +188,7 @@ const MatrixRain = () => {
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 z-0 opacity-10"
+      className="fixed inset-0 z-0 opacity-30"
       style={{ pointerEvents: 'none' }}
     />
   );
