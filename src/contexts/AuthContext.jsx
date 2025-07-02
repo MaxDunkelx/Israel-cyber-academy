@@ -25,7 +25,10 @@ import {
   signInWithEmailAndPassword, 
   signOut, 
   onAuthStateChanged,
-  updateProfile 
+  updateProfile,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db, diagnoseFirestoreConnection } from '../firebase/firebase-config';
@@ -36,9 +39,6 @@ const AuthContext = createContext();
 
 // Add system manager email constant at the top
 const SYSTEM_MANAGER_EMAIL = 'maxibunnyshow@gmail.com';
-
-// Demo mode detection
-const isDemoMode = !import.meta.env.VITE_FIREBASE_API_KEY || import.meta.env.VITE_FIREBASE_API_KEY === 'your_api_key_here';
 
 /**
  * Custom hook to access authentication context
@@ -70,104 +70,6 @@ export const AuthProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(null); // Extended user data
   const [loading, setLoading] = useState(true); // Loading state
 
-  // Demo mode state
-  const [demoUser, setDemoUser] = useState(null);
-
-  /**
-   * Demo Mode Authentication Functions
-   */
-  const demoSignup = async (email, password, displayName, role = 'student', credentials = {}) => {
-    console.log('🎭 Demo mode: Creating demo user');
-    const demoUserData = {
-      uid: `demo_${Date.now()}`,
-      email,
-      displayName: displayName || 'משתמש דמו',
-      role,
-      progress: {
-        1: {
-          completed: false,
-          score: 0,
-          completedAt: null,
-          temporary: false,
-          lastSlide: 0,
-          pagesEngaged: [],
-          lastActivity: new Date()
-        }
-      },
-      completedLessons: [],
-      currentLesson: 1,
-      totalTimeSpent: 0,
-      totalPagesEngaged: 0,
-      achievements: [],
-      streak: 0,
-      createdAt: new Date(),
-      lastLogin: new Date(),
-      lastActivityDate: new Date(),
-      updatedAt: new Date()
-    };
-    
-    setDemoUser(demoUserData);
-    setCurrentUser(demoUserData);
-    setUserProfile(demoUserData);
-    return { user: demoUserData };
-  };
-
-  const demoLogin = async (email, password) => {
-    console.log('🎭 Demo mode: Logging in demo user');
-    
-    // Create demo user based on email
-    let role = 'student';
-    let displayName = 'משתמש דמו';
-    
-    if (email === SYSTEM_MANAGER_EMAIL) {
-      role = 'system_manager';
-      displayName = 'מנהל המערכת';
-    } else if (email.includes('teacher')) {
-      role = 'teacher';
-      displayName = 'מורה דמו';
-    }
-    
-    const demoUserData = {
-      uid: `demo_${email}_${Date.now()}`,
-      email,
-      displayName,
-      role,
-      progress: {
-        1: {
-          completed: false,
-          score: 0,
-          completedAt: null,
-          temporary: false,
-          lastSlide: 0,
-          pagesEngaged: [],
-          lastActivity: new Date()
-        }
-      },
-      completedLessons: [],
-      currentLesson: 1,
-      totalTimeSpent: 0,
-      totalPagesEngaged: 0,
-      achievements: [],
-      streak: 0,
-      createdAt: new Date(),
-      lastLogin: new Date(),
-      lastActivityDate: new Date(),
-      updatedAt: new Date()
-    };
-    
-    setDemoUser(demoUserData);
-    setCurrentUser(demoUserData);
-    setUserProfile(demoUserData);
-    return { user: demoUserData };
-  };
-
-  const demoLogout = async () => {
-    console.log('🎭 Demo mode: Logging out demo user');
-    setDemoUser(null);
-    setCurrentUser(null);
-    setUserProfile(null);
-  };
-
   /**
    * User Registration Function
    * 
@@ -183,10 +85,6 @@ export const AuthProvider = ({ children }) => {
    * @throws {Error} If registration fails
    */
   const signup = async (email, password, displayName, role = 'student', credentials = {}) => {
-    if (isDemoMode) {
-      return demoSignup(email, password, displayName, role, credentials);
-    }
-    
     try {
       // Check if this is the system manager
       if (email === SYSTEM_MANAGER_EMAIL) {
@@ -323,10 +221,6 @@ export const AuthProvider = ({ children }) => {
    * @throws {Error} If login fails
    */
   const login = async (email, password) => {
-    if (isDemoMode) {
-      return demoLogin(email, password);
-    }
-    
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
@@ -484,7 +378,7 @@ export const AuthProvider = ({ children }) => {
           }
         });
         
-        // Calculate lesson unlocking logic
+        // Teacher-controlled lesson system - no automatic unlocking
         const currentCompletedLessons = userData.completedLessons || [];
         const currentLesson = userData.currentLesson || 1;
         
@@ -497,16 +391,8 @@ export const AuthProvider = ({ children }) => {
             newCompletedLessons = [...currentCompletedLessons, lessonId];
             console.log(`✅ Lesson ${lessonId} completed and added to completedLessons`);
           }
-          // Update current lesson to next available lesson
-          newCurrentLesson = Math.max(currentLesson, lessonId + 1);
-          if (newCurrentLesson > currentLesson) {
-            console.log(`🔓 Next lesson unlocked: ${newCurrentLesson} (was ${currentLesson})`);
-          }
-        }
-        
-        // Ensure first lesson is always available for new users
-        if (newCurrentLesson < 1) {
-          newCurrentLesson = 1;
+          // Note: No automatic lesson unlocking - teachers control lesson access
+          console.log(`📚 Lesson ${lessonId} completed - waiting for teacher to unlock next lesson`);
         }
         
         // Calculate achievements based on progress
@@ -752,10 +638,6 @@ export const AuthProvider = ({ children }) => {
    * Cleans up temporary progress and signs out from Firebase.
    */
   const logout = async () => {
-    if (isDemoMode) {
-      return demoLogout();
-    }
-    
     try {
       console.log('🔄 Logging out user...');
       
@@ -820,6 +702,44 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('❌ Error updating display name:', error);
       throw error;
+    }
+  };
+
+  /**
+   * Change user password
+   * 
+   * @param {string} currentPassword - Current password for verification
+   * @param {string} newPassword - New password to set
+   * @returns {Promise<void>}
+   * @throws {Error} If password change fails
+   */
+  const changePassword = async (currentPassword, newPassword) => {
+    if (!currentUser) {
+      throw new Error('No user is currently logged in');
+    }
+
+    try {
+      // Re-authenticate user with current password
+      const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
+      await reauthenticateWithCredential(currentUser, credential);
+      
+      // Update password
+      await updatePassword(currentUser, newPassword);
+      
+      console.log('✅ Password changed successfully');
+    } catch (error) {
+      console.error('❌ Error changing password:', error);
+      
+      // Provide specific error messages
+      if (error.code === 'auth/wrong-password') {
+        throw new Error('הסיסמה הנוכחית שגויה');
+      } else if (error.code === 'auth/weak-password') {
+        throw new Error('הסיסמה החדשה חייבת להיות חזקה יותר (לפחות 6 תווים)');
+      } else if (error.code === 'auth/requires-recent-login') {
+        throw new Error('נדרשת התחברות מחדש לשינוי הסיסמה');
+      } else {
+        throw new Error('אירעה שגיאה בשינוי הסיסמה');
+      }
     }
   };
 
@@ -932,23 +852,6 @@ export const AuthProvider = ({ children }) => {
    */
   useEffect(() => {
     console.log('🔄 Setting up authentication listener...');
-    
-    if (isDemoMode) {
-      console.log('🎭 Demo mode detected - skipping Firebase authentication');
-      setLoading(false);
-      return;
-    }
-    
-    // Test Firestore connectivity first with enhanced diagnostics
-    testFirestoreConnection().then(isConnected => {
-      if (!isConnected) {
-        console.error('❌ Firestore is not accessible - check the following:');
-        console.error('   1. Firestore database is created in Firebase Console');
-        console.error('   2. Security rules allow read/write access');
-        console.error('   3. Project is properly configured');
-        console.error('   4. API keys are correct');
-      }
-    });
     
     // Regular user authentication listener
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -1078,6 +981,7 @@ export const AuthProvider = ({ children }) => {
   const memoizedGetLastLessonSlide = useCallback(getLastLessonSlide, [userProfile]);
   const memoizedUpdateDisplayName = useCallback(updateDisplayName, []);
   const memoizedRemoveTemporaryProgress = useCallback(removeTemporaryProgress, []);
+  const memoizedChangePassword = useCallback(changePassword, []);
 
   // Context value containing all authentication state and methods - MEMOIZED to prevent infinite re-renders
   const value = useMemo(() => ({
@@ -1093,7 +997,8 @@ export const AuthProvider = ({ children }) => {
     removeTemporaryProgress: memoizedRemoveTemporaryProgress,
     trackSlideEngagement: memoizedTrackSlideEngagement,
     updateDisplayName: memoizedUpdateDisplayName,
-    getLastLessonSlide: memoizedGetLastLessonSlide
+    getLastLessonSlide: memoizedGetLastLessonSlide,
+    changePassword: memoizedChangePassword
   }), [
     currentUser,
     userProfile,
@@ -1106,7 +1011,8 @@ export const AuthProvider = ({ children }) => {
     memoizedRemoveTemporaryProgress,
     memoizedTrackSlideEngagement,
     memoizedUpdateDisplayName,
-    memoizedGetLastLessonSlide
+    memoizedGetLastLessonSlide,
+    memoizedChangePassword
   ]);
 
   return (

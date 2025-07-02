@@ -9,8 +9,8 @@ const PresentationSlide = ({ slide }) => {
   const { content } = slide;
   
   return (
-    <div className="h-[calc(100vh-120px)] flex flex-col items-center justify-center p-8" style={{ minHeight: '500px' }}>
-      <div className="max-w-5xl w-full h-full flex flex-col">
+    <div className="min-h-screen flex flex-col items-center justify-center p-8">
+      <div className="max-w-5xl w-full flex flex-col">
         {/* Title */}
         <div className="text-center mb-8">
           <h2 className="text-4xl font-bold text-white mb-4" style={{ textShadow: '0 4px 8px rgba(0,0,0,0.3)' }}>
@@ -20,9 +20,10 @@ const PresentationSlide = ({ slide }) => {
 
         {/* Content Container */}
         <div 
-          className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-8 border border-gray-700/50 shadow-2xl flex-1 flex flex-col justify-center relative overflow-hidden"
+          className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-8 border border-gray-700/50 shadow-2xl flex flex-col justify-center relative overflow-auto"
           style={{ 
             background: content.background || 'linear-gradient(135deg, #1e3a8a 0%, #7c3aed 100%)',
+            minHeight: '400px'
           }}
         >
           {/* Background overlay for better text readability */}

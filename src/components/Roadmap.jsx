@@ -224,42 +224,35 @@ const Roadmap = () => {
    * @returns {string} Lesson status: 'locked', 'available', or 'completed'
    */
   const getLessonStatus = useCallback((lessonId) => {
-    // TEMPORARY: Make all lessons available for testing
-    console.log(`🔍 Lesson ${lessonId} status check - TEMPORARILY AVAILABLE`);
-    return 'available';
-    
-    // Original logic (commented out for testing)
-    /*
     if (!userProfile) return 'locked';
     
     const completedLessons = userProfile.completedLessons || [];
-    const currentLesson = userProfile.currentLesson || 1; // Default to lesson 1 if missing
+    const teacherAssignedLesson = userProfile.currentLesson || 0; // Teacher controls access
     
     // Debug logging for lesson status
     if (lessonId <= 3) { // Only log for first 3 lessons to avoid spam
       console.log(`🔍 Lesson ${lessonId} status check:`, {
         completedLessons,
-        currentLesson,
+        teacherAssignedLesson,
         isCompleted: completedLessons.includes(lessonId),
-        isAvailable: lessonId <= currentLesson,
+        isTeacherUnlocked: lessonId <= teacherAssignedLesson,
         status: completedLessons.includes(lessonId) ? 'completed' : 
-                lessonId <= currentLesson ? 'available' : 'locked'
+                lessonId <= teacherAssignedLesson ? 'available' : 'locked'
       });
     }
     
-    // First lesson should always be available for new users
-    if (lessonId === 1) {
-      return completedLessons.includes(lessonId) ? 'completed' : 'available';
-    }
-    
+    // Check if lesson is completed
     if (completedLessons.includes(lessonId)) {
       return 'completed';
-    } else if (lessonId <= currentLesson) {
-      return 'available';
-    } else {
-      return 'locked';
     }
-    */
+    
+    // Check if teacher has unlocked this lesson
+    if (lessonId <= teacherAssignedLesson) {
+      return 'available';
+    }
+    
+    // Lesson is locked until teacher unlocks it
+    return 'locked';
   }, [userProfile]);
 
   /**
@@ -326,10 +319,16 @@ const Roadmap = () => {
    */
   const handleContinueLastLesson = useCallback(() => {
     if (lastLesson) {
-      navigate(`/student/lesson/${lastLesson.lesson.id}`);
-      toast.success(`ממשיך בשיעור: ${lastLesson.lesson.title}`);
+      // Check if student has access to this lesson (teacher unlocked it)
+      const status = getLessonStatus(lastLesson.lesson.id);
+      if (status !== 'locked') {
+        navigate(`/student/lesson/${lastLesson.lesson.id}`);
+        toast.success(`ממשיך בשיעור: ${lastLesson.lesson.title}`);
+      } else {
+        toast.error('השיעור עדיין לא נפתח על ידי המורה');
+      }
     }
-  }, [lastLesson, navigate]);
+  }, [lastLesson, navigate, getLessonStatus]);
 
   /**
    * Get appropriate icon for lesson status

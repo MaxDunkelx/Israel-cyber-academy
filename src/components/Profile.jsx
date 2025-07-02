@@ -44,12 +44,9 @@ import LiveSessionNotification from './student/LiveSessionNotification';
 const emojiOptions = ['😀','😎','🤓','🦸‍♂️','🦸‍♀️','🧑‍💻','👩‍🏫','👨‍🏫','🧑‍🎓','👽','🤖','🦄','🐱','🐶','🐼','🐧','🐸'];
 
 const Profile = () => {
-  const { userProfile, logout, currentUser, updateDisplayName } = useAuth();
+  const { userProfile, logout, currentUser, updateDisplayName, changePassword } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedEmoji, setSelectedEmoji] = useState(userProfile?.emoji || '😀');
-  const [showReset, setShowReset] = useState(false);
-  const [resetEmail, setResetEmail] = useState(userProfile?.email || '');
-  const [resetSent, setResetSent] = useState(false);
   
   // Display name editing state
   const [isEditingName, setIsEditingName] = useState(false);
@@ -69,6 +66,15 @@ const Profile = () => {
   // Teacher information state
   const [teacherInfo, setTeacherInfo] = useState(null);
   const [loadingTeacher, setLoadingTeacher] = useState(false);
+  
+  // Password change state
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   
   const navigate = useNavigate();
 
@@ -107,7 +113,6 @@ const Profile = () => {
       setEditingCredentials(getDefaultCredentials());
       setEditingName(userProfile.displayName || '');
       setSelectedEmoji(userProfile.emoji || '😀');
-      setResetEmail(userProfile.email || '');
     }
   }, [userProfile]);
 
@@ -222,9 +227,60 @@ const Profile = () => {
     return sex === 'female' ? 'לוחמת סייבר' : 'לוחם סייבר';
   };
 
-  // Password reset handler
+  // Password change handlers
   const handlePasswordReset = () => {
-    toast.success('פונקציה זו תהיה זמינה בקרוב');
+    setShowPasswordChange(true);
+  };
+
+  const handlePasswordChange = async () => {
+    const { currentPassword, newPassword, confirmPassword } = passwordForm;
+    
+    // Validation
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error('כל השדות הם חובה');
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      toast.error('הסיסמה החדשה חייבת להיות לפחות 6 תווים');
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      toast.error('הסיסמה החדשה והאישור אינם תואמים');
+      return;
+    }
+    
+    if (newPassword === currentPassword) {
+      toast.error('הסיסמה החדשה חייבת להיות שונה מהסיסמה הנוכחית');
+      return;
+    }
+    
+    setIsChangingPassword(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      toast.success('הסיסמה שונתה בהצלחה');
+      setShowPasswordChange(false);
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+    } catch (error) {
+      console.error('Password change error:', error);
+      toast.error(error.message || 'אירעה שגיאה בשינוי הסיסמה');
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const handleCancelPasswordChange = () => {
+    setShowPasswordChange(false);
+    setPasswordForm({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    });
   };
 
   // Handle logout
@@ -884,7 +940,7 @@ const Profile = () => {
               {/* Action Buttons */}
               <div className="flex flex-wrap justify-center lg:justify-end gap-3">
                 <motion.button
-                  onClick={() => setShowReset(!showReset)}
+                  onClick={handlePasswordReset}
                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -903,36 +959,62 @@ const Profile = () => {
                 </motion.button>
               </div>
 
-              {/* Password Reset Form */}
-              {showReset && (
+              {/* Password Change Form */}
+              {showPasswordChange && (
                 <motion.div 
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   className="mt-4 bg-gray-700/50 rounded-xl p-4 border border-gray-600/50"
                 >
-                  <form onSubmit={handlePasswordReset} className="space-y-3">
+                  <h4 className="text-lg font-semibold text-white mb-4 text-center">שנה סיסמה</h4>
+                  <div className="space-y-3">
                     <input
-                      type="email"
-                      value={resetEmail}
-                      onChange={e => setResetEmail(e.target.value)}
+                      type="password"
+                      value={passwordForm.currentPassword}
+                      onChange={e => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
                       className="w-full px-4 py-3 bg-gray-600/50 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:border-blue-400 focus:outline-none"
-                      placeholder="האימייל שלך"
+                      placeholder="סיסמה נוכחית"
                       required
                     />
-                    <motion.button 
-                      type="submit" 
-                      className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white py-3 rounded-lg font-semibold transition-all duration-300"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      שלח קישור איפוס
-                    </motion.button>
-                    {resetSent && (
-                      <div className="text-green-400 text-center font-semibold">
-                        קישור איפוס נשלח!
-                      </div>
-                    )}
-                  </form>
+                    <input
+                      type="password"
+                      value={passwordForm.newPassword}
+                      onChange={e => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                      className="w-full px-4 py-3 bg-gray-600/50 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:border-blue-400 focus:outline-none"
+                      placeholder="סיסמה חדשה (לפחות 6 תווים)"
+                      required
+                    />
+                    <input
+                      type="password"
+                      value={passwordForm.confirmPassword}
+                      onChange={e => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                      className="w-full px-4 py-3 bg-gray-600/50 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:border-blue-400 focus:outline-none"
+                      placeholder="אישור סיסמה חדשה"
+                      required
+                    />
+                    <div className="flex gap-2">
+                      <motion.button 
+                        type="button"
+                        onClick={handlePasswordChange}
+                        disabled={isChangingPassword}
+                        className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 disabled:from-gray-600 disabled:to-gray-600 text-white py-3 rounded-lg font-semibold transition-all duration-300"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        {isChangingPassword ? 'משנה...' : 'שנה סיסמה'}
+                      </motion.button>
+                      <motion.button 
+                        type="button"
+                        onClick={handleCancelPasswordChange}
+                        disabled={isChangingPassword}
+                        className="px-6 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 disabled:from-gray-600 disabled:to-gray-600 text-white py-3 rounded-lg font-semibold transition-all duration-300"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        בטל
+                      </motion.button>
+                    </div>
+                  </div>
                 </motion.div>
               )}
             </div>

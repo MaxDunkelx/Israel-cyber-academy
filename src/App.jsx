@@ -41,6 +41,9 @@ import SessionHosting from './components/teacher/SessionHosting';
 import SessionCreation from './components/teacher/SessionCreation';
 import LessonController from './components/teacher/LessonController';
 import SlidePreviewManager from './components/teacher/SlidePreviewManager';
+import RealAnalytics from './components/teacher/RealAnalytics';
+import ClassroomInterface from './components/teacher/ClassroomInterface';
+import StudentPool from './components/teacher/StudentPool';
 import StudentSession from './components/student/StudentSession';
 
 // System Manager Components
@@ -340,8 +343,6 @@ const AppContent = () => {
             }
           />
           
-
-          
           <Route
             path="/teacher/session/:sessionId"
             element={
@@ -350,8 +351,6 @@ const AppContent = () => {
               </TeacherRoute>
             }
           />
-          
-
           
           <Route
             path="/teacher/controller/:sessionId"
@@ -376,6 +375,33 @@ const AppContent = () => {
             element={
               <TeacherRoute>
                 <Profile />
+              </TeacherRoute>
+            }
+          />
+          
+          <Route
+            path="/teacher/real-analytics"
+            element={
+              <TeacherRoute>
+                <RealAnalytics />
+              </TeacherRoute>
+            }
+          />
+          
+          <Route
+            path="/teacher/classroom-interface"
+            element={
+              <TeacherRoute>
+                <ClassroomInterface />
+              </TeacherRoute>
+            }
+          />
+          
+          <Route
+            path="/teacher/student-pool"
+            element={
+              <TeacherRoute>
+                <StudentPool />
               </TeacherRoute>
             }
           />

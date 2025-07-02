@@ -3,8 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Users, 
   Clock, 
-  ChevronLeft,
-  ChevronRight,
   Lock,
   Unlock,
   AlertCircle,
@@ -107,18 +105,7 @@ const StudentSession = () => {
     }
   };
 
-  const canNavigateToSlide = (slideIndex) => {
-    if (!session) return false;
-    return session.unlockedSlides && session.unlockedSlides.includes(slideIndex);
-  };
 
-  const handleSlideChange = (newSlideIndex) => {
-    if (canNavigateToSlide(newSlideIndex)) {
-      setCurrentSlide(newSlideIndex);
-    } else {
-      toast.error('שקופית זו עדיין לא נפתחה על ידי המורה');
-    }
-  };
 
   const handleAnswer = (slideId, answer) => {
     setAnswers(prev => ({ ...prev, [slideId]: answer }));
@@ -282,32 +269,17 @@ const StudentSession = () => {
             )}
           </div>
 
-          {/* Navigation Controls */}
+          {/* Teacher-Controlled Navigation Status */}
           {isConnected && sessionStatus === 'active' && (
             <div className="bg-gray-800/50 border-t border-gray-700 p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <Button
-                    onClick={() => handleSlideChange(currentSlide - 1)}
-                    disabled={currentSlide === 0 || !canNavigateToSlide(currentSlide - 1)}
-                    variant="secondary"
-                    size="sm"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  
-                  <span className="text-sm text-gray-300">
-                    שקופית {currentSlide + 1} מתוך {lesson?.content?.slides?.length || 0}
-                  </span>
-                  
-                  <Button
-                    onClick={() => handleSlideChange(currentSlide + 1)}
-                    disabled={currentSlide >= (lesson?.content?.slides?.length || 0) - 1 || !canNavigateToSlide(currentSlide + 1)}
-                    variant="secondary"
-                    size="sm"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
+                  <div className="flex items-center space-x-2">
+                    <AlertCircle className="w-4 h-4 text-blue-400" />
+                    <span className="text-sm text-gray-300">
+                      המורה שולט בניווט - שקופית {currentSlide + 1} מתוך {lesson?.content?.slides?.length || 0}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="flex items-center space-x-4">

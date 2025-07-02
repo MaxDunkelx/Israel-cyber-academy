@@ -49,7 +49,7 @@ const QuizSlide = ({ slide, onAnswer, answers }) => {
   const isAllAnswered = Object.keys(selectedAnswers).length === content.questions.length;
 
   return (
-    <div className="h-[calc(100vh-120px)] flex flex-col items-center justify-center p-8" style={{ minHeight: '500px' }}>
+    <div className="min-h-screen flex flex-col items-center justify-center p-8">
       <div className="max-w-5xl w-full h-full flex flex-col">
         {/* Title */}
         <div className="text-center mb-8">

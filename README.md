@@ -25,11 +25,13 @@ Israel Cyber Campus is a comprehensive, real-time learning management system des
 - **Progress Tracking** - Monitor learning journey
 - **Real-time Notifications** - Stay updated on live sessions
 
-### 🔄 **Real-time Live Sessions**
-- **Synchronized Learning** - Teacher controls, students follow
+### 🔄 **Teacher-Controlled Live Sessions**
+- **Teacher-Controlled Navigation** - Students cannot navigate independently during live sessions
+- **Lesson Unlocking System** - Teachers unlock lessons for specific classes
 - **Live Session Notifications** - Students notified of active sessions
 - **Session Management** - Create, host, and monitor sessions
 - **Student Monitoring** - Track connected students in real-time
+- **Notes System** - Teachers can add and display notes during sessions
 
 ## 🏗️ System Architecture
 
@@ -128,23 +130,27 @@ Israel Cyber Campus is a comprehensive, real-time learning management system des
 ## 🎮 Live Session System
 
 ### **Teacher Workflow**
-1. **Create Session** - Select class and lesson
-2. **Host Session** - Control slide navigation
-3. **Monitor Students** - Track participation
-4. **Unlock Content** - Progressive content release
-5. **End Session** - Proper session closure
+1. **Unlock Lessons** - Assign lessons to specific classes
+2. **Create Session** - Select class and unlocked lesson
+3. **Host Session** - Control slide navigation (students cannot navigate independently)
+4. **Monitor Students** - Track participation and progress
+5. **Use Notes** - Display teacher notes during sessions
+6. **End Session** - Proper session closure
 
 ### **Student Workflow**
-1. **Receive Notification** - Live session alerts
-2. **Join Session** - One-click participation
-3. **Follow Teacher** - Synchronized navigation
-4. **Participate** - Interactive engagement
-5. **Track Progress** - Real-time updates
+1. **View Assigned Lessons** - Only see lessons unlocked by teacher
+2. **Receive Notification** - Live session alerts
+3. **Join Session** - One-click participation
+4. **Follow Teacher** - No independent navigation during live sessions
+5. **Participate** - Interactive engagement
+6. **Track Progress** - Real-time updates
 
 ### **Real-time Features**
-- **Synchronized Navigation** - Teacher controls, students follow
+- **Teacher-Controlled Navigation** - Students cannot navigate slides independently during live sessions
+- **Lesson Assignment System** - Teachers unlock lessons for specific classes with timestamps
 - **Live Student Monitoring** - Real-time participation tracking
 - **Session Analytics** - Engagement metrics
+- **Teacher Notes System** - Real-time notes display during sessions
 - **Automatic Reconnection** - Network resilience
 
 ## 👥 User Management

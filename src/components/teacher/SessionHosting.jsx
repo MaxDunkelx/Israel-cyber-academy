@@ -21,15 +21,15 @@ import {
   Volume2,
   VolumeX,
   Lock,
-  Unlock,
   AlertTriangle
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { isTeacher, validateTeacherAccess, logSecurityEvent } from '../../utils/security';
-import { getSession, updateSessionSlide, unlockSlide, endSession, listenToSession } from '../../firebase/session-service';
+import { getSession, updateSessionSlide, endSession, listenToSession } from '../../firebase/session-service';
 import { getLessonWithSlides } from '../../firebase/content-service';
 import { getLessonById as getLocalLessonById } from '../../data/lessons';
+import { PresentationSlide, PollSlide, VideoSlide, InteractiveSlide, BreakSlide, ReflectionSlide, QuizSlide } from '../slides';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
@@ -49,6 +49,7 @@ const SessionHosting = () => {
   const [loading, setLoading] = useState(true);
   const [showStudentList, setShowStudentList] = useState(false);
   const [showControls, setShowControls] = useState(true);
+  const [showNotes, setShowNotes] = useState(false);
   const [teacherNotes, setTeacherNotes] = useState({});
   const [sessionDuration, setSessionDuration] = useState(0);
   const [error, setError] = useState(null);
@@ -212,18 +213,7 @@ const SessionHosting = () => {
     }
   };
 
-  const handleUnlockNextSlide = async () => {
-    const nextSlideIndex = currentSlide + 1;
-    if (nextSlideIndex < lesson.content.slides.length) {
-      try {
-        await unlockSlide(sessionId, nextSlideIndex);
-        toast.success(`שקופית ${nextSlideIndex + 1} נפתחה לתלמידים`);
-      } catch (error) {
-        console.error('Error unlocking slide:', error);
-        toast.error('אירעה שגיאה בפתיחת השקופית');
-      }
-    }
-  };
+
 
   const handleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
@@ -237,6 +227,10 @@ const SessionHosting = () => {
   const handleMute = () => {
     setIsMuted(!isMuted);
     toast.success(isMuted ? 'הקול הופעל' : 'הקול הושתק');
+  };
+
+  const handleToggleNotes = () => {
+    setShowNotes(!showNotes);
   };
 
   const handleEndSession = async () => {
@@ -263,6 +257,30 @@ const SessionHosting = () => {
       return `${hours}ש ${remainingMinutes}ד`;
     }
     return `${minutes} דקות`;
+  };
+
+  /**
+   * Render slide based on type using proper slide components
+   */
+  const renderSlide = (slide) => {
+    switch (slide.type) {
+      case 'presentation':
+        return <PresentationSlide slide={slide} />;
+      case 'poll':
+        return <PollSlide slide={slide} />;
+      case 'video':
+        return <VideoSlide slide={slide} />;
+      case 'interactive':
+        return <InteractiveSlide slide={slide} />;
+      case 'break':
+        return <BreakSlide slide={slide} />;
+      case 'reflection':
+        return <ReflectionSlide slide={slide} />;
+      case 'quiz':
+        return <QuizSlide slide={slide} />;
+      default:
+        return <div className="text-white">סוג שקופית לא מוכר: {slide.type}</div>;
+    }
   };
 
   if (error) {
@@ -385,57 +403,16 @@ const SessionHosting = () => {
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col">
           {/* Slide Display */}
-          <div className="flex-1 bg-gray-900 p-4 lg:p-8 flex items-center justify-center relative min-h-0">
-            <div className="w-full max-w-4xl">
-              {lesson && lesson.content && lesson.content.slides && lesson.content.slides[currentSlide] ? (
-                <div className="bg-white rounded-lg shadow-2xl p-8 min-h-96">
-                  <div className="text-center mb-6">
-                    <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                      {lesson.content.slides[currentSlide].title || `שקופית ${currentSlide + 1}`}
-                    </h2>
-                    <p className="text-gray-600 text-sm">
-                      {lesson.title} • שקופית {currentSlide + 1} מתוך {lesson.content.slides.length}
-                    </p>
-                  </div>
-                  
-                  <div className="prose prose-lg max-w-none">
-                    {lesson.content.slides[currentSlide].content && (
-                      <div 
-                        className="text-gray-700"
-                        dangerouslySetInnerHTML={{ 
-                          __html: typeof lesson.content.slides[currentSlide].content === 'string' 
-                            ? lesson.content.slides[currentSlide].content 
-                            : JSON.stringify(lesson.content.slides[currentSlide].content)
-                        }}
-                      />
-                    )}
-                    
-                    {lesson.content.slides[currentSlide].type === 'video' && lesson.content.slides[currentSlide].videoUrl && (
-                      <div className="mt-4">
-                        <video 
-                          className="w-full rounded-lg"
-                          controls
-                          src={lesson.content.slides[currentSlide].videoUrl}
-                        >
-                          Your browser does not support the video tag.
-                        </video>
-                      </div>
-                    )}
-                    
-                    {lesson.content.slides[currentSlide].type === 'quiz' && (
-                      <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                        <h3 className="font-semibold text-blue-800 mb-2">שאלה:</h3>
-                        <p className="text-blue-700">{lesson.content.slides[currentSlide].question}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center text-gray-400">
-                  <p>אין תוכן להצגה</p>
-                </div>
-              )}
-            </div>
+          <div className="flex-1 bg-gray-900 p-8 relative overflow-auto">
+            {lesson && lesson.content && lesson.content.slides && lesson.content.slides[currentSlide] ? (
+              <div className="w-full max-w-4xl mx-auto">
+                {renderSlide(lesson.content.slides[currentSlide])}
+              </div>
+            ) : (
+              <div className="text-center text-gray-400">
+                <p>אין תוכן להצגה</p>
+              </div>
+            )}
 
             {/* Fullscreen Button */}
             <button
@@ -478,17 +455,6 @@ const SessionHosting = () => {
                 >
                   <SkipForward className="w-4 h-4" />
                 </Button>
-
-                <Button
-                  onClick={handleUnlockNextSlide}
-                  disabled={currentSlide === lesson.content.slides.length - 1}
-                  variant="secondary"
-                  size="sm"
-                  className="flex items-center space-x-2"
-                >
-                  <Unlock className="w-4 h-4" />
-                  <span>פתח שקופית הבאה</span>
-                </Button>
               </div>
 
               {/* Audio Controls */}
@@ -499,6 +465,16 @@ const SessionHosting = () => {
                   size="sm"
                 >
                   {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                </Button>
+                
+                <Button
+                  onClick={handleToggleNotes}
+                  variant={showNotes ? "primary" : "secondary"}
+                  size="sm"
+                  className="flex items-center space-x-2"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>הערות</span>
                 </Button>
               </div>
 
@@ -554,11 +530,19 @@ const SessionHosting = () => {
       </div>
 
       {/* Teacher Notes Display */}
-      {currentSlideNote && (
-        <div className="fixed bottom-4 right-4 max-w-md bg-yellow-900/90 backdrop-blur-sm rounded-lg p-4 border border-yellow-700">
-          <div className="flex items-center space-x-2 mb-2">
-            <BookOpen className="w-4 h-4 text-yellow-400" />
-            <span className="text-yellow-400 font-medium text-sm">Teacher Notes</span>
+      {showNotes && currentSlideNote && (
+        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 max-w-md bg-yellow-900/90 backdrop-blur-sm rounded-lg p-4 border border-yellow-700 z-50">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center space-x-2">
+              <BookOpen className="w-4 h-4 text-yellow-400" />
+              <span className="text-yellow-400 font-medium text-sm">הערות מורה</span>
+            </div>
+            <button
+              onClick={handleToggleNotes}
+              className="text-yellow-400 hover:text-yellow-200 transition-colors"
+            >
+              ✕
+            </button>
           </div>
           <p className="text-yellow-200 text-sm">{currentSlideNote}</p>
         </div>

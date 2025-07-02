@@ -117,6 +117,24 @@ const InteractiveLesson = () => {
   }, [currentSlide, lessonId, userProfile, lesson, getLastLessonSlide]);
 
   /**
+   * Check teacher access control before loading lesson
+   */
+  useEffect(() => {
+    if (!userProfile) return;
+    
+    const teacherAssignedLesson = userProfile.currentLesson || 0;
+    const lessonIdNum = parseInt(lessonId);
+    
+    // Check if teacher has unlocked this lesson
+    if (lessonIdNum > teacherAssignedLesson) {
+      setError('השיעור עדיין לא נפתח על ידי המורה');
+      toast.error('השיעור עדיין לא נפתח על ידי המורה');
+      navigate('/student/dashboard');
+      return;
+    }
+  }, [userProfile, lessonId, navigate]);
+
+  /**
    * Initialize lesson data and timer - FIXED for completed lessons
    */
   useEffect(() => {

@@ -37,10 +37,11 @@ The Student UI provides an interactive learning experience for students (ages 10
 - **Session Persistence:** Login state maintained across browser sessions
 
 ### 2. Dashboard Experience
-- **Lesson Discovery:** Browse available cybersecurity lessons
+- **Assigned Lessons:** View only lessons unlocked by teacher for your class
 - **Progress Tracking:** Visual progress indicators for completed lessons
 - **Active Sessions:** Real-time notifications for teacher-led sessions
 - **Quick Access:** Recent lessons and favorite content
+- **Teacher Information:** See your assigned teacher and class details
 
 ### 3. Interactive Learning
 - **Multi-Modal Content:** Presentations, videos, interactive exercises
@@ -178,9 +179,11 @@ const updateStatistics = () => {
 
 #### Features
 - **Real-Time Connection:** WebSocket-based live session participation
-- **Teacher Synchronization:** Follow teacher's slide progression
+- **Teacher-Controlled Navigation:** Cannot navigate slides independently during live sessions
+- **Teacher Synchronization:** Follow teacher's slide progression only
 - **Interactive Participation:** Answer polls, submit responses
 - **Session State:** Visual indicators for session status
+- **No Independent Navigation:** Navigation arrows removed during live sessions
 
 #### Session States
 1. **Waiting:** Waiting for teacher to start session

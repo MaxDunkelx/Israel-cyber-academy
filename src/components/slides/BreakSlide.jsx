@@ -17,8 +17,8 @@ const BreakSlide = ({ slide }) => {
   };
 
   return (
-    <div className="h-[calc(100vh-120px)] flex flex-col items-center justify-center p-8" style={{ minHeight: '500px' }}>
-      <div className="max-w-5xl w-full h-full flex flex-col">
+    <div className="min-h-screen flex flex-col items-center justify-center p-8">
+      <div className="max-w-5xl w-full flex flex-col">
         {/* Title */}
         <div className="text-center mb-8">
           <h2 className="text-4xl font-bold text-white mb-4" style={{ textShadow: '0 4px 8px rgba(0,0,0,0.3)' }}>

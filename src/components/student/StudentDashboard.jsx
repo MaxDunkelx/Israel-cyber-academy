@@ -22,7 +22,7 @@ import LoadingSpinner from '../common/LoadingSpinner';
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [availableSessions, setAvailableSessions] = useState([]);
@@ -36,7 +36,7 @@ const StudentDashboard = () => {
 
   useEffect(() => {
     loadData();
-  }, [currentUser]);
+  }, [currentUser, userProfile]);
 
   const loadData = async () => {
     try {
@@ -46,19 +46,31 @@ const StudentDashboard = () => {
       const sessions = await getStudentAvailableSessions(currentUser.uid);
       setAvailableSessions(sessions);
       
-      // Mock completed lessons data - in real app, this would come from Firebase
-      const mockCompletedLessons = [
-        { id: 1, title: 'מבוא לאבטחת סייבר', completedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), score: 85 },
-        { id: 2, title: 'רכיבי המחשב', completedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), score: 92 }
-      ];
-      setCompletedLessons(mockCompletedLessons);
+      // Get real completed lessons from user profile
+      const realCompletedLessons = [];
+      if (userProfile?.progress) {
+        Object.entries(userProfile.progress).forEach(([lessonId, progress]) => {
+          if (progress.completed && progress.completedAt) {
+            const lesson = lessons.find(l => l.id === parseInt(lessonId));
+            if (lesson) {
+              realCompletedLessons.push({
+                id: parseInt(lessonId),
+                title: lesson.title,
+                completedAt: progress.completedAt,
+                score: progress.score || 0
+              });
+            }
+          }
+        });
+      }
+      setCompletedLessons(realCompletedLessons);
       
-      // Calculate stats
+      // Calculate real stats from user profile
       setStats({
         totalLessons: lessons.length,
-        completedLessons: mockCompletedLessons.length,
+        completedLessons: realCompletedLessons.length,
         activeSessions: sessions.length,
-        totalTimeSpent: 240 // Mock data - 4 hours
+        totalTimeSpent: userProfile?.totalTimeSpent || 0
       });
       
       setLoading(false);
@@ -74,7 +86,12 @@ const StudentDashboard = () => {
   };
 
   const handleContinueLesson = (lessonId) => {
-    navigate(`/student/lesson/${lessonId}`);
+    // Check if student has access to this lesson (teacher unlocked it)
+    if (userProfile?.currentLesson && lessonId <= userProfile.currentLesson) {
+      navigate(`/student/lesson/${lessonId}`);
+    } else {
+      toast.error('השיעור עדיין לא נפתח על ידי המורה');
+    }
   };
 
   const formatSessionDuration = (startTime) => {
@@ -133,6 +150,41 @@ const StudentDashboard = () => {
             </div>
           </Card>
         </div>
+
+        {/* Current Teacher-Assigned Lesson */}
+        <Card variant="dark" className="mb-8">
+          <div className="p-6">
+            <h2 className="text-lg font-bold text-white mb-4 flex items-center space-x-2">
+              <BookOpen className="w-5 h-5" />
+              <span>שיעור נוכחי</span>
+            </h2>
+            
+            <div className="bg-gray-800/50 rounded-lg p-4">
+              {userProfile?.currentLesson ? (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-white font-medium">שיעור {userProfile.currentLesson}</h3>
+                    <p className="text-sm text-gray-400">
+                      הוקצה על ידי המורה • {userProfile.lessonStartDate ? 
+                        `התחיל ב-${new Date(userProfile.lessonStartDate).toLocaleDateString('he-IL')}` : 
+                        'לא התחיל עדיין'
+                      }
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-sm text-green-400">פעיל</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <AlertCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                  <p className="text-gray-400">המורה עדיין לא הקצה שיעור</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Available Sessions */}

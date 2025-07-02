@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../firebase/firebase-config';
 import { 
   Users, 
   BookOpen, 
@@ -32,7 +35,9 @@ import {
   Bell,
   BellOff,
   Volume2,
-  VolumeX
+  VolumeX,
+  Play,
+  Unlock
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -50,6 +55,7 @@ import Button from '../ui/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
 
 const ClassroomInterface = () => {
+  const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState([]);
@@ -146,8 +152,8 @@ const ClassroomInterface = () => {
   };
 
   const listenToActiveSessions = () => {
-    // TODO: Implement real session listening
-    // For now, we'll use empty sessions until real session data is available
+    // Real session listening is implemented in the main useEffect
+    // This function is kept for future enhancements
     setActiveSessions({});
   };
 
@@ -291,6 +297,73 @@ const ClassroomInterface = () => {
     } catch (error) {
       console.error('Error performing student action:', error);
       toast.error('אירעה שגיאה בביצוע הפעולה');
+    }
+  };
+
+  const handleLessonAssignment = async (classId, lessonId) => {
+    try {
+      if (!lessonId) {
+        toast.error('יש לבחור שיעור');
+        return;
+      }
+
+      const currentDate = new Date().toISOString();
+      const classData = classes.find(c => c.id === classId);
+      const existingUnlockedLessons = classData?.unlockedLessons || [];
+
+      // Create new unlocked lesson entry
+      const newUnlockedLesson = {
+        lessonId: lessonId,
+        unlockedAt: currentDate,
+        unlockedBy: currentUser.uid,
+        unlockedByTeacher: currentUser.displayName || currentUser.email
+      };
+
+      // Update class with new lesson assignment and unlocked lessons history
+      const classRef = doc(db, 'classes', classId);
+      await updateDoc(classRef, {
+        currentLesson: lessonId,
+        lessonStartDate: currentDate,
+        lastUpdated: currentDate,
+        unlockedLessons: [...existingUnlockedLessons, newUnlockedLesson]
+      });
+
+      // Update all students in this class to have access to this lesson
+      // This unlocks the lesson for all students in the class permanently
+      const classStudents = students[classId] || [];
+      const updatePromises = classStudents.map(async (student) => {
+        const userRef = doc(db, 'users', student.uid);
+        await updateDoc(userRef, {
+          currentLesson: lessonId, // This unlocks all lessons up to lessonId
+          lastUpdated: currentDate
+        });
+      });
+
+      await Promise.all(updatePromises);
+
+      toast.success(`שיעור ${lessonId} נפתח לכיתה בהצלחה - התלמידים יכולים לגשת לכל השיעורים עד שיעור ${lessonId}`);
+      
+      // Refresh data
+      await loadClassroomData();
+    } catch (error) {
+      console.error('Error assigning lesson:', error);
+      toast.error('אירעה שגיאה בפתיחת השיעור');
+    }
+  };
+
+  const handleStartLessonSession = async (classId) => {
+    try {
+      const classData = classes.find(c => c.id === classId);
+      if (!classData || !classData.currentLesson) {
+        toast.error('יש להקצות שיעור לפני התחלת שיעור');
+        return;
+      }
+
+      // Navigate to session creation with pre-filled lesson
+      navigate(`/teacher/session-creation?classId=${classId}&lessonId=${classData.currentLesson}`);
+    } catch (error) {
+      console.error('Error starting lesson session:', error);
+      toast.error('אירעה שגיאה בהתחלת שיעור');
     }
   };
 
@@ -502,6 +575,205 @@ const ClassroomInterface = () => {
                   <div className="flex items-center space-x-2">
                     <TrendingUp className="w-4 h-4 text-blue-400" />
                     <span className="text-blue-400 text-sm">{stats.progress}% התקדמות</span>
+                  </div>
+                </div>
+
+                                {/* Lesson Assignment Section */}
+                <div className="bg-gray-800/50 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-lg font-semibold text-white flex items-center space-x-2">
+                      <BookOpen className="w-5 h-5" />
+                      <span>ניהול שיעורים</span>
+                    </h4>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-gray-300">
+                        שיעור נוכחי: {classData.currentLesson || 'לא מוגדר'}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    {/* Current Lesson Status */}
+                    <div className="bg-gray-700/50 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-gray-300">שיעור פעיל</span>
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      </div>
+                      <p className="text-white font-medium">
+                        {classData.currentLesson ? `שיעור ${classData.currentLesson}` : 'לא מוגדר'}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {classData.lessonStartDate ? 
+                          `התחיל ב-${new Date(classData.lessonStartDate).toLocaleDateString('he-IL')}` : 
+                          'לא התחיל'
+                        }
+                      </p>
+                      {classData.unlockedLessons && classData.unlockedLessons.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-gray-600">
+                          <p className="text-xs text-green-400">
+                            {classData.unlockedLessons.length} שיעורים נפתחו
+                          </p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {classData.unlockedLessons
+                              .sort((a, b) => a.lessonId - b.lessonId)
+                              .map(unlockedLesson => (
+                                <span 
+                                  key={unlockedLesson.lessonId}
+                                  className="inline-block px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded border border-green-500/30"
+                                >
+                                  {unlockedLesson.lessonId}
+                                </span>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Lesson Assignment Controls */}
+                    <div className="bg-gray-700/50 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-gray-300">פתיחת שיעורים</span>
+                        <Settings className="w-4 h-4 text-gray-400" />
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <select 
+                          className="flex-1 bg-gray-600 text-white text-sm rounded px-2 py-1 border border-gray-500"
+                          value={classData.currentLesson || ''}
+                          onChange={(e) => handleLessonAssignment(classData.id, parseInt(e.target.value))}
+                        >
+                          <option value="">בחר שיעור</option>
+                          {Array.from({ length: 9 }, (_, i) => i + 1).map(lessonId => {
+                            const isUnlocked = classData.unlockedLessons?.some(ul => ul.lessonId === lessonId);
+                            const isCurrentMax = lessonId === classData.currentLesson;
+                            
+                            return (
+                              <option 
+                                key={lessonId} 
+                                value={lessonId}
+                                className={isUnlocked ? 'text-green-400' : 'text-white'}
+                              >
+                                {isUnlocked ? '✅ ' : ''}פתח עד שיעור {lessonId}
+                                {isUnlocked && !isCurrentMax ? ' (כבר נפתח)' : ''}
+                                {isCurrentMax ? ' (נוכחי)' : ''}
+                              </option>
+                            );
+                          })}
+                        </select>
+                        <Button
+                          onClick={() => handleStartLessonSession(classData.id)}
+                          variant="primary"
+                          size="sm"
+                          disabled={!classData.currentLesson}
+                          className="flex items-center space-x-1"
+                        >
+                          <Play className="w-3 h-3" />
+                          <span>התחל שיעור</span>
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-2">
+                        פתיחת שיעור תאפשר לתלמידים לגשת לכל השיעורים עד השיעור שנבחר
+                      </p>
+                    </div>
+
+                    {/* Lesson Progress */}
+                    <div className="bg-gray-700/50 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-gray-300">התקדמות כיתה</span>
+                        <BarChart3 className="w-4 h-4 text-gray-400" />
+                      </div>
+                      <div className="w-full bg-gray-600 rounded-full h-2 mb-2">
+                        <div 
+                          className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${stats.progress}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs text-gray-400">
+                        {stats.progress}% הושלמו • {classData.completedLessons?.length || 0} שיעורים
+                      </p>
+                      {classData.unlockedLessons && classData.unlockedLessons.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-gray-600">
+                          <p className="text-xs text-blue-400">
+                            שיעורים זמינים: {classData.unlockedLessons.length}/9
+                          </p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {Array.from({ length: 9 }, (_, i) => i + 1).map(lessonId => {
+                              const isUnlocked = classData.unlockedLessons?.some(ul => ul.lessonId === lessonId);
+                              return (
+                                <span 
+                                  key={lessonId}
+                                  className={`inline-block w-6 h-6 text-xs rounded flex items-center justify-center border ${
+                                    isUnlocked 
+                                      ? 'bg-green-500/20 text-green-400 border-green-500/30' 
+                                      : 'bg-gray-600/50 text-gray-400 border-gray-500/30'
+                                  }`}
+                                >
+                                  {lessonId}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Unlocked Lessons History */}
+                  <div className="bg-gray-700/50 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h5 className="text-md font-semibold text-white flex items-center space-x-2">
+                        <Unlock className="w-4 h-4" />
+                        <span>שיעורים שנפתחו</span>
+                      </h5>
+                      <span className="text-sm text-gray-300">
+                        {classData.unlockedLessons?.length || 0} שיעורים נפתחו
+                      </span>
+                    </div>
+                    
+                    {classData.unlockedLessons && classData.unlockedLessons.length > 0 ? (
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {classData.unlockedLessons
+                          .sort((a, b) => new Date(b.unlockedAt) - new Date(a.unlockedAt))
+                          .map((unlockedLesson, index) => (
+                            <div
+                              key={`${unlockedLesson.lessonId}-${unlockedLesson.unlockedAt}`}
+                              className="flex items-center justify-between p-3 bg-gray-600/50 rounded-lg border border-gray-500/30"
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center">
+                                  <span className="text-blue-400 font-bold text-sm">
+                                    {unlockedLesson.lessonId}
+                                  </span>
+                                </div>
+                                <div>
+                                  <p className="text-white font-medium">
+                                    שיעור {unlockedLesson.lessonId}
+                                  </p>
+                                  <p className="text-xs text-gray-400">
+                                    נפתח על ידי {unlockedLesson.unlockedByTeacher}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm text-gray-300">
+                                  {new Date(unlockedLesson.unlockedAt).toLocaleDateString('he-IL')}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {new Date(unlockedLesson.unlockedAt).toLocaleTimeString('he-IL', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6">
+                        <Unlock className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                        <p className="text-gray-400">אין שיעורים שנפתחו עדיין</p>
+                        <p className="text-xs text-gray-500 mt-1">השתמש בכפתור למעלה כדי לפתוח שיעורים</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 

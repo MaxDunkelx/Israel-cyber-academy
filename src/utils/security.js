@@ -198,12 +198,8 @@ export const logSecurityEvent = async (eventType, eventData = {}, metadata = {})
       type: eventType,
       timestamp: new Date().toISOString(),
       userAgent: navigator.userAgent,
-      url: window.location.href,
       ...eventData,
-      metadata: {
-        ...metadata,
-        timestamp: serverTimestamp()
-      }
+      ...metadata
     };
 
     // Log to console in development
@@ -216,18 +212,9 @@ export const logSecurityEvent = async (eventType, eventData = {}, metadata = {})
       await addDoc(collection(db, 'security_logs'), securityEvent);
     } catch (firebaseError) {
       console.warn('Failed to log to Firebase:', firebaseError);
+      // Log to console as fallback only
+      console.log('🔒 Security Event (Firebase failed):', securityEvent);
     }
-
-    // Fallback to localStorage
-    const existingLogs = JSON.parse(localStorage.getItem('security_logs') || '[]');
-    existingLogs.push(securityEvent);
-    
-    // Keep only last 1000 events
-    if (existingLogs.length > 1000) {
-      existingLogs.splice(0, existingLogs.length - 1000);
-    }
-    
-    localStorage.setItem('security_logs', JSON.stringify(existingLogs));
 
     // Send to analytics service if available
     if (window.gtag) {
@@ -450,33 +437,7 @@ export const decryptData = (encryptedData, key) => {
   }
 };
 
-/**
- * Get security logs from localStorage
- * Retrieves stored security events
- * 
- * @returns {Array} Array of security events
- */
-export const getSecurityLogs = () => {
-  try {
-    return JSON.parse(localStorage.getItem('security_logs') || '[]');
-  } catch (error) {
-    console.error('Error getting security logs:', error);
-    return [];
-  }
-};
 
-/**
- * Clear security logs from localStorage
- * Removes all stored security events
- */
-export const clearSecurityLogs = () => {
-  try {
-    localStorage.removeItem('security_logs');
-    console.log('Security logs cleared');
-  } catch (error) {
-    console.error('Error clearing security logs:', error);
-  }
-};
 
 /**
  * Validate CSRF token

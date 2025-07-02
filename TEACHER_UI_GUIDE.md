@@ -15,10 +15,12 @@ The Teacher UI provides comprehensive tools for educators to manage classes, hos
 - **Class Creation:** Create new classes and assign students
 - **Attendance Tracking:** Monitor student participation and engagement
 
-### 3. Session Hosting
-- **Live Session Creation:** Start interactive teaching sessions
-- **Real-Time Control:** Guide students through lessons with live synchronization
+### 3. Lesson Management & Session Hosting
+- **Lesson Unlocking:** Assign lessons to specific classes with timestamps
+- **Live Session Creation:** Start interactive teaching sessions with unlocked lessons
+- **Teacher-Controlled Navigation:** Students cannot navigate independently during live sessions
 - **Student Monitoring:** Track student progress and participation in real-time
+- **Notes System:** Add and display teacher notes during sessions
 
 ### 4. Content Management
 - **Lesson Preview:** Review and customize lesson content
@@ -99,15 +101,16 @@ const TeacherDashboard = () => {
 #### Session Configuration Options
 ```javascript
 const sessionConfig = {
-  lessonId: 'lesson1',
+  lessonId: 'lesson1', // Must be unlocked for the class
   classId: 'class123',
   settings: {
-    allowStudentNavigation: false, // Students follow teacher
+    teacherControlledNavigation: true, // Students cannot navigate independently
     enablePolls: true, // Allow interactive polls
     enableChat: false, // Disable student chat
     autoAdvance: false, // Manual slide advancement
     sessionTimeout: 120, // 2 hours max
-    maxStudents: 30
+    maxStudents: 30,
+    showTeacherNotes: true // Display teacher notes during session
   },
   notifications: {
     studentJoin: true, // Notify when students join
