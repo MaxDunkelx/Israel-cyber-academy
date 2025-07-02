@@ -15,7 +15,7 @@ import {
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { getStudentAvailableSessions } from '../../firebase/session-service';
-import { lessons } from '../../data/lessons';
+import { getAllLessons } from '../../firebase/content-service';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
@@ -26,6 +26,7 @@ const StudentDashboard = () => {
   
   const [loading, setLoading] = useState(true);
   const [availableSessions, setAvailableSessions] = useState([]);
+  const [lessons, setLessons] = useState([]);
   const [completedLessons, setCompletedLessons] = useState([]);
   const [stats, setStats] = useState({
     totalLessons: 0,
@@ -42,16 +43,21 @@ const StudentDashboard = () => {
     try {
       setLoading(true);
       
-      // Load available sessions
-      const sessions = await getStudentAvailableSessions(currentUser.uid);
+      // Load available sessions and lessons
+      const [sessions, lessonsData] = await Promise.all([
+        getStudentAvailableSessions(currentUser.uid),
+        getAllLessons()
+      ]);
+      
       setAvailableSessions(sessions);
+      setLessons(lessonsData);
       
       // Get real completed lessons from user profile
       const realCompletedLessons = [];
       if (userProfile?.progress) {
         Object.entries(userProfile.progress).forEach(([lessonId, progress]) => {
           if (progress.completed && progress.completedAt) {
-            const lesson = lessons.find(l => l.id === parseInt(lessonId));
+            const lesson = lessonsData.find(l => l.id === parseInt(lessonId));
             if (lesson) {
               realCompletedLessons.push({
                 id: parseInt(lessonId),
@@ -67,7 +73,7 @@ const StudentDashboard = () => {
       
       // Calculate real stats from user profile
       setStats({
-        totalLessons: lessons.length,
+        totalLessons: lessonsData.length,
         completedLessons: realCompletedLessons.length,
         activeSessions: sessions.length,
         totalTimeSpent: userProfile?.totalTimeSpent || 0
@@ -85,12 +91,39 @@ const StudentDashboard = () => {
     navigate(`/student/session/${sessionId}`);
   };
 
-  const handleContinueLesson = (lessonId) => {
-    // Check if student has access to this lesson (teacher unlocked it)
-    if (userProfile?.currentLesson && lessonId <= userProfile.currentLesson) {
-      navigate(`/student/lesson/${lessonId}`);
-    } else {
-      toast.error('השיעור עדיין לא נפתח על ידי המורה');
+  const handleContinueLesson = async (lessonId) => {
+    try {
+      const { doc, getDoc } = await import('firebase/firestore');
+      const { db } = await import('../../firebase/firebase-config');
+      
+      const userRef = doc(db, 'users', currentUser.uid);
+      const userDoc = await getDoc(userRef);
+      
+      if (userDoc.exists()) {
+        const freshUserData = userDoc.data();
+        const teacherAssignedLesson = freshUserData.currentLesson || 0;
+        
+        if (lessonId <= teacherAssignedLesson) {
+          navigate(`/student/lesson/${lessonId}`);
+        } else {
+          toast.error('השיעור עדיין לא נפתח על ידי המורה');
+        }
+      } else {
+        // Fall back to cached profile
+        if (userProfile?.currentLesson && lessonId <= userProfile.currentLesson) {
+          navigate(`/student/lesson/${lessonId}`);
+        } else {
+          toast.error('השיעור עדיין לא נפתח על ידי המורה');
+        }
+      }
+    } catch (error) {
+      console.error('Error checking lesson access:', error);
+      // Fall back to cached profile
+      if (userProfile?.currentLesson && lessonId <= userProfile.currentLesson) {
+        navigate(`/student/lesson/${lessonId}`);
+      } else {
+        toast.error('השיעור עדיין לא נפתח על ידי המורה');
+      }
     }
   };
 

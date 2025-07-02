@@ -41,7 +41,7 @@ import LoadingSpinner from '../common/LoadingSpinner';
 import { getSession, updateSessionSlide, endSession } from '../../firebase/session-service';
 import { getTeacherNotesForLesson } from '../../firebase/teacher-service';
 import { getLessonWithSlides } from '../../firebase/content-service';
-import { getLessonById as getLocalLessonById } from '../../data/lessons';
+// Removed local data import - using only Firebase database
 
 const LessonController = () => {
   const { sessionId } = useParams();
@@ -104,7 +104,7 @@ const LessonController = () => {
       setSession(sessionData);
       setCurrentSlide(sessionData.currentSlide || 0);
       
-      // Load lesson data from Firebase first
+      // Load lesson data from Firebase database only
       let lessonData = null;
       try {
         lessonData = await getLessonWithSlides(sessionData.lessonId);
@@ -114,11 +114,13 @@ const LessonController = () => {
             content: { slides: lessonData.slides }
           };
         } else {
-          throw new Error('No slides found in Firebase');
+          throw new Error('No slides found in database');
         }
       } catch (e) {
-        // Fallback to local data
-        lessonData = getLocalLessonById(sessionData.lessonId);
+        console.error('Failed to load lesson from database:', e);
+        toast.error('שגיאה בטעינת השיעור מהמסד נתונים');
+        navigate('/teacher/dashboard');
+        return;
       }
       setLesson(lessonData);
       

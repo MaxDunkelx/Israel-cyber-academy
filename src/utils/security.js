@@ -437,35 +437,33 @@ export const decryptData = (encryptedData, key) => {
   }
 };
 
-
-
 /**
  * Validate CSRF token
- * Basic CSRF token validation
+ * Secure CSRF token validation using sessionStorage
  * 
  * @param {string} token - Token to validate
  * @returns {boolean} True if token is valid
  */
 export const validateCSRFToken = (token) => {
-  const storedToken = localStorage.getItem('csrf_token');
+  const storedToken = sessionStorage.getItem('csrf_token');
   return token === storedToken;
 };
 
 /**
  * Generate CSRF token
- * Creates a new CSRF token
+ * Creates a new CSRF token with enhanced security
  * 
  * @returns {string} Generated CSRF token
  */
 export const generateCSRFToken = () => {
-  const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
-  localStorage.setItem('csrf_token', token);
+  const token = generateSecureRandomString(32);
+  sessionStorage.setItem('csrf_token', token);
   return token;
 };
 
 /**
  * Rate limiting utility
- * Simple rate limiting for API calls
+ * Enhanced rate limiting with better security
  * 
  * @param {string} key - Rate limit key
  * @param {number} maxRequests - Maximum requests allowed
@@ -474,7 +472,7 @@ export const generateCSRFToken = () => {
  */
 export const checkRateLimit = (key, maxRequests = 10, windowMs = 60000) => {
   const now = Date.now();
-  const requests = JSON.parse(localStorage.getItem(`rate_limit_${key}`) || '[]');
+  const requests = JSON.parse(sessionStorage.getItem(`rate_limit_${key}`) || '[]');
   
   // Remove old requests outside the window
   const validRequests = requests.filter(time => now - time < windowMs);
@@ -485,7 +483,7 @@ export const checkRateLimit = (key, maxRequests = 10, windowMs = 60000) => {
   
   // Add current request
   validRequests.push(now);
-  localStorage.setItem(`rate_limit_${key}`, JSON.stringify(validRequests));
+  sessionStorage.setItem(`rate_limit_${key}`, JSON.stringify(validRequests));
   
   return true;
 };
@@ -497,7 +495,7 @@ export const checkRateLimit = (key, maxRequests = 10, windowMs = 60000) => {
  * @param {string} key - Rate limit key to clear
  */
 export const clearRateLimit = (key) => {
-  localStorage.removeItem(`rate_limit_${key}`);
+  sessionStorage.removeItem(`rate_limit_${key}`);
 };
 
 /**

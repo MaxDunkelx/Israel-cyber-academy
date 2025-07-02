@@ -308,7 +308,7 @@ export const AuthProvider = ({ children }) => {
    * Tracks user progress through lessons, exercises, and slide engagement.
    * Manages lesson completion, scoring, and automatic lesson unlocking.
    * 
-   * @param {number} lessonId - ID of the lesson
+   * @param {number} lessonId - Lesson number (originalId), NOT Firestore ID
    * @param {boolean} completed - Whether the lesson is completed
    * @param {number} score - User's score (0-100)
    * @param {boolean} temporary - Whether this is temporary progress (for auto-save)
@@ -489,7 +489,7 @@ export const AuthProvider = ({ children }) => {
    * Records which specific slides/pages a user has engaged with.
    * Used for analytics and to ensure users don't skip content.
    * 
-   * @param {number} lessonId - ID of the lesson
+   * @param {number} lessonId - Lesson number (originalId), NOT Firestore ID
    * @param {string} slideId - ID of the specific slide
    */
   const trackSlideEngagement = async (lessonId, slideId) => {
@@ -746,8 +746,8 @@ export const AuthProvider = ({ children }) => {
   /**
    * Get last slide for resume functionality
    * 
-   * @param {number} lessonId - ID of the lesson
-   * @returns {number} Last slide index (0-based)
+   * @param {number} lessonId - Lesson number (originalId), NOT Firestore ID
+   * @returns {number} Last slide index
    */
   const getLastLessonSlide = (lessonId) => {
     const lastSlide = userProfile?.progress?.[lessonId]?.lastSlide ?? 0;
@@ -758,7 +758,7 @@ export const AuthProvider = ({ children }) => {
   /**
    * Set last slide for resume functionality
    * 
-   * @param {number} lessonId - ID of the lesson
+   * @param {number} lessonId - Lesson number (originalId), NOT Firestore ID
    * @param {number} slideIndex - Slide index to save (0-based)
    */
   const setLastLessonSlide = async (lessonId, slideIndex) => {

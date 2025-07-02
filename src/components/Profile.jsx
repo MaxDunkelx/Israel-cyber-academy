@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { lessons } from '../data/lessons';
+import { getAllLessons } from '../firebase/content-service';
 import { 
   User, 
   Mail, 
@@ -75,6 +75,8 @@ const Profile = () => {
     confirmPassword: ''
   });
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [lessons, setLessons] = useState([]);
+  const [freshCurrentLesson, setFreshCurrentLesson] = useState(userProfile?.currentLesson || 1);
   
   const navigate = useNavigate();
 
@@ -115,6 +117,48 @@ const Profile = () => {
       setSelectedEmoji(userProfile.emoji || '😀');
     }
   }, [userProfile]);
+
+  // Load lessons from Firebase
+  useEffect(() => {
+    const loadLessons = async () => {
+      try {
+        const lessonsData = await getAllLessons();
+        setLessons(lessonsData);
+      } catch (error) {
+        console.error('Error loading lessons:', error);
+        toast.error('שגיאה בטעינת השיעורים');
+      }
+    };
+    
+    loadLessons();
+  }, []);
+
+  // Refresh currentLesson from database
+  useEffect(() => {
+    if (!currentUser) return;
+    
+    const refreshCurrentLesson = async () => {
+      try {
+        const { doc, getDoc } = await import('firebase/firestore');
+        const { db } = await import('../firebase/firebase-config');
+        
+        const userRef = doc(db, 'users', currentUser.uid);
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists()) {
+          const freshUserData = userDoc.data();
+          setFreshCurrentLesson(freshUserData.currentLesson || 1);
+        }
+      } catch (error) {
+        console.error('Error refreshing currentLesson:', error);
+      }
+    };
+    
+    refreshCurrentLesson();
+    const interval = setInterval(refreshCurrentLesson, 10000);
+    
+    return () => clearInterval(interval);
+  }, [currentUser]);
 
   // Fetch teacher information for students
   useEffect(() => {
@@ -696,7 +740,7 @@ const Profile = () => {
         <div className="space-y-4">
           {lessons.map((lesson) => {
             const isCompleted = getCompletedLessons().includes(lesson.id);
-            const isAvailable = lesson.id <= (userProfile.currentLesson || 1);
+            const isAvailable = lesson.id <= freshCurrentLesson;
             const progress = userProfile.progress?.[lesson.id];
             
             return (

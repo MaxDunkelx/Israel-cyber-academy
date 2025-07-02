@@ -26,8 +26,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getLessonWithSlides } from '../firebase/content-service';
-import { getLessonById as getLocalLessonById, getNextLesson } from '../data/lessons';
+import { getLessonWithSlides, getNextLesson } from '../firebase/content-service';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -109,7 +108,7 @@ const InteractiveLesson = () => {
     if (import.meta.env.DEV) {
       console.log(`🎯 Current slide: ${currentSlide} (Lesson ${lessonId})`);
       if (userProfile && lesson) {
-        const savedSlide = getLastLessonSlide(lesson.id);
+        const savedSlide = getLastLessonSlide(lesson.originalId);
         console.log(`💾 Saved slide position: ${savedSlide}`);
         console.log(`✅ Lesson completed: ${isCompletedLesson.current}`);
       }
@@ -122,17 +121,44 @@ const InteractiveLesson = () => {
   useEffect(() => {
     if (!userProfile) return;
     
-    const teacherAssignedLesson = userProfile.currentLesson || 0;
-    const lessonIdNum = parseInt(lessonId);
+    const checkTeacherAccess = async () => {
+      try {
+        const { doc, getDoc } = await import('firebase/firestore');
+        const { db } = await import('../firebase/firebase-config');
+        
+        const userRef = doc(db, 'users', currentUser.uid);
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists()) {
+          const freshUserData = userDoc.data();
+          const teacherAssignedLesson = freshUserData.currentLesson || 0;
+          const lessonIdNum = parseInt(lessonId);
+          
+          // Check if teacher has unlocked this lesson
+          if (lessonIdNum > teacherAssignedLesson) {
+            setError('השיעור עדיין לא נפתח על ידי המורה');
+            toast.error('השיעור עדיין לא נפתח על ידי המורה');
+            navigate('/student/dashboard');
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error checking teacher access:', error);
+        // Fall back to cached profile
+        const teacherAssignedLesson = userProfile.currentLesson || 0;
+        const lessonIdNum = parseInt(lessonId);
+        
+        if (lessonIdNum > teacherAssignedLesson) {
+          setError('השיעור עדיין לא נפתח על ידי המורה');
+          toast.error('השיעור עדיין לא נפתח על ידי המורה');
+          navigate('/student/dashboard');
+          return;
+        }
+      }
+    };
     
-    // Check if teacher has unlocked this lesson
-    if (lessonIdNum > teacherAssignedLesson) {
-      setError('השיעור עדיין לא נפתח על ידי המורה');
-      toast.error('השיעור עדיין לא נפתח על ידי המורה');
-      navigate('/student/dashboard');
-      return;
-    }
-  }, [userProfile, lessonId, navigate]);
+    checkTeacherAccess();
+  }, [userProfile, lessonId, navigate, currentUser]);
 
   /**
    * Initialize lesson data and timer - FIXED for completed lessons
@@ -155,13 +181,8 @@ const InteractiveLesson = () => {
           throw new Error('No slides found in Firebase');
         }
       } catch (e) {
-        // Fallback to local data
-        const localLesson = getLocalLessonById(parseInt(lessonId));
-        if (localLesson) {
-          if (isMounted) setLesson(localLesson);
-        } else {
-          if (isMounted) setError('השיעור לא נמצא');
-        }
+        console.error('Failed to load lesson from database:', e);
+        if (isMounted) setError('שגיאה בטעינת השיעור מהמסד נתונים');
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -179,7 +200,7 @@ const InteractiveLesson = () => {
     const currentSlideData = lesson.content.slides[currentSlide];
     if (currentSlideData && currentSlideData.id) {
       // Track this slide as engaged
-      trackSlideEngagement(lesson.id, currentSlideData.id);
+      trackSlideEngagement(lesson.originalId, currentSlideData.id);
       
       // Log slide engagement for session monitoring
       const timeSpent = Math.floor((Date.now() - slideStartTime) / 1000);
@@ -190,7 +211,7 @@ const InteractiveLesson = () => {
       
       // Save slide progress only if it changed and lesson is not completed
       if (currentSlide !== lastSavedSlide.current && !isCompletedLesson.current) {
-        setLastLessonSlide(lesson.id, currentSlide);
+        setLastLessonSlide(lesson.originalId, currentSlide);
         lastSavedSlide.current = currentSlide;
       }
       
@@ -341,7 +362,7 @@ const InteractiveLesson = () => {
       return;
     }
 
-    console.log('🎯 Starting lesson completion for lesson:', lesson.id);
+    console.log('🎯 Starting lesson completion for lesson:', lesson.originalId);
 
     // Add final slide time
     const slideTime = Math.floor((Date.now() - slideStartTime) / 1000);
@@ -352,11 +373,11 @@ const InteractiveLesson = () => {
     
     // Ensure all slides are marked as engaged
     allSlideIds.forEach(slideId => {
-      trackSlideEngagement(lesson.id, slideId);
+      trackSlideEngagement(lesson.originalId, slideId);
     });
     
     // Log lesson completion
-    logLessonCompletion(lesson.id, finalTimeStudied, finalTimeStudied);
+    logLessonCompletion(lesson.originalId, finalTimeStudied, finalTimeStudied);
     
     // Export session data for analytics
     const sessionData = exportSessionData();
@@ -364,7 +385,7 @@ const InteractiveLesson = () => {
     
     // Log comprehensive completion summary
     console.log('🎉 LESSON COMPLETION SUMMARY:', {
-      lessonId: lesson.id,
+      lessonId: lesson.originalId,
       lessonTitle: lesson.title,
       totalSlides: lesson.content.slides.length,
       slidesEngaged: allSlideIds.length,
@@ -383,12 +404,12 @@ const InteractiveLesson = () => {
       console.log('💾 Saving lesson progress...');
       
       // Save progress with completion status and all slides engaged
-      await updateUserProgress(lesson.id, true, finalTimeStudied, false, currentSlide, null, allSlideIds);
+      await updateUserProgress(lesson.originalId, true, finalTimeStudied, false, currentSlide, null, allSlideIds);
       
       console.log('✅ Progress saved successfully');
       
       // Find next lesson before showing animation
-      const nextLesson = getNextLesson(lesson.id);
+      const nextLesson = await getNextLesson(lesson.originalId);
       console.log('📚 Next lesson found:', nextLesson);
       
       // Show celebration animation
@@ -401,7 +422,7 @@ const InteractiveLesson = () => {
           console.log('🧭 Starting navigation to roadmap...');
           
           // Navigate to roadmap with unlock animation param
-          const navigateUrl = nextLesson ? `/roadmap?unlocked=${nextLesson.id}` : '/roadmap';
+          const navigateUrl = nextLesson ? `/roadmap?unlocked=${nextLesson.originalId}` : '/roadmap';
           console.log('🧭 Navigating to:', navigateUrl);
           
           // Force navigation with replace to ensure it works
@@ -420,9 +441,9 @@ const InteractiveLesson = () => {
       toast.error('שגיאה בשמירת ההתקדמות');
       
       // Still try to navigate even if save failed
-      setTimeout(() => {
-        const nextLesson = getNextLesson(lesson.id);
-        const navigateUrl = nextLesson ? `/roadmap?unlocked=${nextLesson.id}` : '/roadmap';
+      setTimeout(async () => {
+        const nextLesson = await getNextLesson(lesson.originalId);
+        const navigateUrl = nextLesson ? `/roadmap?unlocked=${nextLesson.originalId}` : '/roadmap';
         navigate(navigateUrl, { replace: true });
       }, 1000);
     }

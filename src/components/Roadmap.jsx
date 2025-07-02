@@ -27,7 +27,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useUserProfile } from '../hooks/useAuth';
-import { lessons } from '../data/lessons';
+import { getAllLessons } from '../firebase/content-service';
 import { 
   Lock, 
   Unlock, 
@@ -156,11 +156,12 @@ const getLessonIcon = (lessonId) => {
  */
 const Roadmap = () => {
   const navigate = useNavigate();
-  const { userProfile } = useAuth();
+  const { userProfile, currentUser } = useAuth();
   const { displayName, role } = useUserProfile();
   const location = useLocation();
   
   // Component state management
+  const [lessons, setLessons] = useState([]);
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [lastLesson, setLastLesson] = useState(null);
   const [newlyUnlockedLessons, setNewlyUnlockedLessons] = useState(new Set());
@@ -168,30 +169,110 @@ const Roadmap = () => {
   const [showUnlock, setShowUnlock] = useState(false);
   const [unlockedLessonId, setUnlockedLessonId] = useState(null);
   const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+  const [refreshedProfile, setRefreshedProfile] = useState(null);
 
-  // Debug lessons data
+  // Load lessons from Firebase
   useEffect(() => {
-    console.log('📚 Roadmap: Lessons data loaded:', {
-      lessonsCount: lessons?.length || 0,
-      lessons: lessons?.slice(0, 3).map(l => ({ id: l.id, title: l.title, hasContent: !!l.content, hasSlides: !!l.content?.slides })) || [],
-      firstLesson: lessons?.[0] || null
-    });
+    const loadLessons = async () => {
+      try {
+        const lessonsData = await getAllLessons();
+        
+        // Sort lessons by originalId to ensure proper order (1, 2, 3, ..., 19)
+        const sortedLessons = lessonsData?.sort((a, b) => {
+          const aId = a.originalId || parseInt(a.id) || 0;
+          const bId = b.originalId || parseInt(b.id) || 0;
+          return aId - bId;
+        }) || [];
+        
+        setLessons(sortedLessons);
+        console.log('📚 Roadmap: Lessons data loaded and sorted:', {
+          lessonsCount: sortedLessons?.length || 0,
+          lessons: sortedLessons?.slice(0, 3).map(l => ({ 
+            originalId: l.originalId, 
+            id: l.id, 
+            title: l.title, 
+            hasContent: !!l.content, 
+            hasSlides: !!l.content?.slides 
+          })) || [],
+          firstLesson: sortedLessons?.[0] || null,
+          order: sortedLessons?.map(l => l.originalId || l.id).join(', ') || 'none'
+        });
+      } catch (error) {
+        console.error('Error loading lessons:', error);
+        toast.error('שגיאה בטעינת השיעורים');
+      }
+    };
+    
+    loadLessons();
   }, []);
 
-  // Debug user profile
+  // Simple refresh of currentLesson from database
   useEffect(() => {
-    console.log('👤 Roadmap: User profile state:', {
-      userProfile: userProfile ? {
-        displayName: userProfile.displayName,
-        role: userProfile.role,
-        currentLesson: userProfile.currentLesson,
-        completedLessons: userProfile.completedLessons,
-        progress: userProfile.progress ? Object.keys(userProfile.progress) : null
-      } : null,
-      hasUserProfile: !!userProfile,
-      profileKeys: userProfile ? Object.keys(userProfile) : []
-    });
-  }, [userProfile]);
+    if (!currentUser || role !== 'student') return;
+
+    const refreshCurrentLesson = async () => {
+      try {
+        console.log('🔄 Refreshing currentLesson from database...');
+        const { doc, getDoc } = await import('firebase/firestore');
+        const { db } = await import('../firebase/firebase-config');
+        
+        const userRef = doc(db, 'users', currentUser.uid);
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists()) {
+          const freshUserData = userDoc.data();
+          console.log('📥 Fresh user data:', {
+            currentLesson: freshUserData.currentLesson,
+            displayName: freshUserData.displayName
+          });
+          setRefreshedProfile(freshUserData);
+          
+          // Show notification if teacher unlocked new lessons
+          if (userProfile && freshUserData.currentLesson > userProfile.currentLesson) {
+            const newlyUnlocked = freshUserData.currentLesson - userProfile.currentLesson;
+            toast.success(`המורה פתח ${newlyUnlocked} שיעורים חדשים!`);
+          }
+        } else {
+          console.log('❌ User document not found');
+        }
+      } catch (error) {
+        console.error('Error refreshing currentLesson:', error);
+      }
+    };
+
+    // Refresh immediately and then every 10 seconds
+    refreshCurrentLesson();
+    const interval = setInterval(refreshCurrentLesson, 10000);
+    
+    // Also refresh after 1 second to make sure we get fresh data
+    const immediateRefresh = setTimeout(refreshCurrentLesson, 1000);
+    
+    return () => {
+      clearInterval(interval);
+      clearTimeout(immediateRefresh);
+    };
+  }, [currentUser, role]); // Removed userProfile dependency to prevent re-running
+
+      // Debug user profile (development only)
+    useEffect(() => {
+      if (import.meta.env.DEV) {
+        console.log('👤 Roadmap: User profile state:', {
+          userProfile: userProfile ? {
+            displayName: userProfile.displayName,
+            role: userProfile.role,
+            currentLesson: userProfile.currentLesson,
+            completedLessons: userProfile.completedLessons,
+            progress: userProfile.progress ? Object.keys(userProfile.progress) : null
+          } : null,
+          refreshedProfile: refreshedProfile ? {
+            currentLesson: refreshedProfile.currentLesson,
+            classId: refreshedProfile.classId
+          } : null,
+          hasUserProfile: !!userProfile,
+          profileKeys: userProfile ? Object.keys(userProfile) : []
+        });
+      }
+    }, [userProfile, refreshedProfile]);
 
   /**
    * Find the last lesson with progress for resume functionality
@@ -220,40 +301,67 @@ const Roadmap = () => {
   /**
    * Determine lesson status based on user progress
    * 
-   * @param {number} lessonId - ID of the lesson to check
+   * @param {string} lessonId - Firestore ID of the lesson to check
    * @returns {string} Lesson status: 'locked', 'available', or 'completed'
    */
   const getLessonStatus = useCallback((lessonId) => {
-    if (!userProfile) return 'locked';
+    // Always try to get fresh data first, then fall back to cached
+    const activeProfile = refreshedProfile || userProfile;
+    if (!activeProfile) {
+      console.log(`❌ No profile data available for lesson ${lessonId}`);
+      return 'locked';
+    }
     
-    const completedLessons = userProfile.completedLessons || [];
-    const teacherAssignedLesson = userProfile.currentLesson || 0; // Teacher controls access
+    // Find the lesson to get its originalId (lesson number)
+    const lesson = lessons?.find(l => l.id === lessonId);
+    if (!lesson) {
+      console.log(`⚠️ Lesson not found for ID: ${lessonId}`);
+      return 'locked';
+    }
     
-    // Debug logging for lesson status
-    if (lessonId <= 3) { // Only log for first 3 lessons to avoid spam
-      console.log(`🔍 Lesson ${lessonId} status check:`, {
-        completedLessons,
+    const lessonNumber = lesson.originalId || parseInt(lessonId);
+    const completedLessons = activeProfile.completedLessons || [];
+    const teacherAssignedLesson = activeProfile.currentLesson || 0;
+    
+    // Debug logging for lesson status (development only)
+    if (import.meta.env.DEV && lessonNumber <= 3) {
+      // Ensure completedLessons is always an array for debug logging
+      const completedLessonsArray = Array.isArray(completedLessons) ? completedLessons : [];
+      console.log(`🔍 Lesson ${lessonNumber} (${lessonId}) status check:`, {
+        completedLessons: completedLessonsArray,
         teacherAssignedLesson,
-        isCompleted: completedLessons.includes(lessonId),
-        isTeacherUnlocked: lessonId <= teacherAssignedLesson,
-        status: completedLessons.includes(lessonId) ? 'completed' : 
-                lessonId <= teacherAssignedLesson ? 'available' : 'locked'
+        isCompleted: completedLessonsArray.includes(lessonNumber),
+        isTeacherUnlocked: lessonNumber <= teacherAssignedLesson,
+        status: completedLessonsArray.includes(lessonNumber) ? 'completed' : 
+                lessonNumber <= teacherAssignedLesson ? 'available' : 'locked',
+        usingRefreshedProfile: !!refreshedProfile,
+        activeProfileSource: refreshedProfile ? 'refreshed' : 'cached',
+        completedLessonsLength: completedLessonsArray.length,
+        profileDisplayName: activeProfile.displayName
       });
     }
     
-    // Check if lesson is completed
-    if (completedLessons.includes(lessonId)) {
+    // Check if lesson is completed (either in completedLessons array or progress shows completed)
+    // Ensure completedLessons is always an array
+    const completedLessonsArray = Array.isArray(completedLessons) ? completedLessons : [];
+    const isCompleted = completedLessonsArray.includes(lessonNumber) || 
+                       (activeProfile.progress && activeProfile.progress[lessonNumber] && activeProfile.progress[lessonNumber].completed);
+    
+    if (isCompleted) {
+      console.log(`✅ Lesson ${lessonNumber} (${lessonId}) is completed`);
       return 'completed';
     }
     
     // Check if teacher has unlocked this lesson
-    if (lessonId <= teacherAssignedLesson) {
+    if (lessonNumber <= teacherAssignedLesson) {
+      console.log(`🔓 Lesson ${lessonNumber} (${lessonId}) is available (teacher unlocked up to lesson ${teacherAssignedLesson})`);
       return 'available';
     }
     
     // Lesson is locked until teacher unlocks it
+    console.log(`🔒 Lesson ${lessonNumber} (${lessonId}) is locked (teacher only unlocked up to lesson ${teacherAssignedLesson})`);
     return 'locked';
-  }, [userProfile]);
+  }, [userProfile, refreshedProfile, lessons]);
 
   /**
    * Calculate overall progress percentage
@@ -261,10 +369,13 @@ const Roadmap = () => {
    * @returns {number} Percentage of completed lessons (0-100)
    */
   const getProgressPercentage = useCallback(() => {
-    if (!userProfile || !lessons || !Array.isArray(lessons) || lessons.length === 0) return 0;
-    const completedLessons = userProfile.completedLessons || [];
-    return Math.round((completedLessons.length / lessons.length) * 100);
-  }, [userProfile]);
+    const activeProfile = refreshedProfile || userProfile;
+    if (!activeProfile || !lessons || !Array.isArray(lessons) || lessons.length === 0) return 0;
+    const completedLessons = activeProfile.completedLessons || [];
+    // Ensure completedLessons is always an array
+    const completedLessonsArray = Array.isArray(completedLessons) ? completedLessons : [];
+    return Math.round((completedLessonsArray.length / lessons.length) * 100);
+  }, [userProfile, refreshedProfile]);
 
   /**
    * Get total time spent from user profile
@@ -272,9 +383,10 @@ const Roadmap = () => {
    * @returns {number} Total minutes spent learning
    */
   const getTotalTimeSpent = useCallback(() => {
-    if (!userProfile) return 0;
-    return userProfile.totalTimeSpent || 0;
-  }, [userProfile]);
+    const activeProfile = refreshedProfile || userProfile;
+    if (!activeProfile) return 0;
+    return activeProfile.totalTimeSpent || 0;
+  }, [userProfile, refreshedProfile]);
 
   /**
    * Get total pages engaged from user profile
@@ -282,9 +394,10 @@ const Roadmap = () => {
    * @returns {number} Total pages engaged
    */
   const getTotalPagesEngaged = useCallback(() => {
-    if (!userProfile) return 0;
-    return userProfile.totalPagesEngaged || 0;
-  }, [userProfile]);
+    const activeProfile = refreshedProfile || userProfile;
+    if (!activeProfile) return 0;
+    return activeProfile.totalPagesEngaged || 0;
+  }, [userProfile, refreshedProfile]);
 
   /**
    * Get user achievements
@@ -292,9 +405,10 @@ const Roadmap = () => {
    * @returns {Array} Array of achievement IDs
    */
   const getUserAchievements = useCallback(() => {
-    if (!userProfile) return [];
-    return userProfile.achievements || [];
-  }, [userProfile]);
+    const activeProfile = refreshedProfile || userProfile;
+    if (!activeProfile) return [];
+    return activeProfile.achievements || [];
+  }, [userProfile, refreshedProfile]);
 
   /**
    * Handle lesson click navigation
@@ -352,13 +466,28 @@ const Roadmap = () => {
   /**
    * Get last slide for a lesson
    * 
-   * @param {number} lessonId - Lesson ID
+   * @param {string} lessonId - Lesson Firestore ID
    * @returns {number} Last slide index
    */
   const getLastSlide = useCallback((lessonId) => {
-    if (!userProfile?.progress?.[lessonId]) return 0;
-    return userProfile.progress[lessonId].lastSlide || 0;
-  }, [userProfile]);
+    // Find the lesson to get its originalId (lesson number)
+    const lesson = lessons?.find(l => l.id === lessonId);
+    if (!lesson) {
+      console.log(`⚠️ Lesson not found for ID: ${lessonId}`);
+      return 0;
+    }
+    
+    // Use originalId (lesson number) to access progress
+    const lessonNumber = lesson.originalId || parseInt(lessonId);
+    if (!userProfile?.progress?.[lessonNumber]) {
+      console.log(`⚠️ No progress found for lesson ${lessonNumber} (Firestore ID: ${lessonId})`);
+      return 0;
+    }
+    
+    const lastSlide = userProfile.progress[lessonNumber].lastSlide || 0;
+    console.log(`📊 Last slide for lesson ${lessonNumber} (${lessonId}): ${lastSlide}`);
+    return lastSlide;
+  }, [userProfile, lessons]);
 
   // Handle window resize
   useEffect(() => {
@@ -465,7 +594,7 @@ const Roadmap = () => {
                   <div className="relative flex flex-col items-center text-center">
                     <Trophy className="h-14 w-14 text-yellow-500 mb-4 group-hover:scale-110 transition-transform" />
                     <div className="text-4xl font-bold text-white mb-3">
-                      {userProfile?.completedLessons?.length || 0}
+                      {Array.isArray(userProfile?.completedLessons) ? userProfile.completedLessons.length : 0}
                     </div>
                     <div className="text-base text-green-400 font-mono">
                       שיעורים הושלמו
@@ -525,7 +654,7 @@ const Roadmap = () => {
               </div>
               
               <p className="text-center text-green-400 text-base font-mono">
-                {'>'} התקדמות כללית: {getProgressPercentage()}% ({userProfile?.completedLessons?.length || 0} מתוך {lessons?.length || 0} שיעורים)
+                {'>'} התקדמות כללית: {getProgressPercentage()}% ({Array.isArray(userProfile?.completedLessons) ? userProfile.completedLessons.length : 0} מתוך {lessons?.length || 0} שיעורים)
               </p>
             </motion.div>
           </div>
@@ -549,9 +678,9 @@ const Roadmap = () => {
               const lastSlide = getLastSlide(lesson.id);
               const LessonIcon = getLessonIcon(lesson.id);
               
-              // Debug lesson structure
-              if (!lesson.content || !lesson.content.slides) {
-                console.warn('⚠️ Lesson missing content or slides:', lesson.id, lesson);
+              // Debug lesson structure (development only)
+              if (import.meta.env.DEV && !lesson.totalSlides) {
+                console.log(`📊 Lesson ${lesson.id} has ${lesson.totalSlides || 0} slides in database`);
               }
               
               return (
@@ -604,9 +733,14 @@ const Roadmap = () => {
 
                     {/* Lesson Info */}
                     <div className="relative space-y-4">
-                      <h3 className="text-xl font-bold text-white group-hover:text-green-300 transition-colors">
-                        {lesson.title || 'שיעור ללא כותרת'}
-                      </h3>
+                      <div className="flex items-center gap-3">
+                        <div className="bg-green-500/20 text-green-400 px-3 py-1 rounded-lg text-sm font-mono border border-green-500/30">
+                          שיעור {lesson.originalId || lesson.id}
+                        </div>
+                        <h3 className="text-xl font-bold text-white group-hover:text-green-300 transition-colors">
+                          {lesson.title || 'שיעור ללא כותרת'}
+                        </h3>
+                      </div>
                       <p className="text-gray-300 text-sm line-clamp-2">
                         {lesson.description || 'תיאור לא זמין'}
                       </p>
@@ -622,7 +756,7 @@ const Roadmap = () => {
                         <div className="mt-6">
                           <div className="flex justify-between text-sm text-gray-300 mb-2">
                             <span className="font-mono">התקדמות</span>
-                            <span className="font-mono">{lastSlide + 1} / {lesson.content?.slides?.length || 0}</span>
+                            <span className="font-mono">{lastSlide + 1} / {lesson.totalSlides || 0}</span>
                           </div>
                           <div className="w-full bg-gray-800 rounded-full h-3 border border-gray-700">
                             <div 
@@ -632,7 +766,7 @@ const Roadmap = () => {
                                   : 'bg-gradient-to-r from-cyan-500 to-blue-500 shadow-cyan-500/25'
                               }`}
                               style={{ 
-                                width: `${status === 'completed' ? 100 : ((lastSlide + 1) / (lesson.content?.slides?.length || 1)) * 100}%` 
+                                width: `${status === 'completed' ? 100 : ((lastSlide + 1) / (lesson.totalSlides || 1)) * 100}%` 
                               }}
                             />
                           </div>

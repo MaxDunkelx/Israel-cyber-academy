@@ -26,9 +26,6 @@ import {
 import { db } from './firebase-config.js';
 import { toast } from 'react-hot-toast';
 
-// Import local lesson data for migration and fallback
-import { lessons as localLessons } from '../data/lessons/index.js';
-
 // Global cache for lessons to avoid repeated database calls
 let lessonsCache = null;
 let cacheTimestamp = null;
@@ -51,66 +48,32 @@ export const getAllLessons = async (forceRefresh = false) => {
 
     console.log('🔍 Loading lessons from Firestore...');
     
-    // Try to get from database first
-    try {
-      const lessonsRef = collection(db, 'lessons');
-      const querySnapshot = await getDocs(lessonsRef);
-      const dbLessons = [];
-      
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        dbLessons.push({
-          id: doc.id,
-          ...data,
-          createdAt: data.createdAt?.toDate?.() || new Date(),
-          updatedAt: data.updatedAt?.toDate?.() || new Date(),
-          source: 'database'
-        });
+    const lessonsRef = collection(db, 'lessons');
+    const querySnapshot = await getDocs(lessonsRef);
+    const dbLessons = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      dbLessons.push({
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate?.() || new Date(),
+        updatedAt: data.updatedAt?.toDate?.() || new Date(),
+        source: 'database'
       });
-      
-      if (dbLessons.length > 0) {
-        console.log(`✅ Loaded ${dbLessons.length} lessons from database`);
-        
-        // Cache the results
-        lessonsCache = dbLessons;
-        cacheTimestamp = Date.now();
-        
-        return dbLessons;
-      }
-    } catch (dbError) {
-      console.warn('⚠️ Database access failed, falling back to local content:', dbError.message);
-    }
+    });
     
-    // Fallback to local content
-    console.log('🔄 Falling back to local lessons...');
-    const localLessonsWithSource = localLessons.map(lesson => ({
-      ...lesson,
-      source: 'local_fallback',
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }));
-      
-    console.log(`✅ Loaded ${localLessonsWithSource.length} lessons from local content`);
+    console.log(`✅ Loaded ${dbLessons.length} lessons from database`);
     
-    // Cache the local results
-    lessonsCache = localLessonsWithSource;
+    // Cache the results
+    lessonsCache = dbLessons;
     cacheTimestamp = Date.now();
     
-    return localLessonsWithSource;
+    return dbLessons;
     
   } catch (error) {
     console.error('❌ Error loading lessons:', error);
-    
-    // Final fallback to local content
-    console.log('🔄 Final fallback to local lessons...');
-    const localLessonsWithSource = localLessons.map(lesson => ({
-      ...lesson,
-      source: 'local_error_fallback',
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }));
-    
-    return localLessonsWithSource;
+    throw new Error('Failed to load lessons from database. Please check your connection and try again.');
   }
 };
 
@@ -388,26 +351,35 @@ export const getSlidesByLessonId = async (lessonId) => {
 };
 
 /**
- * Get slides from local content as fallback
+ * Get slides from database only
+ * No fallback to local content - ensures data consistency
  */
-const getLocalSlidesForLesson = (lessonId) => {
-  const localLesson = localLessons.find(lesson => lesson.id === parseInt(lessonId));
-  if (localLesson && localLesson.content?.slides) {
-    const localSlides = localLesson.content.slides.map((slide, index) => ({
-      ...slide,
-      lessonId: lessonId,
-      order: index + 1,
-      source: 'local_fallback',
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }));
+const getSlidesFromDatabase = async (lessonId) => {
+  try {
+    const slidesQuery = query(
+      collection(db, 'slides'),
+      where('lessonId', '==', String(lessonId)),
+      orderBy('order', 'asc')
+    );
+    const slidesSnapshot = await getDocs(slidesQuery);
+    const slides = [];
     
-    console.log(`✅ Loaded ${localSlides.length} slides from local content for lesson ${lessonId}`);
-    return localSlides;
+    slidesSnapshot.forEach((doc) => {
+      const data = doc.data();
+      slides.push({
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate?.() || new Date(),
+        updatedAt: data.updatedAt?.toDate?.() || new Date()
+      });
+    });
+    
+    console.log(`✅ Loaded ${slides.length} slides from database for lesson ${lessonId}`);
+    return slides;
+  } catch (error) {
+    console.error(`❌ Error loading slides for lesson ${lessonId}:`, error);
+    throw new Error(`Failed to load slides for lesson ${lessonId}`);
   }
-  
-  console.log(`❌ No slides found for lesson ${lessonId}`);
-  return [];
 };
 
 /**
@@ -671,71 +643,43 @@ export const getLessonWithSlides = async (lessonId) => {
   try {
     console.log(`🔍 Loading lesson ${lessonId} with slides...`);
     
-    // Try database first
-    try {
-      // First try to get lesson by Firestore ID
-      let lesson = await getLessonById(lessonId);
+    // First try to get lesson by Firestore ID
+    let lesson = await getLessonById(lessonId);
+    
+    // If not found by ID, try to find by originalId (lesson number)
+    if (!lesson) {
+      console.log(`🔄 Lesson not found by ID ${lessonId}, trying by originalId...`);
+      const lessonsRef = collection(db, 'lessons');
+      const querySnapshot = await getDocs(lessonsRef);
       
-      // If not found by ID, try to find by originalId (lesson number)
-      if (!lesson) {
-        console.log(`🔄 Lesson not found by ID ${lessonId}, trying by originalId...`);
-        const lessonsRef = collection(db, 'lessons');
-        const querySnapshot = await getDocs(lessonsRef);
-        
-        lesson = querySnapshot.docs
-          .map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            createdAt: doc.data().createdAt?.toDate?.() || new Date(),
-            updatedAt: doc.data().updatedAt?.toDate?.() || new Date()
-          }))
-          .find(l => l.originalId === parseInt(lessonId) || l.originalId === lessonId);
-      }
-      
-      if (lesson) {
-        // Get slides from database using the lesson's Firestore ID
-        const slides = await getSlidesByLessonId(lesson.id);
-        
-        console.log(`✅ Found lesson in database: ${lesson.title} with ${slides.length} slides`);
-        return {
-          ...lesson,
-          slides: slides,
-          source: 'database'
-        };
-      }
-    } catch (dbError) {
-      console.warn('⚠️ Database access failed for lesson:', dbError.message);
+      lesson = querySnapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate?.() || new Date(),
+          updatedAt: doc.data().updatedAt?.toDate?.() || new Date()
+        }))
+        .find(l => l.originalId === parseInt(lessonId) || l.originalId === lessonId);
     }
     
-    // Fallback to local content
-    console.log(`🔄 Falling back to local content for lesson ${lessonId}...`);
-    const localLesson = localLessons.find(l => l.id === parseInt(lessonId) || l.id === lessonId);
-    
-    if (localLesson) {
-      console.log(`✅ Found local lesson: ${localLesson.title}`);
+    if (lesson) {
+      // Get slides from database using the lesson's Firestore ID
+      const slides = await getSlidesByLessonId(lesson.id);
+      
+      console.log(`✅ Found lesson in database: ${lesson.title} with ${slides.length} slides`);
       return {
-        ...localLesson,
-        source: 'local_fallback'
+        ...lesson,
+        slides: slides,
+        source: 'database'
       };
     }
     
     console.log(`❌ No lesson found for ID: ${lessonId}`);
-    return null;
+    throw new Error(`Lesson with ID ${lessonId} not found in database`);
     
   } catch (error) {
     console.error('❌ Error fetching lesson with slides:', error);
-    
-    // Final fallback to local content
-    const localLesson = localLessons.find(l => l.id === parseInt(lessonId) || l.id === lessonId);
-    if (localLesson) {
-      console.log(`✅ Found local lesson as final fallback: ${localLesson.title}`);
-      return {
-        ...localLesson,
-        source: 'local_error_fallback'
-      };
-    }
-    
-    return null;
+    throw new Error(`Failed to load lesson ${lessonId} from database`);
   }
 };
 
@@ -786,6 +730,31 @@ export const getLessonsByTargetAge = async (targetAge) => {
   } catch (error) {
     console.error('Error fetching lessons by target age:', error);
     throw new Error('Failed to fetch lessons by target age');
+  }
+};
+
+/**
+ * Get next lesson after the current one
+ */
+export const getNextLesson = async (currentLessonId) => {
+  try {
+    const lessons = await getAllLessons();
+    
+    // Find current lesson index
+    const currentIndex = lessons.findIndex(lesson => 
+      lesson.id === currentLessonId || 
+      lesson.originalId === parseInt(currentLessonId) ||
+      lesson.originalId === currentLessonId
+    );
+    
+    if (currentIndex === -1 || currentIndex === lessons.length - 1) {
+      return null; // No next lesson
+    }
+    
+    return lessons[currentIndex + 1];
+  } catch (error) {
+    console.error('Error getting next lesson:', error);
+    return null;
   }
 };
 

@@ -39,7 +39,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { saveTeacherNotes, getTeacherNotesForLesson } from '../../firebase/teacher-service';
-import { getAllLessons, getSlidesByLessonId } from '../../firebase/content-service';
+import { getAllLessons, getSlidesByLessonId, getLessonWithSlides } from '../../firebase/content-service';
 import { PresentationSlide, PollSlide, VideoSlide, InteractiveSlide, BreakSlide, ReflectionSlide, QuizSlide } from '../slides';
 import LoadingSpinner from '../common/LoadingSpinner';
 import Card from '../ui/Card';
@@ -121,20 +121,25 @@ const SlidePreviewManager = () => {
   const handleLessonChange = async (lessonId) => {
     console.log('🔄 Lesson changed to:', lessonId);
     
-    const lesson = lessons.find(l => l.id === lessonId);
-    if (lesson) {
-      setSelectedLesson(lesson);
-      setCurrentSlide(0);
-      await loadSlides(lesson.id);
-      
-      // Load teacher notes for this lesson
-      if (currentUser?.uid) {
-        await loadTeacherNotes(lesson.id);
+    try {
+      const lessonData = await getLessonWithSlides(lessonId);
+      if (lessonData) {
+        setSelectedLesson(lessonData);
+        setCurrentSlide(0);
+        await loadSlides(lessonData.id);
+        
+        // Load teacher notes for this lesson
+        if (currentUser?.uid) {
+          await loadTeacherNotes(lessonData.id);
+        }
+      } else {
+        setSelectedLesson(null);
+        setNotes({});
+        setCurrentNote('');
       }
-    } else {
-      setSelectedLesson(null);
-      setNotes({});
-      setCurrentNote('');
+    } catch (error) {
+      console.error('Error loading lesson:', error);
+      toast.error('Failed to load lesson');
     }
   };
 

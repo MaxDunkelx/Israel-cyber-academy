@@ -35,7 +35,7 @@ const PresentationSlide = ({ slide }) => {
                 case 'title':
                   return (
                     <h1 
-                      key={index} 
+                      key={`${element.type}-${index}-${element.text?.substring(0, 20)}`}
                       style={{
                         ...element.style,
                         textShadow: '0 4px 8px rgba(0,0,0,0.3)',
@@ -49,7 +49,7 @@ const PresentationSlide = ({ slide }) => {
                 case 'subtitle':
                   return (
                     <h2 
-                      key={index} 
+                      key={`${element.type}-${index}-${element.text?.substring(0, 20)}`}
                       style={{
                         ...element.style,
                         textShadow: '0 2px 4px rgba(0,0,0,0.3)'
@@ -62,7 +62,7 @@ const PresentationSlide = ({ slide }) => {
                 case 'list':
                   return (
                     <ul 
-                      key={index} 
+                      key={`${element.type}-${index}-list`}
                       style={{
                         ...element.style,
                         textShadow: '0 1px 2px rgba(0,0,0,0.3)'
@@ -71,7 +71,7 @@ const PresentationSlide = ({ slide }) => {
                     >
                       {element.items?.map((item, itemIndex) => (
                         <li 
-                          key={itemIndex} 
+                          key={`item-${itemIndex}-${item?.substring(0, 20)}`}
                           className="mb-3 p-3 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:bg-white/20 transition-all duration-300"
                         >
                           {item}
@@ -81,7 +81,7 @@ const PresentationSlide = ({ slide }) => {
                   );
                 case 'image':
                   return (
-                    <div key={index} className="my-8">
+                    <div key={`${element.type}-${index}-${element.src?.substring(0, 20)}`} className="my-8">
                       <img
                         src={element.src}
                         alt={element.alt}
@@ -100,7 +100,7 @@ const PresentationSlide = ({ slide }) => {
                 case 'animation':
                   return (
                     <div 
-                      key={index} 
+                      key={`${element.type}-${index}-animation`}
                       style={{
                         ...element.style,
                         animation: 'bounce 2s infinite'

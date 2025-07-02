@@ -93,7 +93,7 @@ const ReflectionSlide = ({ slide, onAnswer, answers }) => {
               <div className="space-y-3">
                 {content.additionalQuestions.map((question, index) => (
                   <div 
-                    key={index}
+                    key={`question-${index}-${question.substring(0, 20)}`}
                     className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20"
                   >
                     <p className="text-gray-200">{question}</p>

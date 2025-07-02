@@ -35,6 +35,10 @@ import {
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { setDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../../firebase/firebase-config';
+import { logSecurityEvent } from '../../utils/security';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
@@ -61,6 +65,101 @@ const ExcelImport = () => {
 
   // Required fields
   const requiredFields = ['email', 'firstName', 'lastName'];
+
+  /**
+   * Create user in Firebase Auth and Firestore
+   */
+  const createUser = async (userData) => {
+    try {
+      // Generate a secure password
+      const password = generateSecurePassword();
+      
+      // Create user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(
+        auth, 
+        userData.email, 
+        password
+      );
+      
+      const user = userCredential.user;
+      
+      // Update display name in Auth
+      const displayName = `${userData.firstName} ${userData.lastName}`;
+      await updateProfile(user, { displayName });
+      
+      // Create user profile in Firestore
+      const userProfile = {
+        uid: user.uid,
+        email: user.email,
+        displayName: displayName,
+        role: userData.role || 'student',
+        // User credentials
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        age: userData.age ? parseInt(userData.age) : null,
+        sex: userData.sex || null,
+        // Progress tracking
+        progress: {},
+        completedLessons: [],
+        currentLesson: 1,
+        totalTimeSpent: 0,
+        totalPagesEngaged: 0,
+        achievements: [],
+        streak: 0,
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
+        lastActivityDate: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+      
+      // Store profile in Firestore
+      await setDoc(doc(db, 'users', user.uid), userProfile);
+      
+      // Log security event
+      logSecurityEvent('USER_CREATED_VIA_IMPORT', {
+        userId: user.uid,
+        userEmail: userData.email,
+        userRole: userData.role || 'student',
+        createdBy: auth.currentUser?.uid,
+        timestamp: new Date().toISOString()
+      });
+      
+      return { success: true, userId: user.uid, password };
+    } catch (error) {
+      console.error('Error creating user:', error);
+      throw new Error(getUserCreationErrorMessage(error));
+    }
+  };
+
+  /**
+   * Generate secure password for imported users
+   */
+  const generateSecurePassword = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    let password = '';
+    for (let i = 0; i < 12; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  };
+
+  /**
+   * Get user-friendly error message
+   */
+  const getUserCreationErrorMessage = (error) => {
+    switch (error.code) {
+      case 'auth/email-already-in-use':
+        return 'כתובת האימייל כבר קיימת במערכת';
+      case 'auth/weak-password':
+        return 'הסיסמה חייבת להכיל לפחות 6 תווים';
+      case 'auth/invalid-email':
+        return 'כתובת האימייל אינה תקינה';
+      case 'auth/operation-not-allowed':
+        return 'יצירת משתמשים אינה מורשית';
+      default:
+        return 'אירעה שגיאה ביצירת המשתמש';
+    }
+  };
 
   /**
    * Handle file drop/upload
@@ -234,12 +333,8 @@ const ExcelImport = () => {
         });
 
         try {
-          // TODO: Implement actual user creation
-          // await createUser(userData);
-          
-          // Simulate API call
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
+          // Real user creation
+          await createUser(userData);
           results.success++;
         } catch (error) {
           results.failed++;

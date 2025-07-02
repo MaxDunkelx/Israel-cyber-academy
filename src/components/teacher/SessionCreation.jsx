@@ -15,7 +15,7 @@ import { toast } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { getTeacherClasses, getTeacherStudents } from '../../firebase/teacher-service';
 import { createSession } from '../../firebase/session-service';
-import { lessons } from '../../data/lessons';
+import { getAllLessons } from '../../firebase/content-service';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
@@ -28,6 +28,7 @@ const SessionCreation = () => {
   const [creating, setCreating] = useState(false);
   const [classes, setClasses] = useState([]);
   const [students, setStudents] = useState([]);
+  const [lessons, setLessons] = useState([]);
   const [selectedClass, setSelectedClass] = useState(null);
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,13 +40,15 @@ const SessionCreation = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [classesData, studentsData] = await Promise.all([
+      const [classesData, studentsData, lessonsData] = await Promise.all([
         getTeacherClasses(currentUser.uid),
-        getTeacherStudents(currentUser.uid)
+        getTeacherStudents(currentUser.uid),
+        getAllLessons()
       ]);
       
       setClasses(classesData);
       setStudents(studentsData);
+      setLessons(lessonsData);
       setLoading(false);
     } catch (error) {
       console.error('Error loading data:', error);

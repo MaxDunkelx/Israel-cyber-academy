@@ -13,7 +13,7 @@ import {
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { getSession, joinSession, leaveSession, listenToSession } from '../../firebase/session-service';
-import { lessons } from '../../data/lessons';
+import { getLessonWithSlides } from '../../firebase/content-service';
 import { PresentationSlide, PollSlide, VideoSlide, InteractiveSlide, BreakSlide, ReflectionSlide, QuizSlide } from '../slides';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
@@ -63,8 +63,8 @@ const StudentSession = () => {
       const sessionData = await getSession(sessionId);
       setSession(sessionData);
       
-      // Find the lesson data
-      const lessonData = lessons.find(l => l.id === sessionData.lessonId);
+      // Load lesson data from Firebase
+      const lessonData = await getLessonWithSlides(sessionData.lessonId);
       setLesson(lessonData);
       
       setCurrentSlide(sessionData.currentSlide || 0);

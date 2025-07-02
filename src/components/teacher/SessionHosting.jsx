@@ -28,7 +28,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { isTeacher, validateTeacherAccess, logSecurityEvent } from '../../utils/security';
 import { getSession, updateSessionSlide, endSession, listenToSession } from '../../firebase/session-service';
 import { getLessonWithSlides } from '../../firebase/content-service';
-import { getLessonById as getLocalLessonById } from '../../data/lessons';
+// Removed local data import - using only Firebase database
 import { PresentationSlide, PollSlide, VideoSlide, InteractiveSlide, BreakSlide, ReflectionSlide, QuizSlide } from '../slides';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
@@ -127,8 +127,10 @@ const SessionHosting = () => {
           throw new Error('No slides found in Firebase');
         }
       } catch (e) {
-        // Fallback to local data
-        lessonData = getLocalLessonById(sessionData.lessonId);
+        console.error('Failed to load lesson from database:', e);
+        toast.error('שגיאה בטעינת השיעור מהמסד נתונים');
+        navigate('/teacher/dashboard');
+        return;
       }
       if (!lessonData) {
         throw new Error(`Lesson ${sessionData.lessonId} not found`);

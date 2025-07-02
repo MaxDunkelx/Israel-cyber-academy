@@ -57,7 +57,7 @@ const BreakSlide = ({ slide }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {content.activities.map((activity, index) => (
                   <div 
-                    key={index}
+                    key={`activity-${index}-${activity.substring(0, 20)}`}
                     className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20 hover:bg-white/20 transition-all duration-300"
                   >
                     <span className="text-lg text-white">{activity}</span>
