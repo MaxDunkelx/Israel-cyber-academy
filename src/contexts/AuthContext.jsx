@@ -364,13 +364,35 @@ export const AuthProvider = ({ children }) => {
         // Ensure lessonId is a Firestore ID (not lesson number)
         // If lessonId is a number, we need to find the corresponding Firestore ID
         let firestoreLessonId = lessonId;
-        if (typeof lessonId === 'number' || !isNaN(parseInt(lessonId))) {
+        
+        // Check if lessonId is already a clear ID (like "lesson1", "lesson2")
+        if (typeof lessonId === 'string' && lessonId.startsWith('lesson')) {
+          console.log(`📋 Using lessonId directly as Firestore ID: ${lessonId}`);
+          firestoreLessonId = lessonId;
+        } else if (typeof lessonId === 'number' || !isNaN(parseInt(lessonId))) {
           // This is a lesson number, we need to find the Firestore ID
           console.log(`🔄 Converting lesson number ${lessonId} to Firestore ID...`);
           // Use the new clear lesson IDs
           const lessonIdMapping = {
             1: 'lesson1',
-            2: 'lesson2'
+            2: 'lesson2',
+            3: 'lesson3',
+            4: 'lesson4',
+            5: 'lesson5',
+            6: 'lesson6',
+            7: 'lesson7',
+            8: 'lesson8',
+            9: 'lesson9',
+            10: 'lesson10',
+            11: 'lesson11',
+            12: 'lesson12',
+            13: 'lesson13',
+            14: 'lesson14',
+            15: 'lesson15',
+            16: 'lesson16',
+            17: 'lesson17',
+            18: 'lesson18',
+            19: 'lesson19'
           };
           firestoreLessonId = lessonIdMapping[lessonId];
           if (!firestoreLessonId) {
@@ -574,11 +596,32 @@ export const AuthProvider = ({ children }) => {
         
         // Ensure lessonId is a Firestore ID (not lesson number)
         let firestoreLessonId = lessonId;
-        if (typeof lessonId === 'number' || !isNaN(parseInt(lessonId))) {
+        
+        // Check if lessonId is already a clear ID (like "lesson1", "lesson2")
+        if (typeof lessonId === 'string' && lessonId.startsWith('lesson')) {
+          firestoreLessonId = lessonId;
+        } else if (typeof lessonId === 'number' || !isNaN(parseInt(lessonId))) {
           // This is a lesson number, we need to find the Firestore ID
           const lessonIdMapping = {
             1: 'lesson1',
-            2: 'lesson2'
+            2: 'lesson2',
+            3: 'lesson3',
+            4: 'lesson4',
+            5: 'lesson5',
+            6: 'lesson6',
+            7: 'lesson7',
+            8: 'lesson8',
+            9: 'lesson9',
+            10: 'lesson10',
+            11: 'lesson11',
+            12: 'lesson12',
+            13: 'lesson13',
+            14: 'lesson14',
+            15: 'lesson15',
+            16: 'lesson16',
+            17: 'lesson17',
+            18: 'lesson18',
+            19: 'lesson19'
           };
           firestoreLessonId = lessonIdMapping[lessonId];
           if (!firestoreLessonId) {
@@ -838,10 +881,31 @@ export const AuthProvider = ({ children }) => {
   const getLastLessonSlide = (lessonId) => {
     // Ensure lessonId is a Firestore ID
     let firestoreLessonId = lessonId;
-    if (typeof lessonId === 'number' || !isNaN(parseInt(lessonId))) {
+    
+    // Check if lessonId is already a clear ID (like "lesson1", "lesson2")
+    if (typeof lessonId === 'string' && lessonId.startsWith('lesson')) {
+      firestoreLessonId = lessonId;
+    } else if (typeof lessonId === 'number' || !isNaN(parseInt(lessonId))) {
       const lessonIdMapping = {
         1: 'lesson1',
-        2: 'lesson2'
+        2: 'lesson2',
+        3: 'lesson3',
+        4: 'lesson4',
+        5: 'lesson5',
+        6: 'lesson6',
+        7: 'lesson7',
+        8: 'lesson8',
+        9: 'lesson9',
+        10: 'lesson10',
+        11: 'lesson11',
+        12: 'lesson12',
+        13: 'lesson13',
+        14: 'lesson14',
+        15: 'lesson15',
+        16: 'lesson16',
+        17: 'lesson17',
+        18: 'lesson18',
+        19: 'lesson19'
       };
       firestoreLessonId = lessonIdMapping[lessonId];
       if (!firestoreLessonId) {
@@ -874,10 +938,31 @@ export const AuthProvider = ({ children }) => {
         
         // Ensure lessonId is a Firestore ID
         let firestoreLessonId = lessonId;
-        if (typeof lessonId === 'number' || !isNaN(parseInt(lessonId))) {
+        
+        // Check if lessonId is already a clear ID (like "lesson1", "lesson2")
+        if (typeof lessonId === 'string' && lessonId.startsWith('lesson')) {
+          firestoreLessonId = lessonId;
+        } else if (typeof lessonId === 'number' || !isNaN(parseInt(lessonId))) {
           const lessonIdMapping = {
             1: 'lesson1',
-            2: 'lesson2'
+            2: 'lesson2',
+            3: 'lesson3',
+            4: 'lesson4',
+            5: 'lesson5',
+            6: 'lesson6',
+            7: 'lesson7',
+            8: 'lesson8',
+            9: 'lesson9',
+            10: 'lesson10',
+            11: 'lesson11',
+            12: 'lesson12',
+            13: 'lesson13',
+            14: 'lesson14',
+            15: 'lesson15',
+            16: 'lesson16',
+            17: 'lesson17',
+            18: 'lesson18',
+            19: 'lesson19'
           };
           firestoreLessonId = lessonIdMapping[lessonId];
           if (!firestoreLessonId) {
