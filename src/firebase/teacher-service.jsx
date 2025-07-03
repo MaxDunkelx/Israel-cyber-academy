@@ -130,6 +130,19 @@ export const createClass = async (classData, teacherId) => {
       updatedAt: serverTimestamp()
     };
     
+    // Add initial lesson assignment if provided
+    if (classData.initialLesson) {
+      const currentDate = new Date().toISOString();
+      classDoc.currentLesson = parseInt(classData.initialLesson);
+      classDoc.lessonStartDate = currentDate;
+      classDoc.unlockedLessons = [{
+        lessonId: parseInt(classData.initialLesson),
+        unlockedAt: currentDate,
+        unlockedBy: teacherId,
+        unlockedByTeacher: 'System (Class Creation)'
+      }];
+    }
+    
     await setDoc(newClassRef, classDoc);
     
     // Update teacher's class list

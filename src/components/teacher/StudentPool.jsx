@@ -28,6 +28,7 @@ import {
   assignStudentsToClass,
   getTeacherClasses 
 } from '../../firebase/teacher-service';
+import { getAllLessonsWithSlideCounts } from '../../firebase/content-service';
 import LoadingSpinner from '../common/LoadingSpinner';
 
 const StudentPool = () => {
@@ -36,6 +37,7 @@ const StudentPool = () => {
   // State management
   const [students, setStudents] = useState([]);
   const [classes, setClasses] = useState([]);
+  const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -48,7 +50,8 @@ const StudentPool = () => {
   const [newClass, setNewClass] = useState({
     name: '',
     description: '',
-    maxStudents: 30
+    maxStudents: 30,
+    initialLesson: ''
   });
 
   // Load data on component mount
@@ -61,7 +64,7 @@ const StudentPool = () => {
       setLoading(true);
       console.log('🔄 Loading data for teacher:', currentUser.uid);
       
-      // Load students and classes separately to identify which one fails
+      // Load students, classes, and lessons
       console.log('📚 Fetching students...');
       const studentsData = await getAllStudents();
       console.log('✅ Students fetched:', studentsData.length, 'students');
@@ -72,8 +75,21 @@ const StudentPool = () => {
       console.log('✅ Classes fetched:', classesData.length, 'classes');
       console.log('📋 Classes data:', classesData);
       
+      console.log('📖 Fetching lessons...');
+      const lessonsDataRaw = await getAllLessonsWithSlideCounts();
+      // Sort lessons by order or originalId
+      const lessonsData = lessonsDataRaw.slice().sort((a, b) => {
+        const orderA = a.order ?? a.originalId ?? 0;
+        const orderB = b.order ?? b.originalId ?? 0;
+        if (orderA !== orderB) return orderA - orderB;
+        return (a.title || '').localeCompare(b.title || '');
+      });
+      console.log('✅ Lessons fetched:', lessonsData.length, 'lessons');
+      console.log('📋 Lessons data:', lessonsData);
+      
       setStudents(studentsData);
       setClasses(classesData);
+      setLessons(lessonsData);
       
       console.log('✅ All data loaded successfully');
     } catch (error) {
@@ -113,7 +129,7 @@ const StudentPool = () => {
     try {
       const createdClass = await createClass(newClass, currentUser.uid);
       setClasses(prev => [createdClass, ...prev]);
-      setNewClass({ name: '', description: '', maxStudents: 30 });
+      setNewClass({ name: '', description: '', maxStudents: 30, initialLesson: '' });
       setShowCreateClass(false);
       toast.success('הכיתה נוצרה בהצלחה');
     } catch (error) {
@@ -433,6 +449,24 @@ const StudentPool = () => {
                     min="1"
                     max="50"
                   />
+                </div>
+                <div>
+                  <label className="block text-gray-300 text-sm mb-2">שיעור התחלתי (אופציונלי)</label>
+                  <select
+                    value={newClass.initialLesson}
+                    onChange={(e) => setNewClass(prev => ({ ...prev, initialLesson: e.target.value }))}
+                    className="w-full bg-gray-700 text-white px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">בחר שיעור התחלתי (אופציונלי)</option>
+                    {lessons.map(lesson => {
+                      const lessonId = lesson.originalId || lesson.order;
+                      return (
+                        <option key={lesson.id} value={lessonId}>
+                          שיעור {lessonId} - {lesson.title} ({lesson.totalSlides || lesson.slides?.length || 0} שקופיות)
+                        </option>
+                      );
+                    })}
+                  </select>
                 </div>
                 <div className="flex space-x-3">
                   <button

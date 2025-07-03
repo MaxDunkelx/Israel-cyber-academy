@@ -94,6 +94,47 @@ export const getAllLessons = async (forceRefresh = false) => {
 };
 
 /**
+ * Get all lessons with their slide counts from the database
+ */
+export const getAllLessonsWithSlideCounts = async (forceRefresh = false) => {
+  try {
+    console.log('🔍 Loading lessons with slide counts from Firestore...');
+    
+    // Get all lessons first
+    const lessons = await getAllLessons(forceRefresh);
+    
+    // Get slide counts for each lesson
+    const lessonsWithCounts = await Promise.all(
+      lessons.map(async (lesson) => {
+        try {
+          const slides = await getSlidesByLessonId(lesson.id);
+          return {
+            ...lesson,
+            slides: slides, // Include actual slides for compatibility
+            totalSlides: slides.length
+          };
+        } catch (error) {
+          console.warn(`⚠️ Could not load slides for lesson ${lesson.id}:`, error);
+          return {
+            ...lesson,
+            slides: [],
+            totalSlides: 0
+          };
+        }
+      })
+    );
+    
+    console.log(`✅ Loaded ${lessonsWithCounts.length} lessons with slide counts from database`);
+    
+    return lessonsWithCounts;
+    
+  } catch (error) {
+    console.error('❌ Error loading lessons with slide counts:', error);
+    throw new Error('Failed to load lessons with slide counts from database. Please check your connection and try again.');
+  }
+};
+
+/**
  * Get a specific lesson by ID
  */
 export const getLessonById = async (lessonId) => {
@@ -385,7 +426,7 @@ const getSlidesFromDatabase = async (lessonId) => {
   try {
     const slidesQuery = query(
       collection(db, 'lessons', String(lessonId), 'slides'),
-      orderBy('sortOrder', 'asc')
+      orderBy('order', 'asc')
     );
     const slidesSnapshot = await getDocs(slidesQuery);
     const slides = [];

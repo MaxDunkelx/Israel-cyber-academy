@@ -3,10 +3,12 @@ import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { 
   User, 
-  Terminal
+  Terminal,
+  Radio
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import cyberLogo from '../assets/cyber-logo.png';
+import LiveSessionIndicator from './common/LiveSessionIndicator';
 
 const Navigation = () => {
   const { currentUser, logout, userProfile } = useAuth();
@@ -45,6 +47,9 @@ const Navigation = () => {
 
         {/* Right Side - Home Button, Profile Button and User Info */}
         <div className="flex items-center space-x-3 space-x-reverse">
+          {/* Live Session Indicator */}
+          <LiveSessionIndicator position="inline" />
+          
           <Link to={role === 'teacher' ? '/teacher/dashboard' : '/student/roadmap'}>
             <button className="group relative bg-gradient-to-r from-green-600 to-cyan-600 hover:from-green-500 hover:to-cyan-500 text-white px-4 py-2 rounded-lg font-bold transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-green-500/25 border border-green-400/30 text-sm">
               <div className="absolute inset-0 bg-green-500/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>

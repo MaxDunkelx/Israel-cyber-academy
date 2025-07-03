@@ -65,6 +65,21 @@ const LessonController = () => {
   const [activeQuestions, setActiveQuestions] = useState([]);
   const [teacherNotes, setTeacherNotes] = useState({});
   const [sessionDuration, setSessionDuration] = useState(0);
+  const [error, setError] = useState(null);
+  const [studentEngagement, setStudentEngagement] = useState({});
+  const [liveChat, setLiveChat] = useState([]);
+  const [chatEnabled, setChatEnabled] = useState(true);
+  const [screenShareEnabled, setScreenShareEnabled] = useState(false);
+  const [studentHands, setStudentHands] = useState([]);
+  const [studentNavigationLocked, setStudentNavigationLocked] = useState(true);
+  const [sessionMode, setSessionMode] = useState('live'); // 'live' or 'individual'
+  const [connectedStudents, setConnectedStudents] = useState([]);
+  const [sessionStats, setSessionStats] = useState({
+    totalStudents: 0,
+    activeStudents: 0,
+    averageEngagement: 0,
+    questionsAnswered: 0
+  });
 
   useEffect(() => {
     // Security check - ensure only teachers can access this component
@@ -129,7 +144,8 @@ const LessonController = () => {
         const notes = await getTeacherNotesForLesson(currentUser.uid, sessionData.lessonId.toString());
         const notesMap = {};
         notes.forEach(note => {
-          notesMap[note.slideIndex] = note.content;
+          // Use slideId as key for consistency with database structure
+          notesMap[note.slideId] = note.content;
         });
         setTeacherNotes(notesMap);
       }
@@ -160,7 +176,7 @@ const LessonController = () => {
   };
 
   const handleNextSlide = async () => {
-    if (lesson && currentSlide < lesson.content.slides.length - 1) {
+    if (lesson && currentSlide < lesson.slides.length - 1) {
       const newSlideIndex = currentSlide + 1;
       setCurrentSlide(newSlideIndex);
       await updateSessionSlide(sessionId, newSlideIndex);
@@ -253,6 +269,27 @@ const LessonController = () => {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  const handleToggleStudentNavigation = () => {
+    setStudentNavigationLocked(!studentNavigationLocked);
+    toast.success(studentNavigationLocked ? 'התלמידים יכולים לנווט בחופשיות' : 'ניווט התלמידים ננעל');
+  };
+
+  const handleForceSlideSync = async () => {
+    try {
+      await updateSessionSlide(sessionId, currentSlide);
+      toast.success('כל התלמידים הועברו לשקופית הנוכחית');
+    } catch (error) {
+      console.error('Error forcing slide sync:', error);
+      toast.error('שגיאה בסנכרון השקופיות');
+    }
+  };
+
+  const handleSessionModeToggle = () => {
+    const newMode = sessionMode === 'live' ? 'individual' : 'live';
+    setSessionMode(newMode);
+    toast.success(newMode === 'live' ? 'מצב שיעור חי מופעל' : 'מצב למידה עצמאית מופעל');
+  };
+
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -268,7 +305,9 @@ const LessonController = () => {
     );
   }
 
-  const currentSlideNote = teacherNotes[currentSlide];
+  // Get current slide note using slideId
+  const currentSlideData = lesson?.slides?.[currentSlide];
+  const currentSlideNote = currentSlideData ? teacherNotes[currentSlideData.id] : null;
 
   return (
     <div className="min-h-screen bg-gray-900">
@@ -289,6 +328,28 @@ const LessonController = () => {
           </div>
           
           <div className="flex items-center space-x-4">
+            {/* Session Mode Indicator */}
+            <div className="flex items-center space-x-2">
+              <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                sessionMode === 'live' 
+                  ? 'bg-blue-600/20 text-blue-300 border border-blue-500/30' 
+                  : 'bg-green-600/20 text-green-300 border border-green-500/30'
+              }`}>
+                {sessionMode === 'live' ? 'שיעור חי' : 'למידה עצמאית'}
+              </div>
+            </div>
+
+            {/* Student Navigation Lock Status */}
+            <div className="flex items-center space-x-2">
+              <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                studentNavigationLocked 
+                  ? 'bg-red-600/20 text-red-300 border border-red-500/30' 
+                  : 'bg-green-600/20 text-green-300 border border-green-500/30'
+              }`}>
+                {studentNavigationLocked ? 'ניווט נעול' : 'ניווט חופשי'}
+              </div>
+            </div>
+
             <div className="flex items-center space-x-2 text-gray-300">
               <Clock className="w-4 h-4" />
               <span className="text-sm">{formatSessionDuration(session.startTime)}</span>
@@ -305,51 +366,93 @@ const LessonController = () => {
         </div>
       </div>
 
+      {/* Session Control Banner */}
+      <div className="bg-gray-700/50 border-b border-gray-600 p-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Button
+              onClick={handleSessionModeToggle}
+              variant="secondary"
+              size="sm"
+              className="flex items-center space-x-2"
+            >
+              {sessionMode === 'live' ? 'מצב עצמאי' : 'מצב חי'}
+            </Button>
+            
+            <Button
+              onClick={handleToggleStudentNavigation}
+              variant={studentNavigationLocked ? "danger" : "success"}
+              size="sm"
+              className="flex items-center space-x-2"
+            >
+              {studentNavigationLocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+              <span>{studentNavigationLocked ? 'שחרר ניווט' : 'נעל ניווט'}</span>
+            </Button>
+            
+            <Button
+              onClick={handleForceSlideSync}
+              variant="secondary"
+              size="sm"
+              className="flex items-center space-x-2"
+            >
+              <Users className="w-4 h-4" />
+              <span>סנכרן כולם</span>
+            </Button>
+          </div>
+          
+          <div className="flex items-center space-x-4 text-sm text-gray-300">
+            <span>תלמידים מחוברים: {connectedStudents.length}</span>
+            <span>מעורבות ממוצעת: {sessionStats.averageEngagement}%</span>
+            <span>שאלות נענו: {sessionStats.questionsAnswered}</span>
+          </div>
+        </div>
+      </div>
+
       <div className="flex h-screen">
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col">
           {/* Slide Display */}
           <div className="flex-1 bg-gray-900 p-8 flex items-center justify-center relative">
             <div className="w-full max-w-4xl">
-              {lesson && lesson.content && lesson.content.slides && lesson.content.slides[currentSlide] ? (
+              {lesson && lesson.slides && lesson.slides[currentSlide] ? (
                 <div className="bg-white rounded-lg shadow-2xl p-8 min-h-96">
                   <div className="text-center mb-6">
                     <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                      {lesson.content.slides[currentSlide].title || `שקופית ${currentSlide + 1}`}
+                      {lesson.slides[currentSlide].title || `שקופית ${currentSlide + 1}`}
                     </h2>
                     <p className="text-gray-600 text-sm">
-                      {lesson.title} • שקופית {currentSlide + 1} מתוך {lesson.content.slides.length}
+                      {lesson.title} • שקופית {currentSlide + 1} מתוך {lesson.slides.length}
                     </p>
                   </div>
                   
                   <div className="prose prose-lg max-w-none">
-                    {lesson.content.slides[currentSlide].content && (
+                    {lesson.slides[currentSlide].content && (
                       <div 
                         className="text-gray-700"
                         dangerouslySetInnerHTML={{ 
-                          __html: typeof lesson.content.slides[currentSlide].content === 'string' 
-                            ? lesson.content.slides[currentSlide].content 
-                            : JSON.stringify(lesson.content.slides[currentSlide].content)
+                          __html: typeof lesson.slides[currentSlide].content === 'string' 
+                            ? lesson.slides[currentSlide].content 
+                            : JSON.stringify(lesson.slides[currentSlide].content)
                         }}
                       />
                     )}
                     
-                    {lesson.content.slides[currentSlide].type === 'video' && lesson.content.slides[currentSlide].videoUrl && (
+                    {lesson.slides[currentSlide].type === 'video' && lesson.slides[currentSlide].videoUrl && (
                       <div className="mt-4">
                         <video 
                           className="w-full rounded-lg"
                           controls
-                          src={lesson.content.slides[currentSlide].videoUrl}
+                          src={lesson.slides[currentSlide].videoUrl}
                         >
                           Your browser does not support the video tag.
                         </video>
                       </div>
                     )}
                     
-                    {lesson.content.slides[currentSlide].type === 'quiz' && (
+                    {lesson.slides[currentSlide].type === 'quiz' && (
                       <div className="mt-4 p-4 bg-blue-50 rounded-lg">
                         <h3 className="font-semibold text-blue-800 mb-2">שאלה:</h3>
-                        <p className="text-blue-700">{lesson.content.slides[currentSlide].question}</p>
+                        <p className="text-blue-700">{lesson.slides[currentSlide].question}</p>
                       </div>
                     )}
                   </div>
@@ -396,7 +499,7 @@ const LessonController = () => {
                 
                 <Button
                   onClick={handleNextSlide}
-                  disabled={currentSlide === lesson.content.slides.length - 1}
+                  disabled={currentSlide === lesson.slides.length - 1}
                   variant="secondary"
                   size="sm"
                 >
@@ -434,12 +537,12 @@ const LessonController = () => {
               {/* Progress */}
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-300">
-                  {currentSlide + 1} / {lesson.content.slides.length}
+                  {currentSlide + 1} / {lesson.slides.length}
                 </span>
                 <div className="w-32 bg-gray-700 rounded-full h-2">
                   <div 
                     className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${((currentSlide + 1) / lesson.content.slides.length) * 100}%` }}
+                    style={{ width: `${((currentSlide + 1) / lesson.slides.length) * 100}%` }}
                   ></div>
                 </div>
               </div>

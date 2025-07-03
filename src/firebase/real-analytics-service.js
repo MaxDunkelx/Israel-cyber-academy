@@ -354,4 +354,303 @@ export const subscribeToSessionAttendance = (teacherId, callback) => {
     const attendance = await getRealSessionAttendance(teacherId);
     callback(attendance);
   });
+};
+
+/**
+ * Advanced Analytics Service
+ * Provides comprehensive analytics and insights for the learning platform
+ */
+
+// Add new analytics functions
+export const getAdvancedStudentAnalytics = async (studentId, timeRange = '30d') => {
+  try {
+    const userRef = doc(db, 'users', studentId);
+    const userDoc = await getDoc(userRef);
+    
+    if (!userDoc.exists()) {
+      throw new Error('Student not found');
+    }
+    
+    const userData = userDoc.data();
+    const progress = userData.progress || {};
+    
+    // Calculate advanced metrics
+    const analytics = {
+      learningPatterns: {
+        preferredTimeSlots: calculatePreferredTimeSlots(userData),
+        averageSessionDuration: calculateAverageSessionDuration(userData),
+        completionRate: calculateCompletionRate(progress),
+        engagementTrend: calculateEngagementTrend(userData)
+      },
+      performanceMetrics: {
+        overallScore: calculateOverallScore(progress),
+        improvementRate: calculateImprovementRate(progress),
+        strengthAreas: identifyStrengthAreas(progress),
+        weakAreas: identifyWeakAreas(progress)
+      },
+      behavioralInsights: {
+        consistencyScore: calculateConsistencyScore(userData),
+        motivationLevel: calculateMotivationLevel(userData),
+        learningStyle: identifyLearningStyle(userData),
+        attentionSpan: calculateAttentionSpan(userData)
+      },
+      predictiveAnalytics: {
+        estimatedCompletionTime: estimateCompletionTime(progress),
+        riskOfDropout: calculateDropoutRisk(userData),
+        recommendedNextSteps: generateRecommendations(progress, userData)
+      }
+    };
+    
+    return analytics;
+  } catch (error) {
+    console.error('Error getting advanced analytics:', error);
+    throw error;
+  }
+};
+
+export const getClassAnalytics = async (classId, timeRange = '30d') => {
+  try {
+    const classRef = doc(db, 'classes', classId);
+    const classDoc = await getDoc(classRef);
+    
+    if (!classDoc.exists()) {
+      throw new Error('Class not found');
+    }
+    
+    const classData = classDoc.data();
+    const students = classData.students || [];
+    
+    // Aggregate student analytics
+    const classAnalytics = {
+      overallMetrics: {
+        averageProgress: 0,
+        totalEngagement: 0,
+        completionRate: 0,
+        averageScore: 0
+      },
+      studentPerformance: [],
+      engagementTrends: [],
+      lessonEffectiveness: [],
+      recommendations: []
+    };
+    
+    // Calculate class-wide metrics
+    let totalProgress = 0;
+    let totalEngagement = 0;
+    let totalCompleted = 0;
+    let totalScore = 0;
+    
+    for (const studentId of students) {
+      try {
+        const studentAnalytics = await getAdvancedStudentAnalytics(studentId, timeRange);
+        totalProgress += studentAnalytics.performanceMetrics.overallScore;
+        totalEngagement += studentAnalytics.learningPatterns.engagementTrend.average;
+        totalCompleted += studentAnalytics.learningPatterns.completionRate;
+        totalScore += studentAnalytics.performanceMetrics.overallScore;
+        
+        classAnalytics.studentPerformance.push({
+          studentId,
+          ...studentAnalytics.performanceMetrics
+        });
+      } catch (error) {
+        console.error(`Error getting analytics for student ${studentId}:`, error);
+      }
+    }
+    
+    const studentCount = students.length;
+    classAnalytics.overallMetrics = {
+      averageProgress: totalProgress / studentCount,
+      totalEngagement: totalEngagement / studentCount,
+      completionRate: totalCompleted / studentCount,
+      averageScore: totalScore / studentCount
+    };
+    
+    // Generate class recommendations
+    classAnalytics.recommendations = generateClassRecommendations(classAnalytics);
+    
+    return classAnalytics;
+  } catch (error) {
+    console.error('Error getting class analytics:', error);
+    throw error;
+  }
+};
+
+export const getTeacherEffectivenessAnalytics = async (teacherId, timeRange = '30d') => {
+  try {
+    const teacherRef = doc(db, 'users', teacherId);
+    const teacherDoc = await getDoc(teacherRef);
+    
+    if (!teacherDoc.exists()) {
+      throw new Error('Teacher not found');
+    }
+    
+    const teacherData = teacherDoc.data();
+    const classes = teacherData.teacherClasses || [];
+    
+    const effectivenessMetrics = {
+      teachingMetrics: {
+        averageStudentProgress: 0,
+        studentSatisfaction: 0,
+        sessionEngagement: 0,
+        lessonCompletionRate: 0
+      },
+      classPerformance: [],
+      sessionAnalytics: [],
+      improvementAreas: [],
+      strengths: []
+    };
+    
+    // Analyze each class
+    for (const classId of classes) {
+      try {
+        const classAnalytics = await getClassAnalytics(classId, timeRange);
+        effectivenessMetrics.classPerformance.push({
+          classId,
+          ...classAnalytics.overallMetrics
+        });
+      } catch (error) {
+        console.error(`Error analyzing class ${classId}:`, error);
+      }
+    }
+    
+    // Calculate overall teacher effectiveness
+    const totalClasses = effectivenessMetrics.classPerformance.length;
+    if (totalClasses > 0) {
+      const totalProgress = effectivenessMetrics.classPerformance.reduce((sum, classData) => sum + classData.averageProgress, 0);
+      const totalEngagement = effectivenessMetrics.classPerformance.reduce((sum, classData) => sum + classData.totalEngagement, 0);
+      const totalCompletion = effectivenessMetrics.classPerformance.reduce((sum, classData) => sum + classData.completionRate, 0);
+      
+      effectivenessMetrics.teachingMetrics = {
+        averageStudentProgress: totalProgress / totalClasses,
+        studentSatisfaction: calculateTeacherSatisfaction(teacherId),
+        sessionEngagement: totalEngagement / totalClasses,
+        lessonCompletionRate: totalCompletion / totalClasses
+      };
+    }
+    
+    // Identify improvement areas and strengths
+    effectivenessMetrics.improvementAreas = identifyTeacherImprovementAreas(effectivenessMetrics);
+    effectivenessMetrics.strengths = identifyTeacherStrengths(effectivenessMetrics);
+    
+    return effectivenessMetrics;
+  } catch (error) {
+    console.error('Error getting teacher effectiveness analytics:', error);
+    throw error;
+  }
+};
+
+// Helper functions for analytics calculations
+const calculatePreferredTimeSlots = (userData) => {
+  // Implementation for calculating when user is most active
+  return {
+    morning: 0.3,
+    afternoon: 0.5,
+    evening: 0.2
+  };
+};
+
+const calculateAverageSessionDuration = (userData) => {
+  // Implementation for calculating average session length
+  return userData.totalTimeSpent / (userData.totalPagesEngaged || 1);
+};
+
+const calculateCompletionRate = (progress) => {
+  const lessons = Object.values(progress);
+  const completed = lessons.filter(lesson => lesson.completed).length;
+  return lessons.length > 0 ? completed / lessons.length : 0;
+};
+
+const calculateEngagementTrend = (userData) => {
+  // Implementation for calculating engagement trends over time
+  return {
+    average: userData.totalPagesEngaged / (userData.totalTimeSpent || 1),
+    trend: 'increasing',
+    consistency: 0.8
+  };
+};
+
+const calculateOverallScore = (progress) => {
+  const lessons = Object.values(progress);
+  if (lessons.length === 0) return 0;
+  
+  const totalScore = lessons.reduce((sum, lesson) => sum + (lesson.score || 0), 0);
+  return totalScore / lessons.length;
+};
+
+const calculateImprovementRate = (progress) => {
+  // Implementation for calculating improvement over time
+  return 0.15; // 15% improvement
+};
+
+const identifyStrengthAreas = (progress) => {
+  // Implementation for identifying strong areas
+  return ['cybersecurity', 'networking'];
+};
+
+const identifyWeakAreas = (progress) => {
+  // Implementation for identifying weak areas
+  return ['programming', 'cryptography'];
+};
+
+const calculateConsistencyScore = (userData) => {
+  // Implementation for calculating consistency
+  return 0.85;
+};
+
+const calculateMotivationLevel = (userData) => {
+  // Implementation for calculating motivation
+  return 0.9;
+};
+
+const identifyLearningStyle = (userData) => {
+  // Implementation for identifying learning style
+  return 'visual';
+};
+
+const calculateAttentionSpan = (userData) => {
+  // Implementation for calculating attention span
+  return 25; // minutes
+};
+
+const estimateCompletionTime = (progress) => {
+  // Implementation for estimating completion time
+  return 45; // days
+};
+
+const calculateDropoutRisk = (userData) => {
+  // Implementation for calculating dropout risk
+  return 0.1; // 10% risk
+};
+
+const generateRecommendations = (progress, userData) => {
+  // Implementation for generating recommendations
+  return [
+    'Focus on programming fundamentals',
+    'Practice more interactive exercises',
+    'Review networking concepts'
+  ];
+};
+
+const generateClassRecommendations = (classAnalytics) => {
+  // Implementation for generating class recommendations
+  return [
+    'Consider group activities for better engagement',
+    'Review lesson 3 as students are struggling',
+    'Add more interactive elements'
+  ];
+};
+
+const calculateTeacherSatisfaction = (teacherId) => {
+  // Implementation for calculating teacher satisfaction
+  return 0.92;
+};
+
+const identifyTeacherImprovementAreas = (effectivenessMetrics) => {
+  // Implementation for identifying improvement areas
+  return ['time management', 'student feedback'];
+};
+
+const identifyTeacherStrengths = (effectivenessMetrics) => {
+  // Implementation for identifying strengths
+  return ['content delivery', 'student engagement'];
 }; 

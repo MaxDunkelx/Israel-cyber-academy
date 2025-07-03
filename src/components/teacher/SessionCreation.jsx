@@ -15,7 +15,7 @@ import { toast } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { getTeacherClasses, getTeacherStudents } from '../../firebase/teacher-service';
 import { createSession } from '../../firebase/session-service';
-import { getAllLessons } from '../../firebase/content-service';
+import { getAllLessonsWithSlideCounts } from '../../firebase/content-service';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
@@ -40,11 +40,19 @@ const SessionCreation = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [classesData, studentsData, lessonsData] = await Promise.all([
+      const [classesData, studentsData, lessonsDataRaw] = await Promise.all([
         getTeacherClasses(currentUser.uid),
         getTeacherStudents(currentUser.uid),
-        getAllLessons()
+        getAllLessonsWithSlideCounts()
       ]);
+      
+      // Sort lessons by order or originalId
+      const lessonsData = lessonsDataRaw.slice().sort((a, b) => {
+        const orderA = a.order ?? a.originalId ?? 0;
+        const orderB = b.order ?? b.originalId ?? 0;
+        if (orderA !== orderB) return orderA - orderB;
+        return (a.title || '').localeCompare(b.title || '');
+      });
       
       setClasses(classesData);
       setStudents(studentsData);
@@ -74,7 +82,7 @@ const SessionCreation = () => {
         lessonId: selectedLesson.id,
         lessonName: selectedLesson.title,
         studentIds: selectedClass.studentIds || [],
-        totalSlides: selectedLesson.content.slides.length
+        totalSlides: selectedLesson.totalSlides || selectedLesson.slides?.length || 0
       };
 
       const sessionId = await createSession(sessionData);
@@ -97,13 +105,13 @@ const SessionCreation = () => {
   };
 
   const getLessonDuration = (lesson) => {
-    if (!lesson || !lesson.content || !lesson.content.slides) return 0;
-    return lesson.content.slides.reduce((total, slide) => total + (slide.duration || 3), 0);
+    if (!lesson || !lesson.slides) return 0;
+    return lesson.slides.reduce((total, slide) => total + (slide.duration || 3), 0);
   };
 
   const getLessonSlideCount = (lesson) => {
-    if (!lesson || !lesson.content || !lesson.content.slides) return 0;
-    return lesson.content.slides.length;
+    if (!lesson) return 0;
+    return lesson.totalSlides || lesson.slides?.length || 0;
   };
 
   if (loading) {

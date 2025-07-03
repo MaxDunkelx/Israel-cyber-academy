@@ -49,6 +49,7 @@ import {
   getTeacherRecentActivities,
   logTeacherActivity
 } from '../../firebase/teacher-service';
+import { getAllLessonsWithSlideCounts } from '../../firebase/content-service';
 import { listenToSession } from '../../firebase/session-service';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
@@ -59,6 +60,7 @@ const ClassroomInterface = () => {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState([]);
+  const [lessons, setLessons] = useState([]);
   const [students, setStudents] = useState({});
   const [analytics, setAnalytics] = useState({});
   const [recentActivities, setRecentActivities] = useState([]);
@@ -96,9 +98,22 @@ const ClassroomInterface = () => {
       setLoading(true);
       setError(null);
 
-      // Load teacher's classes
-      const teacherClasses = await getTeacherClasses(currentUser.uid);
+      // Load teacher's classes and lessons
+      const [teacherClasses, lessonsDataRaw] = await Promise.all([
+        getTeacherClasses(currentUser.uid),
+        getAllLessonsWithSlideCounts()
+      ]);
+      
+      // Sort lessons by order or originalId
+      const lessonsData = lessonsDataRaw.slice().sort((a, b) => {
+        const orderA = a.order ?? a.originalId ?? 0;
+        const orderB = b.order ?? b.originalId ?? 0;
+        if (orderA !== orderB) return orderA - orderB;
+        return (a.title || '').localeCompare(b.title || '');
+      });
+      
       setClasses(teacherClasses);
+      setLessons(lessonsData);
 
       // Load students for each class
       const studentsData = {};
@@ -592,7 +607,7 @@ const ClassroomInterface = () => {
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4" style={{ position: 'relative', zIndex: 1 }}>
                     {/* Current Lesson Status */}
                     <div className="bg-gray-700/50 rounded-lg p-3">
                       <div className="flex items-center justify-between mb-2">
@@ -630,45 +645,49 @@ const ClassroomInterface = () => {
                     </div>
 
                     {/* Lesson Assignment Controls */}
-                    <div className="bg-gray-700/50 rounded-lg p-3">
+                    <div className="bg-gray-700/50 rounded-lg p-3 relative overflow-hidden">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-gray-300">פתיחת שיעורים</span>
                         <Settings className="w-4 h-4 text-gray-400" />
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 lesson-assignment-select">
                         <select 
-                          className="flex-1 bg-gray-600 text-white text-sm rounded px-2 py-1 border border-gray-500"
+                          className="flex-1 bg-gray-600 text-white text-sm rounded px-2 py-1 border border-gray-500 max-w-full"
                           value={classData.currentLesson || ''}
                           onChange={(e) => handleLessonAssignment(classData.id, parseInt(e.target.value))}
+                          style={{ 
+                            maxWidth: '100%',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            position: 'relative',
+                            zIndex: 10
+                          }}
                         >
                           <option value="">בחר שיעור</option>
-                          {Array.from({ length: 9 }, (_, i) => i + 1).map(lessonId => {
+                          {lessons.map(lesson => {
+                            const lessonId = lesson.originalId || lesson.order;
                             const isUnlocked = classData.unlockedLessons?.some(ul => ul.lessonId === lessonId);
                             const isCurrentMax = lessonId === classData.currentLesson;
                             
                             return (
                               <option 
-                                key={lessonId} 
+                                key={lesson.id} 
                                 value={lessonId}
                                 className={isUnlocked ? 'text-green-400' : 'text-white'}
+                                style={{ 
+                                  maxWidth: '100%',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }}
                               >
-                                {isUnlocked ? '✅ ' : ''}פתח עד שיעור {lessonId}
+                                {isUnlocked ? '✅ ' : ''}פתח עד שיעור {lessonId} - {lesson.title}
                                 {isUnlocked && !isCurrentMax ? ' (כבר נפתח)' : ''}
                                 {isCurrentMax ? ' (נוכחי)' : ''}
                               </option>
                             );
                           })}
                         </select>
-                        <Button
-                          onClick={() => handleStartLessonSession(classData.id)}
-                          variant="primary"
-                          size="sm"
-                          disabled={!classData.currentLesson}
-                          className="flex items-center space-x-1"
-                        >
-                          <Play className="w-3 h-3" />
-                          <span>התחל שיעור</span>
-                        </Button>
                       </div>
                       <p className="text-xs text-gray-400 mt-2">
                         פתיחת שיעור תאפשר לתלמידים לגשת לכל השיעורים עד השיעור שנבחר
@@ -693,19 +712,21 @@ const ClassroomInterface = () => {
                       {classData.unlockedLessons && classData.unlockedLessons.length > 0 && (
                         <div className="mt-2 pt-2 border-t border-gray-600">
                           <p className="text-xs text-blue-400">
-                            שיעורים זמינים: {classData.unlockedLessons.length}/9
+                            שיעורים זמינים: {classData.unlockedLessons.length}/{lessons.length}
                           </p>
                           <div className="flex flex-wrap gap-1 mt-1">
-                            {Array.from({ length: 9 }, (_, i) => i + 1).map(lessonId => {
+                            {lessons.map(lesson => {
+                              const lessonId = lesson.originalId || lesson.order;
                               const isUnlocked = classData.unlockedLessons?.some(ul => ul.lessonId === lessonId);
                               return (
                                 <span 
-                                  key={lessonId}
+                                  key={lesson.id}
                                   className={`inline-block w-6 h-6 text-xs rounded flex items-center justify-center border ${
                                     isUnlocked 
                                       ? 'bg-green-500/20 text-green-400 border-green-500/30' 
                                       : 'bg-gray-600/50 text-gray-400 border-gray-500/30'
                                   }`}
+                                  title={`${lesson.title} (${lesson.totalSlides || lesson.slides?.length || 0} שקופיות)`}
                                 >
                                   {lessonId}
                                 </span>
@@ -746,7 +767,7 @@ const ClassroomInterface = () => {
                                 </div>
                                 <div>
                                   <p className="text-white font-medium">
-                                    שיעור {unlockedLesson.lessonId}
+                                    שיעור {unlockedLesson.lessonId} - {lessons.find(l => (l.originalId || l.order) === unlockedLesson.lessonId)?.title || 'שיעור לא ידוע'}
                                   </p>
                                   <p className="text-xs text-gray-400">
                                     נפתח על ידי {unlockedLesson.unlockedByTeacher}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Users, 
@@ -8,7 +8,9 @@ import {
   AlertCircle,
   CheckCircle,
   Play,
-  Pause
+  Pause,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -20,6 +22,8 @@ import Button from '../ui/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
 import LiveSessionNotification from './LiveSessionNotification';
 import { logger } from '../../utils/logger';
+import { doc, updateDoc, arrayUnion, arrayRemove, serverTimestamp } from 'firebase/firestore';
+import { db } from "../../firebase/firebase-config";
 
 const StudentSession = () => {
   const { sessionId } = useParams();
@@ -34,6 +38,18 @@ const StudentSession = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [answers, setAnswers] = useState({});
   const [slidesEngaged, setSlidesEngaged] = useState(new Set());
+  const [liveChat, setLiveChat] = useState([]);
+  const [chatMessage, setChatMessage] = useState('');
+  const [handRaised, setHandRaised] = useState(false);
+  const [sessionNotes, setSessionNotes] = useState('');
+  const [engagementMetrics, setEngagementMetrics] = useState({
+    slidesViewed: 0,
+    interactions: 0,
+    timeSpent: 0
+  });
+  const [isLiveSession, setIsLiveSession] = useState(false);
+  const [sessionMode, setSessionMode] = useState('individual'); // 'individual' or 'live'
+  const [teacherControlsSession, setTeacherControlsSession] = useState(false);
 
   useEffect(() => {
     if (sessionId && currentUser) {
@@ -48,6 +64,17 @@ const StudentSession = () => {
         if (updatedSession) {
           setSession(updatedSession);
           const newSlideIndex = updatedSession.currentSlide || 0;
+          
+          // Determine session mode and control state
+          const isLive = updatedSession.status === 'active' && updatedSession.teacherId;
+          setIsLiveSession(isLive);
+          setSessionMode(isLive ? 'live' : 'individual');
+          setTeacherControlsSession(isLive);
+          
+          // In live mode, force slide to match teacher's current slide
+          if (isLive) {
+            setCurrentSlide(newSlideIndex);
+          }
           
           // Track slide engagement when slide changes
           if (lesson && lesson.slides?.[newSlideIndex]) {
@@ -66,7 +93,10 @@ const StudentSession = () => {
             }
           }
           
-          setCurrentSlide(newSlideIndex);
+          // Only update current slide if not in live mode
+          if (!isLive) {
+            setCurrentSlide(newSlideIndex);
+          }
         } else {
           toast.error('השיעור הסתיים');
           navigate('/student/dashboard');
@@ -85,8 +115,17 @@ const StudentSession = () => {
       
       // Load lesson data from Firebase
       const lessonData = await getLessonWithSlides(sessionData.lessonId);
-      setLesson(lessonData);
       
+      // Ensure slides are sorted by order
+      if (lessonData.slides) {
+        lessonData.slides.sort((a, b) => {
+          const orderA = a.order ?? a.sortOrder ?? 0;
+          const orderB = b.order ?? b.sortOrder ?? 0;
+          return orderA - orderB;
+        });
+      }
+      
+      setLesson(lessonData);
       setCurrentSlide(sessionData.currentSlide || 0);
       setLoading(false);
     } catch (error) {
@@ -185,6 +224,148 @@ const StudentSession = () => {
     }
   };
 
+  const sendChatMessage = async () => {
+    if (!chatMessage.trim()) return;
+    
+    const message = {
+      id: Date.now(),
+      sender: currentUser.displayName || currentUser.email,
+      senderId: currentUser.uid,
+      message: chatMessage.trim(),
+      timestamp: Date.now(),
+      type: 'student'
+    };
+    
+    setLiveChat(prev => [...prev, message]);
+    setChatMessage('');
+    
+    // Save to Firebase
+    try {
+      const sessionRef = doc(db, 'sessions', sessionId);
+      await updateDoc(sessionRef, {
+        chatMessages: arrayUnion(message),
+        lastActivity: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('Error sending chat message:', error);
+    }
+  };
+
+  const toggleHandRaise = async () => {
+    const newHandRaised = !handRaised;
+    setHandRaised(newHandRaised);
+    
+    try {
+      const sessionRef = doc(db, 'sessions', sessionId);
+      if (newHandRaised) {
+        await updateDoc(sessionRef, {
+          raisedHands: arrayUnion(currentUser.uid),
+          lastActivity: serverTimestamp()
+        });
+        toast.success('יד מורמת! המורה יראה אותך');
+      } else {
+        await updateDoc(sessionRef, {
+          raisedHands: arrayRemove(currentUser.uid),
+          lastActivity: serverTimestamp()
+        });
+      }
+    } catch (error) {
+      console.error('Error updating hand raise:', error);
+    }
+  };
+
+  const saveSessionNotes = async () => {
+    try {
+      const sessionRef = doc(db, 'sessions', sessionId);
+      await updateDoc(sessionRef, {
+        studentNotes: {
+          [currentUser.uid]: {
+            notes: sessionNotes,
+            timestamp: serverTimestamp()
+          }
+        },
+        lastActivity: serverTimestamp()
+      });
+      toast.success('הערות נשמרו בהצלחה');
+    } catch (error) {
+      console.error('Error saving notes:', error);
+      toast.error('שגיאה בשמירת הערות');
+    }
+  };
+
+  const trackEngagement = useCallback((type, data = {}) => {
+    setEngagementMetrics(prev => ({
+      ...prev,
+      interactions: prev.interactions + 1
+    }));
+    
+    // Send to Firebase for teacher analytics
+    try {
+      const sessionRef = doc(db, 'sessions', sessionId);
+      updateDoc(sessionRef, {
+        studentEngagement: {
+          [currentUser.uid]: {
+            [type]: {
+              timestamp: serverTimestamp(),
+              data
+            }
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error tracking engagement:', error);
+    }
+  }, [sessionId, currentUser.uid]);
+
+  // Add navigation control functions
+  const handleNextSlide = () => {
+    if (teacherControlsSession) {
+      toast.error('המורה שולט בניווט במהלך השיעור החי');
+      return;
+    }
+    
+    if (lesson && currentSlide < lesson.slides.length - 1) {
+      const newSlideIndex = currentSlide + 1;
+      setCurrentSlide(newSlideIndex);
+      
+      // Update session slide if in live mode
+      if (isLiveSession) {
+        updateSessionSlide(sessionId, newSlideIndex);
+      }
+    }
+  };
+
+  const handlePreviousSlide = () => {
+    if (teacherControlsSession) {
+      toast.error('המורה שולט בניווט במהלך השיעור החי');
+      return;
+    }
+    
+    if (currentSlide > 0) {
+      const newSlideIndex = currentSlide - 1;
+      setCurrentSlide(newSlideIndex);
+      
+      // Update session slide if in live mode
+      if (isLiveSession) {
+        updateSessionSlide(sessionId, newSlideIndex);
+      }
+    }
+  };
+
+  const handleSlideSelect = (slideIndex) => {
+    if (teacherControlsSession) {
+      toast.error('המורה שולט בניווט במהלך השיעור החי');
+      return;
+    }
+    
+    setCurrentSlide(slideIndex);
+    
+    // Update session slide if in live mode
+    if (isLiveSession) {
+      updateSessionSlide(sessionId, slideIndex);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -212,7 +393,7 @@ const StudentSession = () => {
   }
 
   const sessionStatus = getSessionStatus();
-  const currentSlideData = lesson.content?.slides?.[currentSlide];
+  const currentSlideData = lesson.slides?.[currentSlide];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
@@ -270,6 +451,30 @@ const StudentSession = () => {
         </div>
       </div>
 
+      {/* Session Mode Indicator */}
+      {isLiveSession && (
+        <div className="bg-blue-600/20 border-b border-blue-500/30 p-3">
+          <div className="flex items-center justify-center space-x-2 text-blue-300">
+            <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+            <span className="font-medium">שיעור חי - המורה שולט בניווט</span>
+            {teacherControlsSession && (
+              <span className="text-xs bg-blue-500/30 px-2 py-1 rounded">
+                ניווט מושבת
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {sessionMode === 'individual' && (
+        <div className="bg-green-600/20 border-b border-green-500/30 p-3">
+          <div className="flex items-center justify-center space-x-2 text-green-300">
+            <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+            <span className="font-medium">למידה עצמאית - אתה שולט בניווט</span>
+          </div>
+        </div>
+      )}
+
       {/* Session Status Banner */}
       {sessionStatus === 'locked' && (
         <div className="bg-yellow-600/20 border-b border-yellow-500/30 p-3">
@@ -316,21 +521,71 @@ const StudentSession = () => {
             {/* Progress Indicator */}
             <div className="bg-gray-800/50 border-b border-gray-700 p-2">
               <div className="flex items-center justify-between text-sm text-gray-300">
-                <span>שקופית {currentSlide + 1} מתוך {lesson.content?.slides?.length || 0}</span>
+                <span>שקופית {currentSlide + 1} מתוך {lesson.slides?.length || 0}</span>
                 <span>דפים נצפו: {slidesEngaged.size}</span>
-              </div>
-              <div className="w-full bg-gray-700 rounded-full h-1 mt-1">
-                <div 
-                  className="bg-blue-500 h-1 rounded-full transition-all duration-300"
-                  style={{ width: `${((currentSlide + 1) / (lesson.content?.slides?.length || 1)) * 100}%` }}
-                ></div>
               </div>
             </div>
 
             {/* Slide Content */}
-            {currentSlideData && (
-              <div className="min-h-[calc(100vh-200px)]">
-                {renderSlide(currentSlideData)}
+            <div className="p-6">
+              {currentSlideData ? (
+                <div className="max-w-4xl mx-auto">
+                  {renderSlide(currentSlideData)}
+                </div>
+              ) : (
+                <div className="text-center text-gray-400">
+                  <p>אין תוכן להצגה</p>
+                </div>
+              )}
+            </div>
+
+            {/* Navigation Controls */}
+            <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-800/90 backdrop-blur-sm rounded-full p-2 border border-gray-600/50">
+              <div className="flex items-center space-x-4 space-x-reverse">
+                {/* Previous Button */}
+                <button
+                  onClick={handlePreviousSlide}
+                  disabled={currentSlide === 0 || teacherControlsSession}
+                  className={`p-3 rounded-full transition-all duration-200 ${
+                    currentSlide === 0 || teacherControlsSession
+                      ? 'bg-gray-600/50 text-gray-400 cursor-not-allowed'
+                      : 'bg-blue-600/80 hover:bg-blue-500 text-white hover:scale-110'
+                  }`}
+                  title={teacherControlsSession ? 'המורה שולט בניווט' : 'שקופית קודמת'}
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+
+                {/* Current Slide Indicator */}
+                <div className="px-4 py-2 bg-gray-700/50 rounded-full">
+                  <span className="text-white text-sm font-medium">
+                    {currentSlide + 1} / {lesson.slides?.length || 0}
+                  </span>
+                </div>
+
+                {/* Next Button */}
+                <button
+                  onClick={handleNextSlide}
+                  disabled={currentSlide === (lesson.slides?.length || 0) - 1 || teacherControlsSession}
+                  className={`p-3 rounded-full transition-all duration-200 ${
+                    currentSlide === (lesson.slides?.length || 0) - 1 || teacherControlsSession
+                      ? 'bg-gray-600/50 text-gray-400 cursor-not-allowed'
+                      : 'bg-blue-600/80 hover:bg-blue-500 text-white hover:scale-110'
+                  }`}
+                  title={teacherControlsSession ? 'המורה שולט בניווט' : 'שקופית הבאה'}
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Teacher Control Warning */}
+            {teacherControlsSession && (
+              <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-yellow-600/90 backdrop-blur-sm rounded-lg p-3 border border-yellow-500/50">
+                <div className="flex items-center space-x-2 text-yellow-200 text-sm">
+                  <Lock className="w-4 h-4" />
+                  <span>המורה שולט בניווט - המתן להנחיות</span>
+                </div>
               </div>
             )}
           </div>

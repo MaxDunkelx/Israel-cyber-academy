@@ -15,7 +15,7 @@ import {
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { getStudentAvailableSessions } from '../../firebase/session-service';
-import { getAllLessons } from '../../firebase/content-service';
+import { getAllLessonsWithSlideCounts } from '../../firebase/content-service';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
@@ -44,10 +44,18 @@ const StudentDashboard = () => {
       setLoading(true);
       
       // Load available sessions and lessons
-      const [sessions, lessonsData] = await Promise.all([
+      const [sessions, lessonsDataRaw] = await Promise.all([
         getStudentAvailableSessions(currentUser.uid),
-        getAllLessons()
+        getAllLessonsWithSlideCounts()
       ]);
+      
+      // Sort lessons by order or originalId
+      const lessonsData = lessonsDataRaw.slice().sort((a, b) => {
+        const orderA = a.order ?? a.originalId ?? 0;
+        const orderB = b.order ?? b.originalId ?? 0;
+        if (orderA !== orderB) return orderA - orderB;
+        return (a.title || '').localeCompare(b.title || '');
+      });
       
       setAvailableSessions(sessions);
       setLessons(lessonsData);
@@ -302,6 +310,7 @@ const StudentDashboard = () => {
                             </div>
                             <span className="text-sm text-green-400">{lesson.score}%</span>
                           </div>
+                          <span className="text-xs text-gray-400">{lesson.totalSlides || lesson.slides?.length || 0} שקופיות</span>
                         </div>
                         <Button
                           onClick={() => handleContinueLesson(lesson.id)}

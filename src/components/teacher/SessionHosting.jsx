@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Play, 
@@ -34,6 +34,8 @@ import Card from '../ui/Card';
 import Button from '../ui/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { getTeacherNotesForLesson } from '../../firebase/teacher-service';
+import { doc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../firebase/firebase-config';
 
 const SessionHosting = () => {
   const { sessionId } = useParams();
@@ -53,6 +55,16 @@ const SessionHosting = () => {
   const [teacherNotes, setTeacherNotes] = useState({});
   const [sessionDuration, setSessionDuration] = useState(0);
   const [error, setError] = useState(null);
+  const [studentEngagement, setStudentEngagement] = useState({});
+  const [liveChat, setLiveChat] = useState([]);
+  const [chatEnabled, setChatEnabled] = useState(true);
+  const [screenShareEnabled, setScreenShareEnabled] = useState(false);
+  const [studentHands, setStudentHands] = useState([]);
+  const [sessionAnalytics, setSessionAnalytics] = useState({
+    totalEngagement: 0,
+    averageResponseTime: 0,
+    participationRate: 0
+  });
 
   useEffect(() => {
     // Security check - ensure only teachers can access this component
@@ -177,7 +189,7 @@ const SessionHosting = () => {
   };
 
   const handleNextSlide = async () => {
-    if (currentSlide < lesson.content.slides.length - 1) {
+    if (currentSlide < lesson.slides.length - 1) {
       const newSlideIndex = currentSlide + 1;
       try {
         await updateSessionSlide(sessionId, newSlideIndex);
@@ -214,8 +226,6 @@ const SessionHosting = () => {
       toast.error('אירעה שגיאה בעדכון השקופית');
     }
   };
-
-
 
   const handleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
@@ -285,6 +295,81 @@ const SessionHosting = () => {
     }
   };
 
+  // Add this new function for real-time engagement tracking
+  const trackStudentEngagement = useCallback((studentId, engagementType, data = {}) => {
+    setStudentEngagement(prev => ({
+      ...prev,
+      [studentId]: {
+        ...prev[studentId],
+        [engagementType]: {
+          timestamp: Date.now(),
+          data
+        }
+      }
+    }));
+  }, []);
+
+  // Add live chat functionality
+  const sendChatMessage = async (message) => {
+    if (!message.trim()) return;
+    
+    const chatMessage = {
+      id: Date.now(),
+      sender: currentUser.displayName || currentUser.email,
+      senderId: currentUser.uid,
+      message: message.trim(),
+      timestamp: Date.now(),
+      type: 'teacher'
+    };
+    
+    setLiveChat(prev => [...prev, chatMessage]);
+    
+    // Save to Firebase for persistence
+    try {
+      const sessionRef = doc(db, 'sessions', sessionId);
+      await updateDoc(sessionRef, {
+        chatMessages: arrayUnion(chatMessage),
+        lastActivity: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('Error saving chat message:', error);
+    }
+  };
+
+  // Add student hand raising functionality
+  const handleStudentHandRaise = (studentId, isRaised) => {
+    setStudentHands(prev => {
+      if (isRaised) {
+        return [...prev.filter(id => id !== studentId), studentId];
+      } else {
+        return prev.filter(id => id !== studentId);
+      }
+    });
+  };
+
+  // Add screen sharing functionality
+  const toggleScreenShare = async () => {
+    if (!screenShareEnabled) {
+      try {
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          video: { cursor: "always" },
+          audio: false
+        });
+        
+        // Here you would integrate with your video service
+        // For now, we'll just track the state
+        setScreenShareEnabled(true);
+        toast.success('שיתוף מסך מופעל');
+      } catch (error) {
+        console.error('Error starting screen share:', error);
+        toast.error('שגיאה בהפעלת שיתוף מסך');
+      }
+    } else {
+      setScreenShareEnabled(false);
+      toast.success('שיתוף מסך כובה');
+    }
+  };
+
   if (error) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -344,7 +429,9 @@ const SessionHosting = () => {
     );
   }
 
-  const currentSlideNote = teacherNotes[currentSlide];
+  // Get current slide note using slideId
+  const currentSlideData = lesson?.slides?.[currentSlide];
+  const currentSlideNote = currentSlideData ? teacherNotes[currentSlideData.id] : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
@@ -406,9 +493,9 @@ const SessionHosting = () => {
         <div className="flex-1 flex flex-col">
           {/* Slide Display */}
           <div className="flex-1 bg-gray-900 p-8 relative overflow-auto">
-            {lesson && lesson.content && lesson.content.slides && lesson.content.slides[currentSlide] ? (
+            {lesson && lesson.slides && lesson.slides[currentSlide] ? (
               <div className="w-full max-w-4xl mx-auto">
-                {renderSlide(lesson.content.slides[currentSlide])}
+                {renderSlide(lesson.slides[currentSlide])}
               </div>
             ) : (
               <div className="text-center text-gray-400">
@@ -451,7 +538,7 @@ const SessionHosting = () => {
                 
                 <Button
                   onClick={handleNextSlide}
-                  disabled={currentSlide === lesson.content.slides.length - 1}
+                  disabled={currentSlide === lesson.slides.length - 1}
                   variant="secondary"
                   size="sm"
                 >
@@ -483,12 +570,12 @@ const SessionHosting = () => {
               {/* Progress */}
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-300">
-                  {currentSlide + 1} / {lesson.content.slides.length}
+                  {currentSlide + 1} / {lesson.slides.length}
                 </span>
                 <div className="w-24 lg:w-32 bg-gray-700 rounded-full h-2">
                   <div 
                     className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${((currentSlide + 1) / lesson.content.slides.length) * 100}%` }}
+                    style={{ width: `${((currentSlide + 1) / lesson.slides.length) * 100}%` }}
                   ></div>
                 </div>
               </div>

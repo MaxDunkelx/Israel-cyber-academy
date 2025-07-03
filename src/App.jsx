@@ -33,6 +33,7 @@ import InteractiveLesson from './components/InteractiveLesson';
 import Profile from './components/Profile';
 import StudentDashboard from './components/student/StudentDashboard';
 import LiveSessionNotification from './components/student/LiveSessionNotification';
+import LiveSessionIndicator from './components/common/LiveSessionIndicator';
 
 // Teacher Components
 import TeacherNavigation from './components/teacher/TeacherNavigation';
@@ -250,6 +251,11 @@ const AppContent = () => {
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
         {/* Live Session Notification - only for students */}
         {currentUser && role === 'student' && <LiveSessionNotification />}
+        
+        {/* Global Live Session Indicator */}
+        {currentUser && (role === 'teacher' || role === 'student') && (
+          <LiveSessionIndicator position="top-right" />
+        )}
         
         {/* Navigation - only show when authenticated */}
         {currentUser && role === 'student' && <Navigation />}

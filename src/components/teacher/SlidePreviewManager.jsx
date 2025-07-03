@@ -39,7 +39,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { saveTeacherNotes, getTeacherNotesForLesson } from '../../firebase/teacher-service';
-import { getAllLessons, getSlidesByLessonId, getLessonWithSlides } from '../../firebase/content-service';
+import { getAllLessons, getAllLessonsWithSlideCounts, getSlidesByLessonId, getLessonWithSlides } from '../../firebase/content-service';
 import { PresentationSlide, PollSlide, VideoSlide, InteractiveSlide, BreakSlide, ReflectionSlide, QuizSlide } from '../slides';
 import LoadingSpinner from '../common/LoadingSpinner';
 import Card from '../ui/Card';
@@ -64,86 +64,124 @@ const SlidePreviewManager = () => {
   const [autoPlay, setAutoPlay] = useState(false);
   const [autoPlayInterval, setAutoPlayInterval] = useState(5000);
   const [autoPlayTimer, setAutoPlayTimer] = useState(null);
+  const [error, setError] = useState(null);
+  const [loadingSlides, setLoadingSlides] = useState(false);
 
-  // Load all lessons from unified data source - using system manager logic
+  // Load all lessons from database - using content service
   const loadLessons = async () => {
     try {
       setLoading(true);
-      console.log('🔄 Loading lessons from database...');
+      setError(null);
+      console.log('🔄 Loading lessons with slide counts from database...');
       
-      const lessonsData = await getAllLessons();
-      console.log(`✅ Loaded ${lessonsData.length} lessons`);
+      const lessonsData = await getAllLessonsWithSlideCounts();
+      console.log(`✅ Loaded ${lessonsData.length} lessons with slide counts from database`);
       setLessons(lessonsData);
       
       if (lessonsData.length === 0) {
+        setError('No lessons found. Please check your database connection.');
         toast.error('No lessons found. Please check your database connection.');
       } else {
       // Auto-select first lesson if available
         if (!selectedLesson) {
           setSelectedLesson(lessonsData[0]);
+          // No need to load slides again since they're already loaded
+          console.log(`✅ Auto-selected lesson: ${lessonsData[0].title} with ${lessonsData[0].slides?.length || 0} slides`);
         }
       }
       
     } catch (error) {
       console.error('❌ Error loading lessons:', error);
+      setError(`Failed to load lessons: ${error.message}`);
       toast.error(`Failed to load lessons: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // Load slides for a lesson - using system manager logic
-  const loadSlides = async (lessonId) => {
+  // Load slides for a specific lesson from database
+  const loadSlidesForLesson = async (lessonId) => {
+    // Prevent multiple simultaneous loads
+    if (loadingSlides) {
+      console.log('⚠️ Slides already loading, skipping...');
+      return;
+    }
+    
     try {
-      console.log(`🔄 Loading slides for lesson ${lessonId}...`);
+      setLoadingSlides(true);
+      console.log(`🔄 Loading slides for lesson ${lessonId} from database...`);
       
       const slidesData = await getSlidesByLessonId(lessonId);
-      console.log(`✅ Loaded ${slidesData.length} slides`);
+      console.log(`✅ Loaded ${slidesData.length} slides from database for lesson ${lessonId}`);
+      console.log(`📋 Slide IDs:`, slidesData.map(s => s.id));
       
       if (slidesData.length === 0) {
         console.log('⚠️ No slides found for this lesson');
         toast.warning('No slides found for this lesson');
       }
       
-      // Update the selected lesson with slides
+      // Remove any duplicate slides based on ID
+      const uniqueSlides = slidesData.filter((slide, index, self) => 
+        index === self.findIndex(s => s.id === slide.id)
+      );
+      
+      if (uniqueSlides.length !== slidesData.length) {
+        console.log(`⚠️ Removed ${slidesData.length - uniqueSlides.length} duplicate slides`);
+      }
+      
+      // Update the selected lesson with slides from database
       setSelectedLesson(prev => prev ? {
         ...prev,
-        content: { slides: slidesData }
+        slides: uniqueSlides,
+        content: { slides: uniqueSlides } // Maintain compatibility with existing code
       } : null);
+      
+      // Reset current slide to 0 when loading new lesson
+      setCurrentSlide(0);
+      
+      // Load teacher notes for this lesson
+      if (currentUser?.uid) {
+        await loadTeacherNotes(lessonId);
+      }
       
     } catch (error) {
       console.error('❌ Error loading slides:', error);
       toast.error(`Failed to load slides: ${error.message}`);
+    } finally {
+      setLoadingSlides(false);
     }
   };
 
-  // Handle lesson selection - using system manager logic
+  // Handle lesson selection - using database-driven approach
   const handleLessonChange = async (lessonId) => {
     console.log('🔄 Lesson changed to:', lessonId);
     
     try {
-      const lessonData = await getLessonWithSlides(lessonId);
+      // Find the lesson in our loaded lessons
+      const lessonData = lessons.find(lesson => lesson.id === lessonId);
+      
       if (lessonData) {
+        console.log('✅ Found lesson data:', lessonData.title);
+        console.log(`📊 Lesson has ${lessonData.slides?.length || 0} slides loaded`);
         setSelectedLesson(lessonData);
         setCurrentSlide(0);
-        await loadSlides(lessonData.id);
         
+        // Slides are already loaded, no need to load them again
         // Load teacher notes for this lesson
         if (currentUser?.uid) {
           await loadTeacherNotes(lessonData.id);
         }
       } else {
-        setSelectedLesson(null);
-        setNotes({});
-        setCurrentNote('');
+        console.error('❌ Lesson not found in loaded lessons');
+        toast.error('Lesson not found');
       }
     } catch (error) {
-      console.error('Error loading lesson:', error);
+      console.error('❌ Error loading lesson:', error);
       toast.error('Failed to load lesson');
     }
   };
 
-  // Load teacher notes
+  // Load teacher notes for a lesson
   const loadTeacherNotes = async (lessonId) => {
     try {
       if (!currentUser?.uid) return;
@@ -152,6 +190,7 @@ const SlidePreviewManager = () => {
       const notesMap = {};
       
       notesData.forEach(note => {
+        // Use slideId as key for consistency
         notesMap[note.slideId] = note.content;
       });
       
@@ -163,12 +202,21 @@ const SlidePreviewManager = () => {
     }
   };
 
-  // Save teacher note
-  const saveNote = async (slideId) => {
+  // Save teacher note for current slide
+  const saveNote = async () => {
     try {
       if (!currentUser?.uid || !selectedLesson?.id || !currentNote.trim()) return;
       
       setSaving(true);
+      
+      // Get current slide ID
+      const currentSlideData = selectedLesson.slides?.[currentSlide];
+      if (!currentSlideData) {
+        toast.error('No slide data available');
+        return;
+      }
+      
+      const slideId = currentSlideData.id;
       
       await saveTeacherNotes(currentUser.uid, selectedLesson.id, slideId, {
         content: currentNote.trim(),
@@ -199,478 +247,437 @@ const SlidePreviewManager = () => {
   // Load notes when component mounts or user changes
   useEffect(() => {
     if (currentUser?.uid && selectedLesson?.id) {
-      console.log('🔄 Effect triggered - loading notes for selected lesson:', selectedLesson.id);
-      loadTeacherNotes(selectedLesson.id.toString());
+      loadTeacherNotes(selectedLesson.id);
     }
   }, [currentUser?.uid, selectedLesson?.id]);
 
-  const handleSaveNote = async () => {
-    if (!currentUser?.uid || !selectedLesson || currentNote.trim() === '') return;
-    
-    console.log('💾 Saving note for lesson:', selectedLesson.id, 'slide:', currentSlide, 'content:', currentNote);
-    
-    setSaving(true);
-    try {
-      // Use slideIndex instead of slideId for better consistency
-      const slideIndex = currentSlide;
-      const slideId = selectedLesson.content?.slides?.[currentSlide]?.id || `slide-${currentSlide + 1}`;
+  // Auto-play functionality
+  useEffect(() => {
+    if (autoPlay && selectedLesson?.slides) {
+      const timer = setInterval(() => {
+        setCurrentSlide(prev => {
+          if (prev < selectedLesson.slides.length - 1) {
+            return prev + 1;
+          } else {
+            setAutoPlay(false);
+            return prev;
+          }
+        });
+      }, autoPlayInterval);
       
-      const result = await saveTeacherNotes(currentUser.uid, selectedLesson.id.toString(), slideId, {
-        content: currentNote.trim(),
-        slideIndex: slideIndex,
-        timestamp: new Date().toISOString()
-      });
+      setAutoPlayTimer(timer);
       
-      console.log('✅ Note saved successfully:', result);
-      
-      // Update local state using slideIndex as key
-      const key = `${selectedLesson.id}-${slideIndex}`;
-      setNotes(prev => ({ ...prev, [key]: currentNote.trim() }));
-      
-      setSaving(false);
-    } catch (error) {
-      console.error('❌ Error saving note:', error);
-      setSaving(false);
+      return () => clearInterval(timer);
+    }
+  }, [autoPlay, autoPlayInterval, selectedLesson?.slides]);
+
+  // Handle slide change
+  const handleSlideChange = (newSlideIndex) => {
+    if (selectedLesson?.slides && newSlideIndex >= 0 && newSlideIndex < selectedLesson.slides.length) {
+    setCurrentSlide(newSlideIndex);
+      loadNoteForCurrentSlide(newSlideIndex);
     }
   };
 
-  const handleSlideChange = (newSlideIndex) => {
-    console.log('🔄 Changing slide from', currentSlide, 'to', newSlideIndex);
-    setCurrentSlide(newSlideIndex);
-    const key = `${selectedLesson.id}-${newSlideIndex}`;
-    const noteForSlide = notes[key] || '';
-    console.log('📝 Loading note for slide', newSlideIndex, 'key:', key, 'note:', noteForSlide);
-    setCurrentNote(noteForSlide);
-  };
-
+  // Get note for specific slide
   const getNoteForSlide = (lessonId, slideIndex) => {
-    const key = `${lessonId}-${slideIndex}`;
-    const note = notes[key] || '';
-    console.log('📝 Getting note for slide', slideIndex, 'key:', key, 'note:', note);
-    return note;
+    if (!selectedLesson?.slides || slideIndex >= selectedLesson.slides.length) return '';
+    
+    const slideId = selectedLesson.slides[slideIndex]?.id;
+    return notes[slideId] || '';
   };
 
-  // Enhanced slide navigation
+  // Navigation functions
   const handleNextSlide = () => {
-    if (selectedLesson?.content?.slides && currentSlide < selectedLesson.content.slides.length - 1) {
-      const newSlideIndex = currentSlide + 1;
-      setCurrentSlide(newSlideIndex);
-      loadNoteForCurrentSlide(newSlideIndex);
+    if (selectedLesson?.slides && currentSlide < selectedLesson.slides.length - 1) {
+      handleSlideChange(currentSlide + 1);
     }
   };
 
   const handlePrevSlide = () => {
     if (currentSlide > 0) {
-      const newSlideIndex = currentSlide - 1;
-      setCurrentSlide(newSlideIndex);
-      loadNoteForCurrentSlide(newSlideIndex);
+      handleSlideChange(currentSlide - 1);
     }
   };
 
+  // Load note for current slide
   const loadNoteForCurrentSlide = (slideIndex) => {
-    if (!selectedLesson) return;
-    const key = `${selectedLesson.id}-${slideIndex}`;
-    const noteForSlide = notes[key] || '';
-    setCurrentNote(noteForSlide);
+    if (!selectedLesson?.slides || slideIndex >= selectedLesson.slides.length) {
+      setCurrentNote('');
+      return;
+    }
+    
+    const slideId = selectedLesson.slides[slideIndex]?.id;
+    const note = notes[slideId] || '';
+    setCurrentNote(note);
   };
 
-  // Auto-play functionality
+  // Update current note when slide changes
   useEffect(() => {
-    if (autoPlay && selectedLesson?.content?.slides) {
-      const timer = setInterval(() => {
-        if (currentSlide < selectedLesson.content.slides.length - 1) {
-          handleNextSlide();
-        } else {
-          setAutoPlay(false);
-        }
-      }, autoPlayInterval);
-      setAutoPlayTimer(timer);
-      return () => clearInterval(timer);
-    } else if (autoPlayTimer) {
-      clearInterval(autoPlayTimer);
-      setAutoPlayTimer(null);
-    }
-  }, [autoPlay, currentSlide, selectedLesson, autoPlayInterval]);
+    loadNoteForCurrentSlide(currentSlide);
+  }, [currentSlide, selectedLesson, notes]);
 
-  // Enhanced slide rendering with error handling
+  // Render slide content
   const renderSlide = (slide) => {
-    if (!slide || !slide.type) {
-      return (
-        <div className="text-center text-white p-8">
-          <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-400" />
-          <h2 className="text-2xl font-semibold mb-2">שקופית לא תקינה</h2>
-          <p className="text-gray-400">לא ניתן לטעון את השקופית הזו</p>
-        </div>
-      );
-    }
+    if (!slide) return null;
 
     try {
       switch (slide.type) {
         case 'presentation':
           return <PresentationSlide slide={slide} />;
         case 'poll':
-          return <PollSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
-        case 'quiz':
-          return <QuizSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
+          return <PollSlide slide={slide} onSubmit={(answer) => handleAnswer(slide.id, answer)} />;
         case 'video':
-          return <VideoSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
+          return <VideoSlide slide={slide} />;
         case 'interactive':
-          return <InteractiveSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
+          return <InteractiveSlide slide={slide} onComplete={(result) => handleAnswer(slide.id, result)} />;
         case 'break':
           return <BreakSlide slide={slide} />;
         case 'reflection':
-          return <ReflectionSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
+          return <ReflectionSlide slide={slide} onSubmit={(reflection) => handleAnswer(slide.id, reflection)} />;
+        case 'quiz':
+          return <QuizSlide slide={slide} onSubmit={(answer) => handleAnswer(slide.id, answer)} />;
         default:
-          return <PresentationSlide slide={slide} />;
+          return (
+            <div className="text-center py-8">
+              <p className="text-gray-400">Unsupported slide type: {slide.type}</p>
+            </div>
+          );
       }
     } catch (error) {
-      console.error('Error rendering slide:', error, slide);
+      console.error('Error rendering slide:', error);
       return (
-        <div className="text-center text-white p-8">
-          <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-400" />
-          <h2 className="text-2xl font-semibold mb-2">שגיאה בטעינת שקופית</h2>
-          <p className="text-gray-400">אירעה שגיאה בעת הצגת השקופית</p>
+        <div className="text-center py-8">
+          <p className="text-red-400">Error rendering slide</p>
         </div>
       );
     }
   };
 
+  // Handle slide answers
   const handleAnswer = (slideId, answer) => {
-    setAnswers(prev => ({ ...prev, [slideId]: answer }));
-    setCompletedSlides(prev => ({ ...prev, [slideId]: true }));
+    setAnswers(prev => ({
+      ...prev,
+      [slideId]: answer
+    }));
+    
+    setCompletedSlides(prev => ({
+      ...prev,
+      [slideId]: true
+    }));
   };
-
-  // Filter and search slides
-  const filteredSlides = selectedLesson?.content?.slides?.filter(slide => {
-    const matchesSearch = slide.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         slide.content?.elements?.some(el => el.text?.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesFilter = filterType === 'all' || slide.type === filterType;
-    return matchesSearch && matchesFilter;
-  }) || [];
 
   // Get slide type icon
   const getSlideTypeIcon = (type) => {
     switch (type) {
-      case 'presentation': return <FileText className="w-4 h-4 text-blue-400" />;
-      case 'poll': return <MessageSquare className="w-4 h-4 text-green-400" />;
-      case 'quiz': return <Star className="w-4 h-4 text-yellow-400" />;
-      case 'video': return <Play className="w-4 h-4 text-purple-400" />;
-      case 'interactive': return <Layers className="w-4 h-4 text-indigo-400" />;
-      case 'break': return <Pause className="w-4 h-4 text-orange-400" />;
-      case 'reflection': return <BookOpen className="w-4 h-4 text-cyan-400" />;
-      default: return <FileText className="w-4 h-4 text-gray-400" />;
+      case 'presentation': return <FileText className="w-4 h-4" />;
+      case 'poll': return <MessageSquare className="w-4 h-4" />;
+      case 'video': return <Play className="w-4 h-4" />;
+      case 'interactive': return <Settings className="w-4 h-4" />;
+      case 'break': return <Pause className="w-4 h-4" />;
+      case 'reflection': return <BookOpen className="w-4 h-4" />;
+      case 'quiz': return <CheckCircle className="w-4 h-4" />;
+      default: return <FileText className="w-4 h-4" />;
     }
   };
 
+  // Filter and sort lessons based on search term and order
+  const filteredLessons = lessons
+    .filter(lesson =>
+      lesson.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lesson.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      // Prefer explicit order, fallback to originalId, then title
+      const orderA = a.order ?? a.originalId ?? 0;
+      const orderB = b.order ?? b.originalId ?? 0;
+      if (orderA !== orderB) return orderA - orderB;
+      return (a.title || '').localeCompare(b.title || '');
+    });
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen">
         <LoadingSpinner />
       </div>
     );
   }
 
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+        <p className="text-red-400">{error}</p>
+        <button 
+          onClick={loadLessons}
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className={`min-h-screen bg-gray-900 text-white ${fullscreenMode ? 'fixed inset-0 z-50' : ''}`}>
-      {/* Enhanced Header */}
-      <div className="bg-gray-800 border-b border-gray-700 p-4">
-        <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gray-900 text-white p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-4">
             <BookOpen className="w-8 h-8 text-blue-400" />
             <div>
-              <h1 className="text-2xl font-bold text-white">מנהל שקופיות למורה</h1>
-              <p className="text-sm text-gray-400">צפייה וניהול הערות אישיות</p>
+              <h1 className="text-2xl font-bold">Slide Preview Manager</h1>
+              <p className="text-gray-400">Preview and manage lesson slides</p>
             </div>
           </div>
           
-          <div className="flex items-center space-x-4">
-            {/* Lesson Selector */}
-            <div className="flex items-center space-x-2">
-              <label className="text-sm text-gray-300">בחר שיעור:</label>
-            <select
-              value={selectedLesson?.id || ''}
-              onChange={(e) => handleLessonChange(e.target.value)}
-                className="bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">בחר שיעור...</option>
-                {lessons
-                  .slice()
-                  .sort((a, b) => (a.title || '').localeCompare(b.title || ''))
-                  .map(lesson => (
-                <option key={lesson.id} value={lesson.id}>
-                      {lesson.title || `שיעור ${lesson.id}`}
-                </option>
-              ))}
-            </select>
-            </div>
-
-            {/* View Controls */}
             <div className="flex items-center space-x-2">
               <button
-                onClick={() => setShowSlideThumbnails(!showSlideThumbnails)}
-                className={`p-2 rounded-lg transition-colors ${
-                  showSlideThumbnails ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:text-white'
+              onClick={() => setPreviewMode(!previewMode)}
+              className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
+                previewMode ? 'bg-blue-600' : 'bg-gray-700'
                 }`}
-                title="Toggle Slide Thumbnails"
               >
-                <Grid className="w-4 h-4" />
+              <Eye className="w-4 h-4" />
+              <span>Preview</span>
               </button>
               
               <button
                 onClick={() => setFullscreenMode(!fullscreenMode)}
-                className="p-2 bg-gray-700 text-gray-300 hover:text-white rounded-lg transition-colors"
-                title="Toggle Fullscreen"
+              className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600"
               >
                 {fullscreenMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
               </button>
             </div>
           </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Lesson Selection Sidebar */}
+          <div className="lg:col-span-1">
+            <Card className="h-full">
+              <div className="p-4">
+                <h2 className="text-lg font-semibold mb-4">Lessons</h2>
+                
+                {/* Search */}
+                <div className="mb-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                      type="text"
+                      placeholder="Search lessons..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
+                    />
         </div>
       </div>
 
-      <div className="flex h-[calc(100vh-80px)]">
-        {/* Enhanced Sidebar */}
-        {showSlideThumbnails && (
-          <motion.div 
-            initial={{ width: 0 }}
-            animate={{ width: 320 }}
-            exit={{ width: 0 }}
-            className="bg-gray-800 border-r border-gray-700 overflow-hidden"
-          >
-          {selectedLesson && (
-              <div className="h-full flex flex-col">
-              {/* Lesson Info */}
-                <div className="p-4 border-b border-gray-700 bg-gray-750">
-                  <div className="flex items-center space-x-3 mb-3">
-                    <BookOpen className="w-6 h-6 text-blue-400" />
-                    <div className="flex-1">
-                      <h2 className="text-lg font-semibold text-white">{selectedLesson.title || `שיעור ${selectedLesson.id}`}</h2>
-                <div className="text-sm text-gray-400">
-                        {selectedLesson.content?.slides?.length || 0} שקופיות
+                {/* Lesson List */}
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {filteredLessons.map((lesson) => (
+                    <button
+                      key={lesson.id}
+                      onClick={() => handleLessonChange(lesson.id)}
+                      className={`w-full text-left p-3 rounded-lg transition-colors ${
+                        selectedLesson?.id === lesson.id
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-800 hover:bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <BookOpen className="w-4 h-4" />
+                        <div>
+                          <p className="font-medium">{lesson.title}</p>
+                          <p className="text-sm opacity-75">
+                            {lesson.totalSlides || lesson.slides?.length || 0} slides
+                          </p>
+                        </div>
                 </div>
+                    </button>
+                  ))}
                 </div>
               </div>
+            </Card>
+              </div>
 
-                  {/* Search and Filter */}
-                <div className="space-y-2">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="חיפוש בשקופיות..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
+          {/* Main Content Area */}
+          <div className="lg:col-span-3">
+            {selectedLesson ? (
+              <div className="space-y-6">
+                {/* Lesson Info */}
+                <Card>
+                  <div className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-xl font-bold">{selectedLesson.title}</h2>
+                        <p className="text-gray-400">{selectedLesson.description}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-gray-400">
+                          Slide {currentSlide + 1} of {selectedLesson.totalSlides || selectedLesson.slides?.length || 0}
+                        </p>
+                        <p className="text-sm text-gray-400">
+                          {selectedLesson.totalSlides || selectedLesson.slides?.length || 0} total slides
+                        </p>
+                      </div>
                     </div>
-                    
-                    <select
-                      value={filterType}
-                      onChange={(e) => setFilterType(e.target.value)}
-                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="all">כל הסוגים</option>
-                      <option value="presentation">הצגה</option>
-                      <option value="poll">סקר</option>
-                      <option value="quiz">חידון</option>
-                      <option value="video">וידאו</option>
-                      <option value="interactive">אינטראקטיבי</option>
-                      <option value="break">הפסקה</option>
-                      <option value="reflection">הרהור</option>
-                    </select>
                   </div>
-                </div>
+                </Card>
 
                 {/* Slide Navigation */}
-                <div className="flex-1 overflow-y-auto p-4">
-                  <div className="space-y-2">
-                    {filteredSlides.map((slide, index) => {
-                      const originalIndex = selectedLesson.content.slides.findIndex(s => s.id === slide.id);
-                      const hasNote = getNoteForSlide(selectedLesson.id, originalIndex);
-                      
-                      return (
-                        <motion.button
-                          key={slide.id || index}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.05 }}
-                          onClick={() => handleSlideChange(originalIndex)}
-                          className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
-                            currentSlide === originalIndex
-                              ? 'bg-blue-600 text-white shadow-lg'
-                              : 'bg-gray-700 text-gray-200 hover:bg-gray-600 hover:shadow-md'
+                {selectedLesson.slides && selectedLesson.slides.length > 0 && (
+                  <Card>
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold">Slide Navigation</h3>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => setAutoPlay(!autoPlay)}
+                            className={`px-3 py-1 rounded ${
+                              autoPlay ? 'bg-red-600' : 'bg-green-600'
+                            }`}
+                          >
+                            {autoPlay ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                          </button>
+                          <button
+                            onClick={() => setShowSlideThumbnails(!showSlideThumbnails)}
+                            className="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600"
+                          >
+                            <Grid className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Slide Thumbnails */}
+                      {showSlideThumbnails && (
+                        <div className="grid grid-cols-6 gap-2 mb-4">
+                          {selectedLesson.slides.map((slide, index) => (
+                            <button
+                              key={`slide-${slide.id}-order-${slide.order || index}`}
+                              onClick={() => handleSlideChange(index)}
+                              className={`p-2 rounded text-xs ${
+                                index === currentSlide
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-gray-800 hover:bg-gray-700'
                           }`}
                         >
-                          <div className="flex items-center space-x-3">
+                              <div className="flex flex-col items-center space-y-1">
                             {getSlideTypeIcon(slide.type)}
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium truncate text-sm">
-                                {slide.title || `שקופית ${originalIndex + 1}`}
+                                <span>{index + 1}</span>
                               </div>
-                              <div className="text-xs opacity-75 mt-1">
-                                {slide.type || 'presentation'}
-                              </div>
-                            </div>
-                            {hasNote && (
-                              <div className="w-2 h-2 bg-yellow-400 rounded-full flex-shrink-0"></div>
-                            )}
-                          </div>
-                        </motion.button>
-                      );
-                    })}
-                      </div>
-                </div>
+                            </button>
+                          ))}
               </div>
             )}
-          </motion.div>
-          )}
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col bg-gray-900">
-          {selectedLesson ? (
-            <>
-              {/* Slide Navigation Controls */}
-              <div className="bg-gray-800 border-b border-gray-700 p-4">
+                      {/* Navigation Controls */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
                     <button
                       onClick={handlePrevSlide}
                       disabled={currentSlide === 0}
-                      className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-white"
-                      title="Previous Slide"
-                    >
-                      <ChevronLeft className="w-5 h-5" />
+                          className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+
+                        <div className="flex items-center space-x-4">
+                          <button
+                            onClick={() => handleSlideChange(0)}
+                            disabled={currentSlide === 0}
+                            className="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600 disabled:opacity-50"
+                          >
+                            <SkipBack className="w-4 h-4" />
                     </button>
                     
-                    <span className="text-white font-medium">
-                      שקופית {currentSlide + 1} מתוך {selectedLesson.content?.slides?.length || 0}
+                          <span className="text-sm">
+                            {currentSlide + 1} / {selectedLesson.slides.length}
                     </span>
                     
                     <button
-                      onClick={handleNextSlide}
-                      disabled={currentSlide >= (selectedLesson.content?.slides?.length || 0) - 1}
-                      className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-white"
-                      title="Next Slide"
-                    >
-                      <ChevronRight className="w-5 h-5" />
+                            onClick={() => handleSlideChange(selectedLesson.slides.length - 1)}
+                            disabled={currentSlide === selectedLesson.slides.length - 1}
+                            className="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600 disabled:opacity-50"
+                          >
+                            <SkipForward className="w-4 h-4" />
                     </button>
               </div>
 
-                  <div className="flex items-center space-x-2">
-                    {/* Auto-play Controls */}
-                    <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => setAutoPlay(!autoPlay)}
-                        className={`p-2 rounded-lg transition-colors ${
-                          autoPlay ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300 hover:text-white'
-                        }`}
-                        title="Auto-play"
-                      >
-                        {autoPlay ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                      </button>
-                      
-                      {autoPlay && (
-                        <select
-                          value={autoPlayInterval}
-                          onChange={(e) => setAutoPlayInterval(parseInt(e.target.value))}
-                          className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+                          onClick={handleNextSlide}
+                          disabled={currentSlide === selectedLesson.slides.length - 1}
+                          className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <option value={3000}>3s</option>
-                          <option value={5000}>5s</option>
-                          <option value={10000}>10s</option>
-                        </select>
-                      )}
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
                     </div>
-                    
-                    <div className="text-white text-sm">
-                      {selectedLesson.content?.slides?.[currentSlide]?.title || `שקופית ${currentSlide + 1}`}
                     </div>
-                  </div>
-                </div>
-              </div>
+                  </Card>
+                )}
 
               {/* Slide Content */}
-              <div className="flex-1 overflow-auto bg-gray-900">
-                <div className="max-w-4xl mx-auto p-6">
-                  {selectedLesson.content?.slides?.[currentSlide] && 
-                    renderSlide(selectedLesson.content.slides[currentSlide])}
-                </div>
-              </div>
-
-              {/* Enhanced Notes Panel */}
-              <div className="h-64 bg-gray-800 border-t border-gray-700">
-                <div className="h-full flex flex-col">
-                  {/* Notes Header */}
-                  <div className="p-4 border-b border-gray-700 bg-gray-750">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <Edit3 className="w-5 h-5 text-blue-400" />
-                        <h3 className="text-lg font-semibold text-white">
-                          הערות מורה - שקופית {currentSlide + 1}
+                {selectedLesson.slides && selectedLesson.slides[currentSlide] && (
+                  <Card>
+                    <div className="p-6">
+                      <div className="mb-4">
+                        <h3 className="text-lg font-semibold mb-2">
+                          {selectedLesson.slides[currentSlide].title}
                         </h3>
-                        {getNoteForSlide(selectedLesson.id, currentSlide) && (
-                          <CheckCircle className="w-5 h-5 text-green-400" />
-                        )}
+                        <div className="flex items-center space-x-2 text-sm text-gray-400">
+                          {getSlideTypeIcon(selectedLesson.slides[currentSlide].type)}
+                          <span>{selectedLesson.slides[currentSlide].type}</span>
+                        </div>
                       </div>
                       
-                      <div className="flex items-center space-x-2">
-                        <div className="text-sm text-gray-400">
-                          {Object.keys(notes).filter(key => notes[key] && notes[key].trim()).length} הערות שמורות
-                    </div>
-                    <button
-                      onClick={handleSaveNote}
-                      disabled={saving || currentNote.trim() === ''}
-                          className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                          <Save className="w-4 h-4" />
-                          <span>{saving ? 'שומר...' : 'שמור הערה'}</span>
-                    </button>
+                      <div className="border border-gray-700 rounded-lg p-4 bg-gray-800">
+                        {renderSlide(selectedLesson.slides[currentSlide])}
                       </div>
-                  </div>
-                </div>
-                
-                  {/* Notes Content */}
-                  <div className="flex-1 p-4">
-                    {/* Existing Note Display */}
-                {getNoteForSlide(selectedLesson.id, currentSlide) && (
-                      <div className="mb-3 p-3 bg-yellow-900/20 border border-yellow-700/30 rounded-lg">
-                        <div className="text-sm text-yellow-300 font-medium mb-1 flex items-center space-x-2">
-                          <Info className="w-4 h-4" />
-                          <span>הערה קיימת:</span>
-                        </div>
-                    <div className="text-sm text-yellow-200">
-                      {getNoteForSlide(selectedLesson.id, currentSlide)}
                     </div>
-                  </div>
+                  </Card>
                 )}
                 
-                    {/* Note Editor */}
+                {/* Teacher Notes */}
+                <Card>
+                  <div className="p-4">
+                    <h3 className="text-lg font-semibold mb-4">Teacher Notes</h3>
+                    <div className="space-y-4">
                 <textarea
                   value={currentNote}
                   onChange={(e) => setCurrentNote(e.target.value)}
-                  placeholder={getNoteForSlide(selectedLesson.id, currentSlide) 
-                        ? "ערוך את ההערה הקיימת שלך עבור שקופית זו..." 
-                        : "הוסף הערות אישיות עבור שקופית זו..."}
-                  className="w-full h-32 bg-gray-700 text-white border border-gray-600 rounded-lg p-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
-                />
-                    
-                    <div className="text-sm text-gray-400 mt-2 flex items-center space-x-2">
-                      <Info className="w-4 h-4" />
-                      <span>הערות נשמרות אוטומטית במסד הנתונים האישי שלך</span>
+                        placeholder="Add your notes for this slide..."
+                        className="w-full h-32 p-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500 resize-none"
+                      />
+                      <div className="flex justify-end space-x-2">
+                        <button
+                          onClick={() => setCurrentNote('')}
+                          className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600"
+                        >
+                          Clear
+                        </button>
+                        <button
+                          onClick={saveNote}
+                          disabled={saving || !currentNote.trim()}
+                          className="px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                        >
+                          {saving ? <LoadingSpinner /> : <Save className="w-4 h-4" />}
+                          <span>Save Note</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
+                </Card>
               </div>
-            </>
           ) : (
-            <div className="flex-1 flex items-center justify-center bg-gray-900">
-              <div className="text-center">
-                <BookOpen className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                <h2 className="text-2xl font-semibold text-white mb-2">בחר שיעור</h2>
-                <p className="text-gray-400">בחר שיעור מהרשימה כדי להתחיל לצפות בשקופיות</p>
+              <Card>
+                <div className="p-8 text-center">
+                  <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Lesson Selected</h3>
+                  <p className="text-gray-400">
+                    Select a lesson from the sidebar to preview its slides
+                  </p>
               </div>
+              </Card>
+            )}
             </div>
-          )}
         </div>
       </div>
     </div>
