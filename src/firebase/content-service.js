@@ -79,7 +79,14 @@ export const getAllLessons = async (forceRefresh = false) => {
       });
     });
     
-    console.log(`✅ Loaded ${dbLessons.length} lessons from database`);
+    // Sort lessons by originalId or order
+    dbLessons.sort((a, b) => {
+      const aOrder = a.originalId || a.order || 0;
+      const bOrder = b.originalId || b.order || 0;
+      return aOrder - bOrder;
+    });
+    
+    console.log(`✅ Loaded ${dbLessons.length} lessons from database (sorted by order)`);
     
     // Cache the results
     lessonsCache = dbLessons;
@@ -287,18 +294,43 @@ export const getSlidesByLessonId = async (lessonId) => {
       );
       
       const snapshot = await getDocs(slidesQuery);
-      const slides = snapshot.docs.map(doc => {
+      const slidesMap = new Map(); // Use Map to deduplicate by ID
+      
+      snapshot.docs.forEach(doc => {
         const data = doc.data();
-        return {
-          id: doc.id,
+        const slideId = doc.id;
+        const originalId = data.originalId || slideId;
+        
+        // Ensure unique ID by combining lessonId and originalId to prevent React key conflicts
+        const uniqueId = `${normalizedLessonId}_${originalId}`;
+        
+        console.log(`🔑 Generated unique ID for slide: ${slideId} (originalId: ${originalId}) -> ${uniqueId}`);
+        
+        slidesMap.set(uniqueId, {
+          id: uniqueId, // Use unique ID to prevent React key conflicts
+          originalId: originalId, // Keep original ID for database operations
+          lessonId: normalizedLessonId,
           ...data,
           createdAt: data.createdAt?.toDate?.() || new Date(),
           updatedAt: data.updatedAt?.toDate?.() || new Date()
-        };
+        });
+      });
+      
+      const slides = Array.from(slidesMap.values());
+      
+      // Sort by order field, then by ID as fallback
+      slides.sort((a, b) => {
+        const aOrder = a.order || 0;
+        const bOrder = b.order || 0;
+        if (aOrder !== bOrder) {
+          return aOrder - bOrder;
+        }
+        // If order is the same, sort by ID
+        return a.originalId.localeCompare(b.originalId);
       });
       
       if (slides.length > 0) {
-        console.log(`✅ Loaded ${slides.length} slides from database for lesson ${normalizedLessonId} (with sortOrder)`);
+        console.log(`✅ Loaded ${slides.length} slides from database for lesson ${normalizedLessonId} (deduplicated and sorted)`);
         return slides;
       }
     } catch (orderError) {
@@ -313,14 +345,39 @@ export const getSlidesByLessonId = async (lessonId) => {
       );
       
       const snapshot = await getDocs(slidesQuery);
-      const slides = snapshot.docs.map(doc => {
+      const slidesMap = new Map(); // Use Map to deduplicate by ID
+      
+      snapshot.docs.forEach(doc => {
         const data = doc.data();
-        return {
-          id: doc.id,
+        const slideId = doc.id;
+        const originalId = data.originalId || slideId;
+        
+        // Ensure unique ID by combining lessonId and originalId to prevent React key conflicts
+        const uniqueId = `${normalizedLessonId}_${originalId}`;
+        
+        console.log(`🔑 Generated unique ID for slide: ${slideId} (originalId: ${originalId}) -> ${uniqueId}`);
+        
+        slidesMap.set(uniqueId, {
+          id: uniqueId, // Use unique ID to prevent React key conflicts
+          originalId: originalId, // Keep original ID for database operations
+          lessonId: normalizedLessonId,
           ...data,
           createdAt: data.createdAt?.toDate?.() || new Date(),
           updatedAt: data.updatedAt?.toDate?.() || new Date()
-        };
+        });
+      });
+      
+      const slides = Array.from(slidesMap.values());
+      
+      // Sort by order field, then by ID as fallback
+      slides.sort((a, b) => {
+        const aOrder = a.order || 0;
+        const bOrder = b.order || 0;
+        if (aOrder !== bOrder) {
+          return aOrder - bOrder;
+        }
+        // If order is the same, sort by ID
+        return a.originalId.localeCompare(b.originalId);
       });
       
       if (slides.length > 0) {
@@ -338,25 +395,45 @@ export const getSlidesByLessonId = async (lessonId) => {
       );
       
       const snapshot = await getDocs(slidesQuery);
-      const slides = snapshot.docs.map(doc => {
+      const slidesMap = new Map(); // Use Map to deduplicate by ID
+      
+      snapshot.docs.forEach(doc => {
         const data = doc.data();
-        return {
-          id: doc.id,
+        const slideId = doc.id;
+        const originalId = data.originalId || slideId;
+        
+        // Ensure unique ID by combining lessonId and originalId to prevent React key conflicts
+        const uniqueId = `${normalizedLessonId}_${originalId}`;
+        
+        console.log(`🔑 Generated unique ID for slide: ${slideId} (originalId: ${originalId}) -> ${uniqueId}`);
+        
+        slidesMap.set(uniqueId, {
+          id: uniqueId, // Use unique ID to prevent React key conflicts
+          originalId: originalId, // Keep original ID for database operations
+          lessonId: normalizedLessonId,
           ...data,
           createdAt: data.createdAt?.toDate?.() || new Date(),
           updatedAt: data.updatedAt?.toDate?.() || new Date()
-        };
+        });
       });
       
-      // Sort in memory by slide ID (assuming format like "slide1", "slide2", etc.)
+      const slides = Array.from(slidesMap.values());
+      
+      // Sort in memory by order, then by slide ID
       slides.sort((a, b) => {
-        const aNum = parseInt(a.id.replace(/\D/g, '')) || 0;
-        const bNum = parseInt(b.id.replace(/\D/g, '')) || 0;
+        const aOrder = a.order || 0;
+        const bOrder = b.order || 0;
+        if (aOrder !== bOrder) {
+          return aOrder - bOrder;
+        }
+        // If order is the same, sort by ID
+        const aNum = parseInt(a.originalId.replace(/\D/g, '')) || 0;
+        const bNum = parseInt(b.originalId.replace(/\D/g, '')) || 0;
         return aNum - bNum;
       });
       
       if (slides.length > 0) {
-        console.log(`✅ Loaded ${slides.length} slides for lesson ${normalizedLessonId} (sorted in memory)`);
+        console.log(`✅ Loaded ${slides.length} slides for lesson ${normalizedLessonId} (deduplicated and sorted in memory)`);
         return slides;
       }
     } catch (queryError) {
@@ -387,25 +464,44 @@ export const getSlidesByLessonId = async (lessonId) => {
         );
         
         const snapshot = await getDocs(slidesQuery);
-        const slides = snapshot.docs.map(doc => {
+        const slidesMap = new Map(); // Use Map to deduplicate by ID
+        
+        snapshot.docs.forEach(doc => {
           const data = doc.data();
-          return {
-            id: doc.id,
+          const slideId = doc.id;
+          const originalId = data.originalId || slideId;
+          
+          // Ensure unique ID by combining lessonId and originalId to prevent React key conflicts
+          const uniqueId = `${normalizedLessonId}_${originalId}`;
+          
+          console.log(`🔑 Generated unique ID for slide: ${slideId} (originalId: ${originalId}) -> ${uniqueId}`);
+          
+          slidesMap.set(uniqueId, {
+            id: uniqueId, // Use unique ID to prevent React key conflicts
+            originalId: originalId, // Keep original ID for database operations
+            lessonId: normalizedLessonId,
             ...data,
             createdAt: data.createdAt?.toDate?.() || new Date(),
             updatedAt: data.updatedAt?.toDate?.() || new Date()
-          };
+          });
         });
+        
+        const slides = Array.from(slidesMap.values());
         
         // Sort in memory
         slides.sort((a, b) => {
-          const aNum = parseInt(a.id.replace(/\D/g, '')) || 0;
-          const bNum = parseInt(b.id.replace(/\D/g, '')) || 0;
+          const aOrder = a.order || 0;
+          const bOrder = b.order || 0;
+          if (aOrder !== bOrder) {
+            return aOrder - bOrder;
+          }
+          const aNum = parseInt(a.originalId.replace(/\D/g, '')) || 0;
+          const bNum = parseInt(b.originalId.replace(/\D/g, '')) || 0;
           return aNum - bNum;
         });
         
         if (slides.length > 0) {
-          console.log(`✅ Loaded ${slides.length} slides for lesson ${lessonId} (without ordering)`);
+          console.log(`✅ Loaded ${slides.length} slides for lesson ${lessonId} (deduplicated without ordering)`);
           return slides;
         }
       } catch (fallbackError) {
@@ -452,9 +548,12 @@ const getSlidesFromDatabase = async (lessonId) => {
 /**
  * Get a specific slide by ID
  */
-export const getSlideById = async (slideId) => {
+export const getSlideById = async (slideId, lessonId) => {
   try {
-    const slideDoc = await getDoc(doc(db, 'slides', slideId));
+    // Use subcollection structure: lessons/{lessonId}/slides/{slideId}
+    const slideRef = doc(db, 'lessons', lessonId, 'slides', slideId);
+    const slideDoc = await getDoc(slideRef);
+    
     if (slideDoc.exists()) {
       const data = slideDoc.data();
       return {
@@ -480,13 +579,15 @@ export const createSlide = async (slideData) => {
     
     // Generate a proper ID for the slide
     const slideId = `slide-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const slideRef = doc(db, 'slides', slideId);
     
     // Ensure lessonId is always a string
     const normalizedSlideData = {
       ...slideData,
       lessonId: String(slideData?.lessonId || '')
     };
+    
+    // Use subcollection structure: lessons/{lessonId}/slides/{slideId}
+    const slideRef = doc(db, 'lessons', normalizedSlideData.lessonId, 'slides', slideId);
     
     const newSlide = {
       ...normalizedSlideData,
@@ -546,7 +647,8 @@ export const updateSlide = async (slideId, slideData) => {
 
     console.log(`✅ Sanitized data:`, sanitizedData);
 
-    const slideRef = doc(db, 'slides', slideId);
+    // Use subcollection structure: lessons/{lessonId}/slides/{slideId}
+    const slideRef = doc(db, 'lessons', sanitizedData.lessonId, 'slides', slideId);
     
     // Check if document exists
     const slideDoc = await getDoc(slideRef);
@@ -622,12 +724,14 @@ export const updateSlide = async (slideId, slideData) => {
 /**
  * Delete a slide
  */
-export const deleteSlide = async (slideId) => {
+export const deleteSlide = async (slideId, lessonId) => {
   try {
     console.log('🗑️ Deleting slide:', slideId);
     
+    // Use subcollection structure: lessons/{lessonId}/slides/{slideId}
+    const slideRef = doc(db, 'lessons', lessonId, 'slides', slideId);
+    
     // Get the slide data first to know which lesson it belongs to
-    const slideRef = doc(db, 'slides', slideId);
     const slideDoc = await getDoc(slideRef);
     
     if (!slideDoc.exists()) {
@@ -635,7 +739,6 @@ export const deleteSlide = async (slideId) => {
     }
     
     const slideData = slideDoc.data();
-    const lessonId = slideData.lessonId;
     
     // Delete the slide
     await deleteDoc(slideRef);
@@ -645,7 +748,7 @@ export const deleteSlide = async (slideId) => {
     try {
       const { cleanupTeacherNotesForLesson } = await import('./teacher-service.jsx');
       const currentSlides = await getSlidesByLessonId(lessonId);
-      const currentSlideIds = currentSlides.map(slide => slide.id);
+      const currentSlideIds = currentSlides.map(slide => slide.originalId);
       
       // Remove the deleted slide ID from the list since it's already deleted
       const remainingSlideIds = currentSlideIds.filter(id => id !== slideId);

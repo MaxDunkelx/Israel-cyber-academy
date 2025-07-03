@@ -304,10 +304,18 @@ const ContentManagement = () => {
       console.log('🔄 Loading lessons from database...');
       
       const lessonsData = await getAllLessons();
-      console.log(`✅ Loaded ${lessonsData.length} lessons`);
-      setLessons(lessonsData);
       
-      if (lessonsData.length === 0) {
+      // Sort lessons by originalId or order to ensure proper sequence
+      const sortedLessons = lessonsData.sort((a, b) => {
+        const aOrder = a.originalId || a.order || 0;
+        const bOrder = b.originalId || b.order || 0;
+        return aOrder - bOrder;
+      });
+      
+      console.log(`✅ Loaded ${sortedLessons.length} lessons (sorted by order)`);
+      setLessons(sortedLessons);
+      
+      if (sortedLessons.length === 0) {
         setError('No lessons found. Please check your database connection or run the sync script.');
       }
     } catch (err) {
@@ -332,10 +340,25 @@ const ContentManagement = () => {
       console.log(`🔄 Loading slides for lesson ${lessonId}...`);
       
       const slidesData = await getSlidesByLessonId(lessonId);
-      console.log(`✅ Loaded ${slidesData.length} slides`);
-      setSlides(slidesData);
       
-      if (slidesData.length === 0) {
+      // Generate unique keys for React using lessonId + slide order/ID
+      const slidesWithUniqueKeys = slidesData.map((slide, index) => ({
+        ...slide,
+        uniqueKey: `${lessonId}_slide_${slide.order || index + 1}`,
+        displayId: slide.order || index + 1
+      }));
+      
+      console.log(`✅ Loaded ${slidesWithUniqueKeys.length} slides for lesson ${lessonId}:`, 
+        slidesWithUniqueKeys.map(s => ({ 
+          uniqueKey: s.uniqueKey, 
+          displayId: s.displayId, 
+          title: s.title 
+        }))
+      );
+      
+      setSlides(slidesWithUniqueKeys);
+      
+      if (slidesWithUniqueKeys.length === 0) {
         console.log('⚠️ No slides found for this lesson');
       }
     } catch (err) {
@@ -348,9 +371,16 @@ const ContentManagement = () => {
   const handleLessonClick = async (lesson) => {
     try {
       if (selectedLesson?.id === lesson.id) {
+        // Deselect current lesson
         setSelectedLesson(null);
         setSlides([]);
+        setPreviewSlide(null);
+        setEditingSlide(null);
       } else {
+        // Select new lesson - clear all slide-related state
+        setSlides([]);
+        setPreviewSlide(null);
+        setEditingSlide(null);
         setSelectedLesson(lesson);
         await loadSlides(lesson.id);
       }
@@ -392,22 +422,27 @@ const ContentManagement = () => {
       
       console.log('💾 Saving slide...');
       
-      // Ensure the slide has the correct lessonId (Firestore document ID)
+      // Ensure the slide has the correct lessonId and generate unique key
       const slideToSave = {
         ...slideData,
-        lessonId: selectedLesson.id // Always use Firestore document ID
+        lessonId: selectedLesson.id,
+        uniqueKey: editingSlide.uniqueKey || `${selectedLesson.id}_slide_${slideData.order || slides.length + 1}`,
+        displayId: slideData.order || slides.length + 1
       };
       
       if (editingSlide.id) {
+        // Update existing slide
         await updateSlide(editingSlide.id, slideToSave);
         setSuccessMessage('Slide updated successfully!');
         console.log('✅ Slide updated');
       } else {
+        // Create new slide
         await createSlide(slideToSave);
         setSuccessMessage('Slide created successfully!');
         console.log('✅ Slide created');
       }
       
+      // Reload slides for this lesson to get fresh data
       await loadSlides(selectedLesson.id);
       setEditingSlide(null);
       
@@ -424,7 +459,8 @@ const ContentManagement = () => {
       setError(null);
       console.log(`🗑️ Deleting slide ${slideId}...`);
       
-      await deleteSlide(slideId);
+      // Pass both slideId and lessonId for subcollection structure
+      await deleteSlide(slideId, selectedLesson.id);
       await loadSlides(selectedLesson.id);
       setPreviewSlide(null);
       setSuccessMessage('Slide deleted successfully!');
@@ -438,49 +474,58 @@ const ContentManagement = () => {
   };
 
   const handleCreateNewSlide = () => {
+    if (!selectedLesson) {
+      setError('Please select a lesson first');
+      return;
+    }
+    
     const newSlide = {
-      lessonId: selectedLesson.id, // Use Firestore document ID
+      lessonId: selectedLesson.id,
       title: 'שקופית חדשה',
       type: 'presentation',
       order: slides.length + 1,
+      uniqueKey: `${selectedLesson.id}_slide_${slides.length + 1}`,
+      displayId: slides.length + 1,
       content: {
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         elements: [
           {
-            type: 'title',
-            text: 'שקופית חדשה',
+            type: 'text',
+            content: 'כותרת חדשה',
             style: {
-              fontSize: '3rem',
-              color: 'white',
+              fontSize: '2rem',
+              fontWeight: 'bold',
+              color: '#ffffff',
               textAlign: 'center',
-              direction: 'rtl',
-              fontFamily: 'Arial, sans-serif'
+              position: 'absolute',
+              top: '20%',
+              left: '50%',
+              transform: 'translateX(-50%)'
             }
           }
         ]
       }
     };
+    
     setEditingSlide(newSlide);
   };
 
   const handleDuplicateSlide = (slide) => {
-    try {
-      const duplicatedSlide = {
-        ...slide,
-        id: null, // Remove ID so it creates a new slide
-        title: `${slide.title} (Copy)`,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      setEditingSlide(duplicatedSlide);
-      setPreviewSlide(null);
-      
-      console.log('📋 Slide duplicated for editing');
-    } catch (error) {
-      console.error('❌ Error duplicating slide:', error);
-      setError(`Failed to duplicate slide: ${error.message}`);
+    if (!selectedLesson) {
+      setError('Please select a lesson first');
+      return;
     }
+    
+    const duplicatedSlide = {
+      ...slide,
+      id: null, // Remove ID to create new slide
+      title: `${slide.title} (העתק)`,
+      order: slides.length + 1,
+      uniqueKey: `${selectedLesson.id}_slide_${slides.length + 1}`,
+      displayId: slides.length + 1
+    };
+    
+    setEditingSlide(duplicatedSlide);
   };
 
   const handleCreateNewLesson = () => {
@@ -884,7 +929,7 @@ const ContentManagement = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {filteredLessons.map((lesson) => (
             <motion.div
-              key={lesson.id}
+              key={`lesson-${lesson.id}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className={`bg-gray-800 rounded-lg p-6 cursor-pointer transition-all duration-200 hover:bg-gray-700 hover:shadow-lg ${
@@ -972,12 +1017,12 @@ const ContentManagement = () => {
                     ) : (
                       slides.map((slide, index) => (
                         <motion.div
-                          key={slide.id}
+                          key={slide.uniqueKey}
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: index * 0.1 }}
                           className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
-                            previewSlide?.id === slide.id 
+                            previewSlide?.uniqueKey === slide.uniqueKey 
                               ? 'bg-blue-600/20 border border-blue-500/30' 
                               : 'bg-gray-700/50 hover:bg-gray-700'
                           }`}
@@ -994,7 +1039,9 @@ const ContentManagement = () => {
                             <div className={`w-2 h-2 rounded-full ${getSlideTypeColor(slide.type)}`}></div>
                             <div className="flex items-center space-x-2 min-w-0">
                               {getSlideTypeIcon(slide.type)}
-                              <span className="text-sm text-gray-300 truncate">{slide.title}</span>
+                              <span className="text-sm text-gray-300 truncate">
+                                {slide.displayId}. {slide.title}
+                              </span>
                             </div>
                           </div>
                           

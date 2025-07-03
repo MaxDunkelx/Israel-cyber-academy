@@ -51,6 +51,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { logSecurityEvent } from '../../utils/security';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../firebase/firebase-config';
+import { getSystemStats, getSystemMonitoring, subscribeToSystemMonitoring } from '../../firebase/system-manager-service';
 import LoadingSpinner from '../common/LoadingSpinner';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
@@ -62,6 +63,7 @@ import ContentManagement from './ContentManagement';
 import ExcelImport from './ExcelImport';
 import SystemSettings from './SystemSettings';
 import SystemLogs from './SystemLogs';
+import SystemAnalytics from './SystemAnalytics';
 
 /**
  * Get tab color classes
@@ -223,6 +225,13 @@ const SystemManagerDashboard = () => {
       color: 'blue'
     },
     {
+      id: 'analytics',
+      label: 'ניתוחים',
+      icon: BarChart3,
+      description: 'ניתוחים מתקדמים ותובנות',
+      color: 'indigo'
+    },
+    {
       id: 'users',
       label: 'ניהול משתמשים',
       icon: Users,
@@ -314,6 +323,38 @@ const SystemManagerDashboard = () => {
     }
   }, [currentUser, role, authLoading, navigate]);
 
+  // Set up real-time monitoring
+  useEffect(() => {
+    if (currentUser && role === 'system_manager') {
+      console.log('👂 Setting up real-time system monitoring...');
+      
+      const unsubscribe = subscribeToSystemMonitoring((update) => {
+        console.log('📡 Real-time system update received:', update);
+        
+        // Update recent activities with new events
+        if (update.type === 'security_events' && update.data.length > 0) {
+          const newActivities = update.data.slice(0, 3).map(event => ({
+            id: event.id,
+            type: event.severity || 'info',
+            message: event.description || event.event,
+            timestamp: event.timestamp,
+            severity: event.severity || 'info'
+          }));
+          
+          setRecentActivities(prev => {
+            const combined = [...newActivities, ...prev];
+            return combined.slice(0, 5); // Keep only 5 most recent
+          });
+        }
+      });
+
+      return () => {
+        console.log('🔇 Cleaning up real-time monitoring...');
+        unsubscribe();
+      };
+    }
+  }, [currentUser, role]);
+
   /**
    * Load system statistics from Firebase
    */
@@ -323,91 +364,33 @@ const SystemManagerDashboard = () => {
         setIsRefreshing(true);
       }
       
-      console.log('📊 Loading real system statistics from Firebase...');
+      console.log('📊 Loading comprehensive system statistics...');
       
-      // Get all users from Firebase
-      const usersRef = collection(db, 'users');
-      const usersSnapshot = await getDocs(usersRef);
+      // Use the new system manager service
+      const systemStats = await getSystemStats(isRefresh);
       
-      let totalUsers = 0;
-      let totalStudents = 0;
-      let totalTeachers = 0;
-      let totalSystemManagers = 0;
-      
-      usersSnapshot.forEach((doc) => {
-        const userData = doc.data();
-        totalUsers++;
-        
-        switch (userData.role) {
-          case 'student':
-            totalStudents++;
-            break;
-          case 'teacher':
-            totalTeachers++;
-            break;
-          case 'system_manager':
-            totalSystemManagers++;
-            break;
-          default:
-            // Count unknown roles as students for now
-            totalStudents++;
-            break;
-        }
-      });
-      
-      // Get total lessons from the lessons data
-      // We'll count the lessons in the data/lessons directory structure
-      const totalLessons = 9; // This is the current number of lessons in the system
-      
-      console.log('📊 Real stats loaded:', {
-        totalUsers,
-        totalStudents,
-        totalTeachers,
-        totalSystemManagers,
-        totalLessons
-      });
-      
+      // Update stats with comprehensive data
       setStats({
-        totalUsers,
-        totalStudents,
-        totalTeachers,
-        totalLessons
+        totalUsers: systemStats.users.total,
+        totalStudents: systemStats.users.students,
+        totalTeachers: systemStats.users.teachers,
+        totalLessons: systemStats.content.totalLessons
       });
 
-      // Generate recent activities based on real data
-      const activities = [];
-      
-      // Add user creation activities (last 3 users)
-      const recentUsers = usersSnapshot.docs
-        .sort((a, b) => b.data().createdAt?.toDate?.() - a.data().createdAt?.toDate?.())
-        .slice(0, 3);
-      
-      recentUsers.forEach((userDoc, index) => {
-        const userData = userDoc.data();
-        activities.push({
-          id: `user_${userDoc.id}`,
-          type: 'user_created',
-          message: `נוצר משתמש חדש: ${userData.displayName || userData.email}`,
-          timestamp: userData.createdAt?.toDate?.() || new Date(Date.now() - 1000 * 60 * 60 * (index + 1)),
-          severity: 'info'
-        });
-      });
-      
-      // Add system manager access activity
-      activities.push({
-        id: 'system_access',
-        type: 'system_access',
-        message: 'מנהל מערכת התחבר למערכת',
-        timestamp: new Date(),
-        severity: 'success'
-      });
-      
-      // Sort activities by timestamp (newest first)
-      activities.sort((a, b) => b.timestamp - a.timestamp);
+      // Use real activities from the service
+      const activities = systemStats.activities.recent.map(activity => ({
+        id: activity.id,
+        type: activity.type,
+        message: activity.message,
+        timestamp: activity.timestamp,
+        severity: activity.type === 'error' ? 'error' : 
+                 activity.type === 'warning' ? 'warning' : 
+                 activity.type === 'success' ? 'success' : 'info'
+      }));
       
       setRecentActivities(activities.slice(0, 5)); // Keep only 5 most recent
       
-      console.log('✅ System statistics loaded successfully');
+      console.log('✅ Comprehensive system statistics loaded successfully');
       
       if (isRefresh) {
         toast.success('הנתונים עודכנו בהצלחה');
@@ -422,7 +405,7 @@ const SystemManagerDashboard = () => {
         totalUsers: 0,
         totalStudents: 0,
         totalTeachers: 0,
-        totalLessons: 9
+        totalLessons: 0
       });
     } finally {
       if (isRefresh) {
@@ -452,6 +435,8 @@ const SystemManagerDashboard = () => {
     switch (activeTab) {
       case 'overview':
         return <OverviewTab stats={stats} recentActivities={recentActivities} onRefresh={handleRefresh} isRefreshing={isRefreshing} />;
+      case 'analytics':
+        return <SystemAnalytics />;
       case 'users':
         return <UserManagement />;
       case 'content':
