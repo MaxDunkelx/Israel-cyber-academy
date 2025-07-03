@@ -704,7 +704,17 @@ export const getLessonWithSlides = async (lessonId) => {
             updatedAt: data.updatedAt?.toDate?.() || new Date()
           };
         })
-        .find(l => l.originalId === parseInt(lessonId) || l.originalId === lessonId);
+        .find(l => {
+          // Handle both string and number lesson IDs
+          if (typeof lessonId === 'string' && lessonId.startsWith('lesson')) {
+            // If lessonId is "lesson1", "lesson2", etc., extract the number
+            const lessonNumber = parseInt(lessonId.replace('lesson', ''));
+            return l.originalId === lessonNumber || l.id === lessonId;
+          } else {
+            // If lessonId is already a number or other format
+            return l.originalId === parseInt(lessonId) || l.originalId === lessonId;
+          }
+        });
     }
     
     if (lesson) {
