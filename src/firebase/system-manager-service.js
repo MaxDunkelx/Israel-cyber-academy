@@ -33,7 +33,7 @@ import { logSecurityEvent } from '../utils/security';
 // Cache for system statistics
 let statsCache = null;
 let cacheTimestamp = null;
-const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+const CACHE_DURATION = 30 * 1000; // 30 seconds (reduced for testing)
 
 /**
  * Get comprehensive system statistics
@@ -46,11 +46,11 @@ export const getSystemStats = async (forceRefresh = false) => {
     }
 
     // Get all collections in parallel
-    const [usersSnapshot, lessonsSnapshot, sessionsSnapshot, activitiesSnapshot] = await Promise.all([
+    const [usersSnapshot, lessonsSnapshot, sessionsSnapshot, securityLogsSnapshot] = await Promise.all([
       getDocs(collection(db, 'users')),
       getDocs(collection(db, 'lessons')),
       getDocs(collection(db, 'sessions')),
-      getDocs(query(collection(db, 'userActivities'), orderBy('timestamp', 'desc'), limit(100)))
+      getDocs(query(collection(db, 'security_logs'), orderBy('timestamp', 'desc'), limit(100)))
     ]);
 
     // Process user statistics
@@ -98,11 +98,16 @@ export const getSystemStats = async (forceRefresh = false) => {
     let totalSlides = 0;
     const lessonStats = [];
 
+    console.log(`📊 Processing ${totalLessons} lessons for analytics...`);
+
     for (const lessonDoc of lessonsSnapshot.docs) {
       const lessonData = lessonDoc.data();
-      const slidesSnapshot = await getDocs(collection(db, 'slides'));
-      const lessonSlides = slidesSnapshot.docs.filter(doc => doc.data().lessonId === lessonDoc.id);
+      // Get slides from the lesson's subcollection
+      const slidesSnapshot = await getDocs(collection(db, 'lessons', lessonDoc.id, 'slides'));
+      const lessonSlides = slidesSnapshot.docs;
       totalSlides += lessonSlides.length;
+      
+      console.log(`📖 Lesson ${lessonDoc.id}: ${lessonSlides.length} slides`);
       
       lessonStats.push({
         id: lessonDoc.id,
@@ -112,6 +117,8 @@ export const getSystemStats = async (forceRefresh = false) => {
         targetAge: lessonData.targetAge
       });
     }
+
+    console.log(`📊 Total slides found: ${totalSlides}`);
 
     // Process session statistics
     const totalSessions = sessionsSnapshot.size;
@@ -127,18 +134,28 @@ export const getSystemStats = async (forceRefresh = false) => {
       }
     });
 
-    // Process activity statistics
-    const recentActivities = activitiesSnapshot.docs.slice(0, 10).map(doc => {
+    // Process activity statistics from security logs and user data
+    const recentActivities = securityLogsSnapshot.docs.slice(0, 10).map(doc => {
       const data = doc.data();
       return {
         id: doc.id,
-        type: data.type || 'info',
-        message: data.description || data.action,
+        type: data.type || data.eventType || 'security',
+        message: data.description || data.message || data.action || 'Security event',
         timestamp: data.timestamp?.toDate?.() || new Date(),
-        userId: data.userId || data.userEmail,
-        action: data.action || 'user_activity'
+        userId: data.userId || data.userEmail || data.user || 'System',
+        action: data.action || data.eventType || 'security_event'
       };
     });
+
+    // Add user activity from user data
+    const today = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const activeUsersToday = usersSnapshot.docs.filter(doc => {
+      const userData = doc.data();
+      const lastActivity = userData.lastActivityAt?.toDate?.() || userData.lastLogin?.toDate?.();
+      return lastActivity && lastActivity > today;
+    });
+
+    console.log(`📊 Found ${activeUsersToday.length} active users today`);
 
     // Calculate system health metrics
     const systemHealth = await getSystemHealth();
@@ -169,7 +186,7 @@ export const getSystemStats = async (forceRefresh = false) => {
         recent: recentActivities,
         totalToday: recentActivities.filter(a => 
           a.timestamp > new Date(Date.now() - 24 * 60 * 60 * 1000)
-        ).length
+        ).length + activeUsersToday.length
       },
       system: systemHealth,
       lastUpdated: new Date()
