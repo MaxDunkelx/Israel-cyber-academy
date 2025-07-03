@@ -10,6 +10,7 @@ import CodeEditor from '../exercises/CodeEditor';
 import WebsiteBuilder from '../exercises/WebsiteBuilder';
 import DatabaseSimulator from '../exercises/DatabaseSimulator';
 import BrowserSimulator from '../exercises/BrowserSimulator';
+import PasswordGenerator from './PasswordGenerator';
 
 /**
  * Interactive Slide Component
@@ -131,6 +132,14 @@ const InteractiveSlide = ({ slide, onAnswer, answers }) => {
           {content.type === 'browser-simulator' && (
             <BrowserSimulator
               content={content}
+              onComplete={handleExerciseComplete}
+            />
+          )}
+          {content.type === 'password-generator' && (
+            <PasswordGenerator
+              options={content.options}
+              tips={content.tips}
+              examples={content.examples}
               onComplete={handleExerciseComplete}
             />
           )}

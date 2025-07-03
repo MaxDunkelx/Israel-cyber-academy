@@ -7,19 +7,19 @@ export const slide1Intro = {
     elements: [
       {
         type: "title",
-        text: "שיעור 1: מבוא לעולם הסייבר",
-        style: { fontSize: "3rem", color: "white", textAlign: "center", marginBottom: "2rem" }
+        text: "ברוכים הבאים לעולם הסייבר! 🚀",
+        style: { fontSize: "3rem", color: "white", textAlign: "center", marginBottom: "2rem", fontWeight: "bold", textShadow: "0 4px 8px rgba(0,0,0,0.3)" }
       },
       {
         type: "subtitle",
         text: "היום נלמד על האקרים, איומים דיגיטליים ואיך להישאר בטוחים באינטרנט",
-        style: { fontSize: "1.5rem", color: "white", textAlign: "center", opacity: 0.9 }
+        style: { fontSize: "1.5rem", color: "white", textAlign: "center", opacity: 0.9, marginBottom: "2rem" }
       },
       {
         type: "image",
         src: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=400",
         alt: "Cybersecurity",
-        style: { width: "300px", borderRadius: "15px", margin: "2rem auto" }
+        style: { width: "350px", borderRadius: "15px", margin: "2rem auto" }
       },
       {
         type: "timer",

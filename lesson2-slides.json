@@ -1,0 +1,1477 @@
+[
+  {
+    "id": "slide2-1",
+    "order": 1,
+    "sortOrder": "001",
+    "slideNumber": 1,
+    "lessonNumber": 2,
+    "slide1Intro": {
+      "id": "slide-1",
+      "type": "presentation",
+      "title": "ברוכים הבאים לעולם המחשבים! 🚀",
+      "content": {
+        "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        "elements": [
+          {
+            "type": "title",
+            "text": "שיעור 2: מבנה המחשב וחומרה",
+            "style": {
+              "fontSize": "3rem",
+              "color": "white",
+              "textAlign": "center",
+              "marginBottom": "2rem"
+            }
+          },
+          {
+            "type": "subtitle",
+            "text": "היום נלמד על רכיבי המחשב, היסטוריה מרתקת ונבנה מחשב וירטואלי!",
+            "style": {
+              "fontSize": "1.5rem",
+              "color": "white",
+              "textAlign": "center",
+              "opacity": 0.9
+            }
+          },
+          {
+            "type": "image",
+            "src": "https://images.unsplash.com/photo-1587831990711-23ca6441447b?w=400&fit=crop&crop=center",
+            "alt": "Computer Components",
+            "style": {
+              "width": "300px",
+              "borderRadius": "15px",
+              "margin": "2rem auto"
+            }
+          },
+          {
+            "type": "timer",
+            "duration": 30,
+            "text": "זמן קריאה"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "slide2-2",
+    "order": 2,
+    "sortOrder": "002",
+    "slideNumber": 2,
+    "lessonNumber": 2,
+    "slide2Poll": {
+      "id": "slide-2",
+      "type": "poll",
+      "title": "מה אתה יודע על מחשבים? 🤔",
+      "content": {
+        "question": "איזה רכיב מחשב אתה מכיר?",
+        "options": [
+          {
+            "id": 1,
+            "text": "מעבד (CPU)",
+            "emoji": "🧠"
+          },
+          {
+            "id": 2,
+            "text": "זיכרון (RAM)",
+            "emoji": "💾"
+          },
+          {
+            "id": 3,
+            "text": "כרטיס מסך",
+            "emoji": "🖥️"
+          },
+          {
+            "id": 4,
+            "text": "לוח אם",
+            "emoji": "🔌"
+          },
+          {
+            "id": 5,
+            "text": "לא יודע",
+            "emoji": "🤷‍♂️"
+          }
+        ],
+        "allowMultiple": true,
+        "showResults": true,
+        "duration": 120
+      }
+    }
+  },
+  {
+    "id": "slide2-3",
+    "order": 3,
+    "sortOrder": "003",
+    "slideNumber": 3,
+    "lessonNumber": 2,
+    "slide3History": {
+      "id": "slide-3",
+      "type": "presentation",
+      "title": "היסטוריה מרתקת של המחשב 🕰️",
+      "content": {
+        "background": "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+        "elements": [
+          {
+            "type": "title",
+            "text": "מסע בזמן: היסטוריה של המחשב",
+            "style": {
+              "fontSize": "2.5rem",
+              "color": "white",
+              "textAlign": "center",
+              "marginBottom": "2rem"
+            }
+          },
+          {
+            "type": "timeline",
+            "events": [
+              {
+                "year": "1642",
+                "title": "מכונת החישוב הראשונה",
+                "description": "בלז פסקל יצר מכונה לחישובים מתמטיים",
+                "icon": "🧮"
+              },
+              {
+                "year": "1946",
+                "title": "ENIAC",
+                "description": "המחשב האלקטרוני הראשון - בגודל חדר שלם!",
+                "icon": "🏢"
+              },
+              {
+                "year": "1975",
+                "title": "Apple II",
+                "description": "המחשב האישי הראשון - מהפכה!",
+                "icon": "🍎"
+              },
+              {
+                "year": "2024",
+                "title": "IoT - מחשבים בכל מקום",
+                "description": "מטוסים, רכבים, כספומטים, טלפונים חכמים",
+                "icon": "🌐"
+              }
+            ],
+            "style": {
+              "color": "white",
+              "fontSize": "1.2rem"
+            }
+          }
+        ],
+        "duration": 240
+      }
+    }
+  },
+  {
+    "id": "slide2-4",
+    "order": 4,
+    "sortOrder": "004",
+    "slideNumber": 4,
+    "lessonNumber": 2,
+    "slide4HistoryMatching": {
+      "id": "slide-4",
+      "type": "interactive",
+      "title": "משחק התאמה: היסטוריה 🎯",
+      "content": {
+        "type": "matching",
+        "instructions": "התאם כל מחשב לשנת היצירה שלו",
+        "pairs": [
+          {
+            "tool": "ENIAC",
+            "description": "1946 - המחשב האלקטרוני הראשון",
+            "icon": "🏢"
+          },
+          {
+            "tool": "Apple II",
+            "description": "1975 - המחשב האישי הראשון",
+            "icon": "🍎"
+          },
+          {
+            "tool": "מכונת פסקל",
+            "description": "1642 - מכונת חישוב מכנית",
+            "icon": "🧮"
+          },
+          {
+            "tool": "iPhone",
+            "description": "2007 - הטלפון החכם הראשון",
+            "icon": "📱"
+          }
+        ],
+        "duration": 300
+      }
+    }
+  },
+  {
+    "id": "slide2-5",
+    "order": 5,
+    "sortOrder": "005",
+    "slideNumber": 5,
+    "lessonNumber": 2,
+    "slide5WhatIsComputer": {
+      "id": "slide-5",
+      "type": "presentation",
+      "title": "מה זה מחשב? 🧠",
+      "content": {
+        "background": "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
+        "elements": [
+          {
+            "type": "title",
+            "text": "מה זה מחשב?",
+            "style": {
+              "fontSize": "2.5rem",
+              "color": "#333",
+              "textAlign": "center",
+              "marginBottom": "2rem"
+            }
+          },
+          {
+            "type": "definition",
+            "text": "מכונה אלקטרונית שמבצעת עיבוד נתונים (קלט) ומפיקה תוצאה (פלט)",
+            "style": {
+              "fontSize": "1.5rem",
+              "color": "#333",
+              "textAlign": "center",
+              "padding": "2rem",
+              "backgroundColor": "rgba(255,255,255,0.8)",
+              "borderRadius": "15px"
+            }
+          },
+          {
+            "type": "comparison",
+            "title": "הבדל בין נתונים למידע",
+            "items": [
+              {
+                "title": "נתונים (Data)",
+                "description": "עובדות גולמיות - מספרים, מילים, תמונות",
+                "icon": "📊"
+              },
+              {
+                "title": "מידע (Information)",
+                "description": "נתונים בעלי משמעות ומטרה",
+                "icon": "📈"
+              }
+            ],
+            "style": {
+              "fontSize": "1.2rem",
+              "color": "#333"
+            }
+          }
+        ],
+        "duration": 180
+      }
+    }
+  },
+  {
+    "id": "slide2-6",
+    "order": 6,
+    "sortOrder": "006",
+    "slideNumber": 6,
+    "lessonNumber": 2,
+    "slide6DataVsInfo": {
+      "id": "slide-6",
+      "type": "interactive",
+      "title": "משחק: נתונים או מידע? 🎮",
+      "content": {
+        "type": "matching",
+        "instructions": "התאם בין המונח להסבר המתאים לו (נתון גולמי או מידע עם משמעות)",
+        "pairs": [
+          {
+            "tool": "טמפרטורה: 25 מעלות",
+            "description": "נתון גולמי של טמפרטורה (Data)",
+            "icon": "🌡️"
+          },
+          {
+            "tool": "היום חם מאוד - 25 מעלות",
+            "description": "מידע עם משמעות על מזג האוויר (Information)",
+            "icon": "☀️"
+          },
+          {
+            "tool": "שם: דני כהן",
+            "description": "נתון גולמי של שם (Data)",
+            "icon": "🧑"
+          },
+          {
+            "tool": "דני כהן הוא התלמיד הכי טוב בכיתה",
+            "description": "מידע עם משמעות על דני (Information)",
+            "icon": "🏆"
+          },
+          {
+            "tool": "צבע: כחול",
+            "description": "נתון גולמי של צבע (Data)",
+            "icon": "🎨"
+          },
+          {
+            "tool": "השמיים כחולים היום",
+            "description": "מידע עם משמעות על השמיים (Information)",
+            "icon": "☁️"
+          }
+        ],
+        "duration": 300
+      }
+    }
+  },
+  {
+    "id": "slide2-7",
+    "order": 7,
+    "sortOrder": "007",
+    "slideNumber": 7,
+    "lessonNumber": 2,
+    "slide7HardwareSoftware": {
+      "id": "slide-7",
+      "type": "presentation",
+      "title": "חומרה ותוכנה - ההבדל 🧱",
+      "content": {
+        "background": "linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)",
+        "elements": [
+          {
+            "type": "title",
+            "text": "חומרה vs תוכנה",
+            "style": {
+              "fontSize": "2.5rem",
+              "color": "white",
+              "textAlign": "center",
+              "marginBottom": "2rem"
+            }
+          },
+          {
+            "type": "analogy",
+            "title": "דוגמה: אופנוע",
+            "description": "תוכנה = האדם שמפעיל, חומרה = האופנוע שהוא הכלי",
+            "style": {
+              "fontSize": "1.3rem",
+              "color": "white",
+              "textAlign": "center",
+              "marginBottom": "2rem"
+            }
+          },
+          {
+            "type": "comparison",
+            "title": "ההבדלים",
+            "items": [
+              {
+                "title": "תוכנה",
+                "description": "הוראות שהמחשב מפעיל - מערכת הפעלה, Word, משחקים",
+                "icon": "💿",
+                "color": "#4CAF50"
+              },
+              {
+                "title": "חומרה",
+                "description": "כל החלקים הפיזיים - אלקטרוניים או מכניים",
+                "icon": "🔧",
+                "color": "#2196F3"
+              }
+            ],
+            "style": {
+              "fontSize": "1.2rem",
+              "color": "white"
+            }
+          }
+        ],
+        "duration": 240
+      }
+    }
+  },
+  {
+    "id": "slide2-8",
+    "order": 8,
+    "sortOrder": "008",
+    "slideNumber": 8,
+    "lessonNumber": 2,
+    "slide8HardwareSoftwareGame": {
+      "id": "slide-8",
+      "type": "interactive",
+      "title": "משחק: חומרה או תוכנה? 🎯",
+      "content": {
+        "type": "drag-drop",
+        "instructions": "גרור כל פריט לקטגוריה הנכונה",
+        "categories": [
+          {
+            "id": "hardware",
+            "name": "חומרה",
+            "color": "#2196F3",
+            "description": "חלקים פיזיים"
+          },
+          {
+            "id": "software",
+            "name": "תוכנה",
+            "color": "#4CAF50",
+            "description": "הוראות ותוכנות"
+          }
+        ],
+        "items": [
+          {
+            "id": 1,
+            "text": "מעבד (CPU)",
+            "correctCategory": "hardware"
+          },
+          {
+            "id": 2,
+            "text": "Windows 11",
+            "correctCategory": "software"
+          },
+          {
+            "id": 3,
+            "text": "כרטיס מסך",
+            "correctCategory": "hardware"
+          },
+          {
+            "id": 4,
+            "text": "Minecraft",
+            "correctCategory": "software"
+          },
+          {
+            "id": 5,
+            "text": "זיכרון RAM",
+            "correctCategory": "hardware"
+          },
+          {
+            "id": 6,
+            "text": "Google Chrome",
+            "correctCategory": "software"
+          }
+        ],
+        "duration": 300
+      }
+    }
+  },
+  {
+    "id": "slide2-9",
+    "order": 9,
+    "sortOrder": "009",
+    "slideNumber": 9,
+    "lessonNumber": 2,
+    "slide9MainComponents": {
+      "id": "slide-9",
+      "type": "presentation",
+      "title": "רכיבי החומרה העיקריים 🖥️",
+      "content": {
+        "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        "elements": [
+          {
+            "type": "title",
+            "text": "רכיבי החומרה העיקריים",
+            "style": {
+              "fontSize": "2.5rem",
+              "color": "white",
+              "textAlign": "center",
+              "marginBottom": "2rem"
+            }
+          },
+          {
+            "type": "subtitle",
+            "text": "נכיר את 6 הרכיבים החשובים ביותר במחשב",
+            "style": {
+              "fontSize": "1.3rem",
+              "color": "white",
+              "textAlign": "center",
+              "opacity": 0.9
+            }
+          },
+          {
+            "type": "image",
+            "src": "https://images.unsplash.com/photo-1587831990711-23ca6441447b?w=400",
+            "alt": "Computer Components",
+            "style": {
+              "width": "300px",
+              "borderRadius": "15px",
+              "margin": "2rem auto"
+            }
+          }
+        ],
+        "duration": 120
+      }
+    }
+  },
+  {
+    "id": "slide2-10",
+    "order": 10,
+    "sortOrder": "010",
+    "slideNumber": 10,
+    "lessonNumber": 2,
+    "slide10Cpu": {
+      "id": "slide-10",
+      "type": "presentation",
+      "title": "1. מעבד (CPU) - המוח של המחשב 🧠",
+      "content": {
+        "background": "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+        "elements": [
+          {
+            "type": "title",
+            "text": "המעבד - המוח של המחשב",
+            "style": {
+              "fontSize": "2.5rem",
+              "color": "white",
+              "textAlign": "center",
+              "marginBottom": "2rem"
+            }
+          },
+          {
+            "type": "subtitle",
+            "text": "מבצע את כל ההוראות בתוכנה",
+            "style": {
+              "fontSize": "1.5rem",
+              "color": "white",
+              "textAlign": "center",
+              "marginBottom": "2rem"
+            }
+          },
+          {
+            "type": "list",
+            "items": [
+              "🔹 זיכרון מטמון - זיכרון מהיר מאוד",
+              "🔹 אוגרים - זיכרון זמני קטן",
+              "🔹 ליבות - כמה 'מוחות' במקביל",
+              "🔹 שעון (Clock) - קובע מהירות הפעולה"
+            ],
+            "style": {
+              "fontSize": "1.3rem",
+              "color": "white",
+              "textAlign": "right",
+              "lineHeight": "2"
+            }
+          },
+          {
+            "type": "pulse",
+            "element": "🧠",
+            "style": {
+              "fontSize": "4rem",
+              "textAlign": "center",
+              "margin": "2rem"
+            }
+          }
+        ],
+        "duration": 180
+      }
+    }
+  },
+  {
+    "id": "slide2-11",
+    "order": 11,
+    "sortOrder": "011",
+    "slideNumber": 11,
+    "lessonNumber": 2,
+    "slide11Storage": {
+      "id": "slide-11",
+      "type": "presentation",
+      "title": "2. זיכרון ארוך טווח 💾",
+      "content": {
+        "background": "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
+        "elements": [
+          {
+            "type": "title",
+            "text": "זיכרון ארוך טווח",
+            "style": {
+              "fontSize": "2.5rem",
+              "color": "#333",
+              "textAlign": "center",
+              "marginBottom": "2rem"
+            }
+          },
+          {
+            "type": "subtitle",
+            "text": "Hard Disk / SSD - לאחסון קבוע",
+            "style": {
+              "fontSize": "1.5rem",
+              "color": "#666",
+              "textAlign": "center",
+              "marginBottom": "2rem"
+            }
+          },
+          {
+            "type": "comparison",
+            "title": "סוגי אחסון",
+            "items": [
+              {
+                "title": "SSD",
+                "description": "מהיר ויקר - כמו זיכרון פלאש",
+                "icon": "⚡",
+                "color": "#4CAF50"
+              },
+              {
+                "title": "הארד דיסק",
+                "description": "מגנטי וזול יותר - כמו תקליט",
+                "icon": "💿",
+                "color": "#2196F3"
+              }
+            ],
+            "style": {
+              "fontSize": "1.2rem",
+              "color": "#333"
+            }
+          },
+          {
+            "type": "list",
+            "items": [
+              "📁 קבצים, תמונות, סרטים",
+              "💻 מערכת הפעלה",
+              "🎮 תוכנות ומשחקים",
+              "📚 מסמכים ועבודות"
+            ],
+            "style": {
+              "fontSize": "1.2rem",
+              "color": "#333",
+              "textAlign": "right",
+              "lineHeight": "2"
+            }
+          }
+        ],
+        "duration": 180
+      }
+    }
+  },
+  {
+    "id": "slide2-12",
+    "order": 12,
+    "sortOrder": "012",
+    "slideNumber": 12,
+    "lessonNumber": 2,
+    "slide12Ram": {
+      "id": "slide-12",
+      "type": "presentation",
+      "title": "3. זיכרון קצר טווח (RAM) 🚀",
+      "content": {
+        "background": "linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)",
+        "elements": [
+          {
+            "type": "title",
+            "text": "זיכרון קצר טווח - RAM",
+            "style": {
+              "fontSize": "2.5rem",
+              "color": "white",
+              "textAlign": "center",
+              "marginBottom": "2rem"
+            }
+          },
+          {
+            "type": "subtitle",
+            "text": "הסגן מנהל שמזכיר למעבד משימות",
+            "style": {
+              "fontSize": "1.5rem",
+              "color": "white",
+              "textAlign": "center",
+              "marginBottom": "2rem"
+            }
+          },
+          {
+            "type": "list",
+            "items": [
+              "⚡ מאוד מהיר - כמו זיכרון זמני",
+              "🔄 נדיף - נמחק כשכבים את המחשב",
+              "📱 לתהליכים שרצים בזמן אמת",
+              "🎯 עוזר למעבד לעבוד מהר יותר"
+            ],
+            "style": {
+              "fontSize": "1.3rem",
+              "color": "white",
+              "textAlign": "right",
+              "lineHeight": "2"
+            }
+          },
+          {
+            "type": "analogy",
+            "title": "דוגמה: שולחן עבודה",
+            "description": "RAM הוא כמו שולחן העבודה - מקום זמני לעבודה פעילה",
+            "style": {
+              "fontSize": "1.2rem",
+              "color": "white",
+              "textAlign": "center",
+              "marginTop": "2rem"
+            }
+          }
+        ],
+        "duration": 180
+      }
+    }
+  },
+  {
+    "id": "slide2-13",
+    "order": 13,
+    "sortOrder": "013",
+    "slideNumber": 13,
+    "lessonNumber": 2,
+    "slide13Motherboard": {
+      "id": "slide-13",
+      "type": "presentation",
+      "title": "4. לוח אם (Motherboard) 🏠",
+      "content": {
+        "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        "elements": [
+          {
+            "type": "title",
+            "text": "לוח האם - הבית של החומרה",
+            "style": {
+              "fontSize": "2.5rem",
+              "color": "white",
+              "textAlign": "center",
+              "marginBottom": "2rem"
+            }
+          },
+          {
+            "type": "subtitle",
+            "text": "מחבר בין כל הרכיבים",
+            "style": {
+              "fontSize": "1.5rem",
+              "color": "white",
+              "textAlign": "center",
+              "marginBottom": "2rem"
+            }
+          },
+          {
+            "type": "list",
+            "items": [
+              "🔌 מחבר את כל הרכיבים יחד",
+              "🎛️ מאפשר בקרה ותיאום",
+              "📡 מעביר מידע בין הרכיבים",
+              "⚡ מספק חשמל לכל החלקים"
+            ],
+            "style": {
+              "fontSize": "1.3rem",
+              "color": "white",
+              "textAlign": "right",
+              "lineHeight": "2"
+            }
+          },
+          {
+            "type": "image",
+            "src": "https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=300",
+            "alt": "Motherboard",
+            "style": {
+              "width": "250px",
+              "borderRadius": "15px",
+              "margin": "2rem auto"
+            }
+          }
+        ],
+        "duration": 180
+      }
+    }
+  },
+  {
+    "id": "slide2-14",
+    "order": 14,
+    "sortOrder": "014",
+    "slideNumber": 14,
+    "lessonNumber": 2,
+    "slide14Psu": {
+      "id": "slide-14",
+      "type": "presentation",
+      "title": "5. ספק כוח (PSU) ⚡",
+      "content": {
+        "background": "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+        "elements": [
+          {
+            "type": "title",
+            "text": "ספק כוח - PSU",
+            "style": {
+              "fontSize": "2.5rem",
+              "color": "white",
+              "textAlign": "center",
+              "marginBottom": "2rem"
+            }
+          },
+          {
+            "type": "subtitle",
+            "text": "מספק מתח לכל רכיבי המחשב",
+            "style": {
+              "fontSize": "1.5rem",
+              "color": "white",
+              "textAlign": "center",
+              "marginBottom": "2rem"
+            }
+          },
+          {
+            "type": "list",
+            "items": [
+              "🔌 ממיר חשמל מהשקע למחשב",
+              "⚡ מספק מתח מתאים לכל רכיב",
+              "💪 ככל שההספק גבוה יותר - יכולת העיבוד גבוהה יותר",
+              "🛡️ מגן על הרכיבים מפני נזקי חשמל"
+            ],
+            "style": {
+              "fontSize": "1.3rem",
+              "color": "white",
+              "textAlign": "right",
+              "lineHeight": "2"
+            }
+          },
+          {
+            "type": "flash",
+            "element": "⚡",
+            "style": {
+              "fontSize": "4rem",
+              "textAlign": "center",
+              "margin": "2rem"
+            }
+          }
+        ],
+        "duration": 180
+      }
+    }
+  },
+  {
+    "id": "slide2-15",
+    "order": 15,
+    "sortOrder": "015",
+    "slideNumber": 15,
+    "lessonNumber": 2,
+    "slide15Gpu": {
+      "id": "slide-15",
+      "type": "presentation",
+      "title": "6. כרטיס מסך (GPU) 🖥️",
+      "content": {
+        "background": "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
+        "elements": [
+          {
+            "type": "title",
+            "text": "כרטיס מסך - GPU",
+            "style": {
+              "fontSize": "2.5rem",
+              "color": "#333",
+              "textAlign": "center",
+              "marginBottom": "2rem"
+            }
+          },
+          {
+            "type": "subtitle",
+            "text": "מתרגם פעולות לתצוגה גרפית",
+            "style": {
+              "fontSize": "1.5rem",
+              "color": "#666",
+              "textAlign": "center",
+              "marginBottom": "2rem"
+            }
+          },
+          {
+            "type": "comparison",
+            "title": "סוגי כרטיסי מסך",
+            "items": [
+              {
+                "title": "בסיסי",
+                "description": "מובנה בלוח אם - למשימות פשוטות",
+                "icon": "📺",
+                "color": "#4CAF50"
+              },
+              {
+                "title": "חיצוני",
+                "description": "חזק - למשחקים וגרפיקה מתקדמת",
+                "icon": "🎮",
+                "color": "#2196F3"
+              }
+            ],
+            "style": {
+              "fontSize": "1.2rem",
+              "color": "#333"
+            }
+          },
+          {
+            "type": "list",
+            "items": [
+              "🎨 מציג תמונות וסרטים",
+              "🎮 מאפשר משחקים מתקדמים",
+              "📊 עוזר בעיבוד גרפי",
+              "🖼️ מטפל בצבעים ופרטים"
+            ],
+            "style": {
+              "fontSize": "1.2rem",
+              "color": "#333",
+              "textAlign": "right",
+              "lineHeight": "2"
+            }
+          }
+        ],
+        "duration": 180
+      }
+    }
+  },
+  {
+    "id": "slide2-16",
+    "order": 16,
+    "sortOrder": "016",
+    "slideNumber": 16,
+    "lessonNumber": 2,
+    "slide16ComponentMatching": {
+      "id": "slide-16",
+      "type": "interactive",
+      "title": "משחק: זיהוי רכיבים 🎯",
+      "content": {
+        "type": "matching",
+        "instructions": "התאם כל רכיב לתיאור שלו",
+        "pairs": [
+          {
+            "tool": "מעבד (CPU)",
+            "description": "המוח של המחשב - מבצע הוראות",
+            "icon": "🧠"
+          },
+          {
+            "tool": "זיכרון RAM",
+            "description": "זיכרון מהיר לתהליכים פעילים",
+            "icon": "🚀"
+          },
+          {
+            "tool": "הארד דיסק",
+            "description": "אחסון קבוע לקבצים",
+            "icon": "💾"
+          },
+          {
+            "tool": "כרטיס מסך",
+            "description": "מציג תמונות על המסך",
+            "icon": "🖥️"
+          },
+          {
+            "tool": "לוח אם",
+            "description": "מחבר בין כל הרכיבים",
+            "icon": "🏠"
+          },
+          {
+            "tool": "ספק כוח",
+            "description": "מספק חשמל לכל הרכיבים",
+            "icon": "⚡"
+          }
+        ],
+        "duration": 360
+      }
+    }
+  },
+  {
+    "id": "slide2-17",
+    "order": 17,
+    "sortOrder": "017",
+    "slideNumber": 17,
+    "lessonNumber": 2,
+    "slide17ComputerSimulator": {
+      "id": "slide-17",
+      "type": "interactive",
+      "title": "סימולטור: הרכבת מחשב 🧩",
+      "content": {
+        "type": "computer-build",
+        "instructions": "בנה מחשב וירטואלי על ידי בחירת רכיבים",
+        "components": [
+          {
+            "id": "cpu",
+            "name": "מעבד",
+            "options": [
+              {
+                "name": "Intel i3",
+                "price": 500,
+                "performance": 3,
+                "description": "מעבד בסיסי"
+              },
+              {
+                "name": "Intel i5",
+                "price": 800,
+                "performance": 4,
+                "description": "מעבד בינוני"
+              },
+              {
+                "name": "Intel i9",
+                "price": 1500,
+                "performance": 5,
+                "description": "מעבד חזק"
+              }
+            ]
+          },
+          {
+            "id": "ram",
+            "name": "זיכרון RAM",
+            "options": [
+              {
+                "name": "8GB",
+                "price": 200,
+                "performance": 3,
+                "description": "זיכרון בסיסי"
+              },
+              {
+                "name": "16GB",
+                "price": 400,
+                "performance": 4,
+                "description": "זיכרון בינוני"
+              },
+              {
+                "name": "32GB",
+                "price": 800,
+                "performance": 5,
+                "description": "זיכרון חזק"
+              }
+            ]
+          },
+          {
+            "id": "storage",
+            "name": "אחסון",
+            "options": [
+              {
+                "name": "500GB הארד דיסק",
+                "price": 100,
+                "performance": 2,
+                "description": "אחסון איטי"
+              },
+              {
+                "name": "1TB SSD",
+                "price": 300,
+                "performance": 4,
+                "description": "אחסון מהיר"
+              },
+              {
+                "name": "2TB SSD",
+                "price": 600,
+                "performance": 5,
+                "description": "אחסון מהיר וגדול"
+              }
+            ]
+          },
+          {
+            "id": "gpu",
+            "name": "כרטיס מסך",
+            "options": [
+              {
+                "name": "מובנה",
+                "price": 0,
+                "performance": 2,
+                "description": "כרטיס בסיסי"
+              },
+              {
+                "name": "GTX 1660",
+                "price": 800,
+                "performance": 4,
+                "description": "כרטיס בינוני"
+              },
+              {
+                "name": "RTX 4080",
+                "price": 2000,
+                "performance": 5,
+                "description": "כרטיס חזק"
+              }
+            ]
+          }
+        ],
+        "budget": 5000,
+        "duration": 600
+      }
+    }
+  },
+  {
+    "id": "slide2-18",
+    "order": 18,
+    "sortOrder": "018",
+    "slideNumber": 18,
+    "lessonNumber": 2,
+    "slide18RecommendedSpecs": {
+      "id": "slide-18",
+      "type": "presentation",
+      "title": "מפרט טכני מומלץ 💻",
+      "content": {
+        "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        "elements": [
+          {
+            "type": "title",
+            "text": "מפרט טכני מומלץ לדוגמה",
+            "style": {
+              "fontSize": "2.5rem",
+              "color": "white",
+              "textAlign": "center",
+              "marginBottom": "2rem"
+            }
+          },
+          {
+            "type": "specs",
+            "items": [
+              {
+                "component": "מעבד",
+                "spec": "Intel i9 או AMD Ryzen 9",
+                "icon": "🧠"
+              },
+              {
+                "component": "זיכרון RAM",
+                "spec": "לפחות 16GB DDR5",
+                "icon": "🚀"
+              },
+              {
+                "component": "אחסון",
+                "spec": "500GB SSD + 2TB הארד דיסק",
+                "icon": "💾"
+              },
+              {
+                "component": "כרטיס מסך",
+                "spec": "RTX 4070 או דומה",
+                "icon": "🖥️"
+              },
+              {
+                "component": "ספק כוח",
+                "spec": "750W או יותר",
+                "icon": "⚡"
+              },
+              {
+                "component": "לוח אם",
+                "spec": "תואם למעבד הנבחר",
+                "icon": "🏠"
+              }
+            ],
+            "style": {
+              "fontSize": "1.3rem",
+              "color": "white",
+              "textAlign": "right",
+              "lineHeight": "2"
+            }
+          }
+        ],
+        "duration": 180
+      }
+    }
+  },
+  {
+    "id": "slide2-19",
+    "order": 19,
+    "sortOrder": "019",
+    "slideNumber": 19,
+    "lessonNumber": 2,
+    "slide19LabSimulation": {
+      "id": "slide-19",
+      "type": "interactive",
+      "title": "מעבדת מחשבים - שלב 2 🔬",
+      "content": {
+        "type": "lab-simulation",
+        "instructions": "בדוק מה קורה כשחסר רכיב במחשב",
+        "scenarios": [
+          {
+            "name": "מחשב בלי מעבד",
+            "description": "מה קורה כשחסר המוח?",
+            "result": "המחשב לא יעלה בכלל - אין מי שיעבד הוראות",
+            "icon": "❌"
+          },
+          {
+            "name": "מחשב בלי זיכרון RAM",
+            "description": "מה קורה כשחסר זיכרון זמני?",
+            "result": "המחשב יעלה אבל יהיה מאוד איטי",
+            "icon": "🐌"
+          },
+          {
+            "name": "מחשב בלי הארד דיסק",
+            "description": "מה קורה כשחסר אחסון?",
+            "result": "המחשב יעלה אבל לא יהיה מקום לקבצים",
+            "icon": "📁"
+          },
+          {
+            "name": "מחשב בלי כרטיס מסך",
+            "description": "מה קורה כשחסר כרטיס מסך?",
+            "result": "לא תהיה תצוגה על המסך",
+            "icon": "🖥️"
+          }
+        ],
+        "duration": 300
+      }
+    }
+  },
+  {
+    "id": "slide2-20",
+    "order": 20,
+    "sortOrder": "020",
+    "slideNumber": 20,
+    "lessonNumber": 2,
+    "slide20Quiz": {
+      "id": "slide-20",
+      "type": "quiz",
+      "title": "בוחן: רכיבי המחשב 📝",
+      "content": {
+        "questions": [
+          {
+            "question": "איזה רכיב נקרא 'המוח של המחשב'?",
+            "options": [
+              "מעבד (CPU)",
+              "זיכרון RAM",
+              "הארד דיסק",
+              "כרטיס מסך"
+            ],
+            "correct": 0,
+            "explanation": "המעבד הוא המוח - הוא מבצע את כל ההוראות"
+          },
+          {
+            "question": "מה ההבדל בין RAM להארד דיסק?",
+            "options": [
+              "אין הבדל",
+              "RAM מהיר יותר אבל נמחק",
+              "הארד דיסק יותר יקר",
+              "RAM גדול יותר"
+            ],
+            "correct": 1,
+            "explanation": "RAM מהיר יותר אבל נמחק כשכבים את המחשב"
+          },
+          {
+            "question": "מה תפקיד לוח האם?",
+            "options": [
+              "להציג תמונות",
+              "לחבר בין רכיבים",
+              "לספק חשמל",
+              "לאחסן קבצים"
+            ],
+            "correct": 1,
+            "explanation": "לוח האם מחבר בין כל הרכיבים"
+          },
+          {
+            "question": "איזה רכיב מספק חשמל לכל המחשב?",
+            "options": [
+              "מעבד",
+              "ספק כוח",
+              "לוח אם",
+              "כרטיס מסך"
+            ],
+            "correct": 1,
+            "explanation": "ספק הכוח ממיר חשמל מהשקע למחשב"
+          }
+        ],
+        "duration": 480
+      }
+    }
+  },
+  {
+    "id": "slide2-21",
+    "order": 21,
+    "sortOrder": "021",
+    "slideNumber": 21,
+    "lessonNumber": 2,
+    "slide21InputOutput": {
+      "id": "slide-21",
+      "type": "presentation",
+      "title": "קלט ופלט - איך המחשב עובד 🔄",
+      "content": {
+        "background": "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+        "elements": [
+          {
+            "type": "title",
+            "text": "קלט ופלט - איך המחשב עובד",
+            "style": {
+              "fontSize": "2.5rem",
+              "color": "white",
+              "textAlign": "center",
+              "marginBottom": "2rem"
+            }
+          },
+          {
+            "type": "flow",
+            "steps": [
+              {
+                "step": "קלט",
+                "description": "עכבר, מקלדת, מיקרופון",
+                "icon": "🖱️"
+              },
+              {
+                "step": "עיבוד",
+                "description": "המעבד מעבד את המידע",
+                "icon": "🧠"
+              },
+              {
+                "step": "זיכרון",
+                "description": "RAM מאחסן זמנית",
+                "icon": "💾"
+              },
+              {
+                "step": "פלט",
+                "description": "מסך, רמקולים, מדפסת",
+                "icon": "🖥️"
+              }
+            ],
+            "style": {
+              "fontSize": "1.3rem",
+              "color": "white"
+            }
+          },
+          {
+            "type": "example",
+            "title": "דוגמה: כתיבת טקסט",
+            "description": "מקלדת → מעבד → זיכרון → מסך",
+            "style": {
+              "fontSize": "1.2rem",
+              "color": "white",
+              "textAlign": "center",
+              "marginTop": "2rem"
+            }
+          }
+        ],
+        "duration": 240
+      }
+    }
+  },
+  {
+    "id": "slide2-22",
+    "order": 22,
+    "sortOrder": "022",
+    "slideNumber": 22,
+    "lessonNumber": 2,
+    "slide22InputOutputGame": {
+      "id": "slide-22",
+      "type": "interactive",
+      "title": "משחק: זיהוי קלט ופלט 🎮",
+      "content": {
+        "type": "drag-drop",
+        "instructions": "גרור כל מכשיר לקטגוריה הנכונה",
+        "categories": [
+          {
+            "id": "input",
+            "name": "קלט",
+            "color": "#4CAF50",
+            "description": "מכניס מידע למחשב"
+          },
+          {
+            "id": "output",
+            "name": "פלט",
+            "color": "#2196F3",
+            "description": "מציג תוצאות מהמחשב"
+          },
+          {
+            "id": "both",
+            "name": "קלט ופלט",
+            "color": "#FF9800",
+            "description": "גם מכניס וגם מציג"
+          }
+        ],
+        "items": [
+          {
+            "id": 1,
+            "text": "מקלדת",
+            "correctCategory": "input"
+          },
+          {
+            "id": 2,
+            "text": "מסך",
+            "correctCategory": "output"
+          },
+          {
+            "id": 3,
+            "text": "עכבר",
+            "correctCategory": "input"
+          },
+          {
+            "id": 4,
+            "text": "רמקולים",
+            "correctCategory": "output"
+          },
+          {
+            "id": 5,
+            "text": "מסך מגע",
+            "correctCategory": "both"
+          },
+          {
+            "id": 6,
+            "text": "מיקרופון",
+            "correctCategory": "input"
+          }
+        ],
+        "duration": 300
+      }
+    }
+  },
+  {
+    "id": "slide2-23",
+    "order": 23,
+    "sortOrder": "023",
+    "slideNumber": 23,
+    "lessonNumber": 2,
+    "slide23FinalPoll": {
+      "id": "slide-23",
+      "type": "poll",
+      "title": "מה למדת היום? 🤔",
+      "content": {
+        "question": "איזה נושא היה הכי מעניין?",
+        "options": [
+          {
+            "id": 1,
+            "text": "היסטוריה של המחשב",
+            "emoji": "🕰️"
+          },
+          {
+            "id": 2,
+            "text": "רכיבי החומרה",
+            "emoji": "💻"
+          },
+          {
+            "id": 3,
+            "text": "סימולטור הרכבת מחשב",
+            "emoji": "🧩"
+          },
+          {
+            "id": 4,
+            "text": "קלט ופלט",
+            "emoji": "🔄"
+          },
+          {
+            "id": 5,
+            "text": "הכל מעניין!",
+            "emoji": "🌟"
+          }
+        ],
+        "allowMultiple": false,
+        "showResults": true,
+        "duration": 120
+      }
+    }
+  },
+  {
+    "id": "slide2-24",
+    "order": 24,
+    "sortOrder": "024",
+    "slideNumber": 24,
+    "lessonNumber": 2,
+    "slide24Summary": {
+      "id": "slide-24",
+      "type": "presentation",
+      "title": "סיכום השיעור 📚",
+      "content": {
+        "background": "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
+        "elements": [
+          {
+            "type": "title",
+            "text": "מה למדנו היום?",
+            "style": {
+              "fontSize": "2.5rem",
+              "color": "#333",
+              "textAlign": "center",
+              "marginBottom": "2rem"
+            }
+          },
+          {
+            "type": "list",
+            "items": [
+              "🕰️ היסטוריה מרתקת של המחשב",
+              "🧠 מה זה מחשב ואיך הוא עובד",
+              "💻 6 רכיבי החומרה העיקריים",
+              "🧩 הרכבנו מחשב וירטואלי",
+              "🔄 הבנו קלט ופלט",
+              "🎮 שיחקנו משחקי למידה"
+            ],
+            "style": {
+              "fontSize": "1.3rem",
+              "color": "#333",
+              "textAlign": "right",
+              "lineHeight": "2"
+            }
+          },
+          {
+            "type": "subtitle",
+            "text": "עכשיו אתם מומחי מחשבים! 🎉",
+            "style": {
+              "fontSize": "1.5rem",
+              "color": "#666",
+              "textAlign": "center",
+              "marginTop": "2rem"
+            }
+          }
+        ],
+        "duration": 180
+      }
+    }
+  },
+  {
+    "id": "slide2-25",
+    "order": 25,
+    "sortOrder": "025",
+    "slideNumber": 25,
+    "lessonNumber": 2,
+    "slide25Reflection": {
+      "id": "slide-25",
+      "type": "reflection",
+      "title": "שאלות למחשבה 💭",
+      "content": {
+        "questions": [
+          "איך לדעתך ייראו המחשבים בעתיד?",
+          "איזה רכיב מחשב אתה חושב הכי חשוב? למה?",
+          "מה היית רוצה ללמוד על מחשבים בהמשך?",
+          "איך לדעתך המחשבים משנים את העולם?"
+        ],
+        "duration": 300
+      }
+    }
+  }
+]

@@ -9,21 +9,17 @@ const PresentationSlide = ({ slide }) => {
   const { content } = slide;
   
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8">
-      <div className="max-w-5xl w-full flex flex-col">
-        {/* Title */}
-        <div className="text-center mb-8">
-          <h2 className="text-4xl font-bold text-white mb-4" style={{ textShadow: '0 4px 8px rgba(0,0,0,0.3)' }}>
-            {slide.title}
-          </h2>
-        </div>
-
+    <div className="min-h-screen flex flex-col items-center justify-start pt-20 px-4"> {/* pt-20 to start after nav bar */}
+      <div className="w-full max-w-7xl flex flex-col"> {/* max-w-7xl = 1280px for wider presentation */}
+        {/* Removed outer header to avoid double heading */}
         {/* Content Container */}
         <div 
           className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-8 border border-gray-700/50 shadow-2xl flex flex-col justify-center relative overflow-auto"
           style={{ 
             background: content.background || 'linear-gradient(135deg, #1e3a8a 0%, #7c3aed 100%)',
-            minHeight: '400px'
+            minHeight: '600px', /* Consistent height for all slides */
+            width: '100%',
+            margin: '0 auto'
           }}
         >
           {/* Background overlay for better text readability */}

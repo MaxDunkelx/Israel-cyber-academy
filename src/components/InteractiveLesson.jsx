@@ -107,13 +107,25 @@ const InteractiveLesson = () => {
   useEffect(() => {
     if (import.meta.env.DEV) {
       console.log(`🎯 Current slide: ${currentSlide} (Lesson ${lessonId})`);
+      console.log(`🔐 Auth state: currentUser=${currentUser?.uid}, userProfile=${!!userProfile}`);
       if (userProfile && lesson) {
         const savedSlide = getLastLessonSlide(lesson.originalId);
         console.log(`💾 Saved slide position: ${savedSlide}`);
         console.log(`✅ Lesson completed: ${isCompletedLesson.current}`);
       }
     }
-  }, [currentSlide, lessonId, userProfile, lesson, getLastLessonSlide]);
+  }, [currentSlide, lessonId, userProfile, lesson, getLastLessonSlide, currentUser]);
+
+  /**
+   * Initialize session logging when user and lesson are available
+   */
+  useEffect(() => {
+    if (currentUser && lessonId && !isInitialized.current) {
+      // Initialize session logging with proper user and lesson IDs
+      initLessonSession(currentUser.uid, lessonId);
+      console.log('🎯 Session initialized with:', { userId: currentUser.uid, lessonId });
+    }
+  }, [currentUser, lessonId]);
 
   /**
    * Check teacher access control before loading lesson
@@ -171,25 +183,59 @@ const InteractiveLesson = () => {
       try {
         let lessonData = await getLessonWithSlides(lessonId);
         if (lessonData && lessonData.slides && lessonData.slides.length > 0) {
-          // Transform to match local format if needed
-          lessonData = {
-            ...lessonData,
-            content: { slides: lessonData.slides }
-          };
+          // Keep the slides in the root level for consistency
           if (isMounted) setLesson(lessonData);
+          
+          // Check if lesson is already completed using lesson number from lesson object
+          const lessonNumber = lessonData.originalId || parseInt(lessonId);
+          let lessonCompleted = false;
+          if (userProfile && userProfile.progress && lessonNumber && userProfile.progress[lessonNumber]) {
+            const lessonProgress = userProfile.progress[lessonNumber];
+            if (lessonProgress.completed) {
+              isCompletedLesson.current = true;
+              lessonCompleted = true;
+              console.log('✅ Lesson already completed, showing completion state');
+            }
+          }
+          
+          // Load saved slide position using lesson number
+          if (userProfile && lessonNumber && !isNaN(lessonNumber)) {
+            let savedSlide = getLastLessonSlide(lessonNumber);
+            // If lesson is completed or savedSlide is out of bounds, reset to 0
+            if (lessonCompleted || savedSlide < 0 || savedSlide >= lessonData.slides.length) {
+              savedSlide = 0;
+              setLastLessonSlide(lessonNumber, 0); // Reset in user progress
+              console.log('🔄 Resetting saved slide position to 0');
+            }
+            setCurrentSlide(savedSlide);
+            console.log(`📖 Loaded saved slide position: ${savedSlide}`);
+          }
+          
+          // Mark as initialized
+          isInitialized.current = true;
         } else {
           throw new Error('No slides found in Firebase');
         }
-      } catch (e) {
-        console.error('Failed to load lesson from database:', e);
-        if (isMounted) setError('שגיאה בטעינת השיעור מהמסד נתונים');
+      } catch (error) {
+        console.error('Error loading lesson:', error);
+        if (isMounted) {
+          setError('שגיאה בטעינת השיעור');
+        }
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
-    loadLesson();
-    return () => { isMounted = false; };
-  }, [lessonId]);
+    
+    if (lessonId) {
+      loadLesson();
+    }
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [lessonId, userProfile, getLastLessonSlide]);
 
   /**
    * Track slide engagement when slide changes - FIXED to prevent conflicts
@@ -197,10 +243,13 @@ const InteractiveLesson = () => {
   useEffect(() => {
     if (!lesson || !userProfile || !isInitialized.current) return;
     
-    const currentSlideData = lesson.content.slides[currentSlide];
+    const currentSlideData = lesson.slides ? lesson.slides[currentSlide] : null;
     if (currentSlideData && currentSlideData.id) {
-      // Track this slide as engaged
-      trackSlideEngagement(lesson.originalId, currentSlideData.id);
+      // Track this slide as engaged using lesson number from lesson object
+      const lessonNumber = lesson.originalId || parseInt(lessonId);
+      if (lessonNumber && !isNaN(lessonNumber)) {
+        trackSlideEngagement(lessonNumber, currentSlideData.id);
+      }
       
       // Log slide engagement for session monitoring
       const timeSpent = Math.floor((Date.now() - slideStartTime) / 1000);
@@ -211,7 +260,7 @@ const InteractiveLesson = () => {
       
       // Save slide progress only if it changed and lesson is not completed
       if (currentSlide !== lastSavedSlide.current && !isCompletedLesson.current) {
-        setLastLessonSlide(lesson.originalId, currentSlide);
+        setLastLessonSlide(lessonNumber, currentSlide);
         lastSavedSlide.current = currentSlide;
       }
       
@@ -222,10 +271,10 @@ const InteractiveLesson = () => {
       
       // Log slide progress
       if (import.meta.env.DEV) {
-        console.log(`📖 SLIDE PROGRESS: ${currentSlide + 1}/${lesson.content.slides.length} - ${currentSlideData.title}`);
+        console.log(`📖 SLIDE PROGRESS: ${currentSlide + 1}/${lesson.slides ? lesson.slides.length : 0} - ${currentSlideData.title}`);
       }
     }
-  }, [currentSlide, lesson, userProfile, trackSlideEngagement, setLastLessonSlide]);
+  }, [currentSlide, lesson, userProfile, trackSlideEngagement, setLastLessonSlide, lessonId]);
 
   /**
    * Synchronize statistics with userProfile - FIXED to prevent loops
@@ -275,8 +324,8 @@ const InteractiveLesson = () => {
       setSlideTimeSpent(timeSpent);
       
       // Update time left if slide has duration
-      if (lesson.content.slides[currentSlide]?.content?.duration) {
-        const duration = lesson.content.slides[currentSlide].content.duration;
+      if (lesson.slides && lesson.slides[currentSlide]?.content?.duration) {
+        const duration = lesson.slides[currentSlide].content.duration;
         const remaining = Math.max(0, duration - timeSpent);
         setTimeLeft(remaining);
       }
@@ -317,7 +366,7 @@ const InteractiveLesson = () => {
     const slideTime = Math.floor((Date.now() - slideStartTime) / 1000);
     setTotalTimeStudied(prev => prev + slideTime);
     
-    if (currentSlide < lesson.content.slides.length - 1) {
+    if (currentSlide < (lesson.slides ? lesson.slides.length - 1 : 0)) {
       setCurrentSlide(currentSlide + 1);
     }
     // Don't automatically complete lesson - let user click finish button
@@ -354,30 +403,72 @@ const InteractiveLesson = () => {
   }, [slideStartTime]);
 
   /**
-   * Handle lesson completion - FIXED to prevent multiple calls
+   * Complete lesson function - FIXED to use correct lesson ID
    */
-  const handleLessonComplete = useCallback(async () => {
+  const completeLesson = useCallback(async () => {
+    console.log('🔐 Auth state check:', {
+      currentUser: currentUser?.uid,
+      userProfile: !!userProfile,
+      lesson: !!lesson
+    });
+    
     if (!lesson || !userProfile) {
-      console.error('❌ Cannot complete lesson: missing lesson or userProfile');
+      console.log('❌ Missing lesson or userProfile, cannot complete lesson');
+      return;
+    }
+    
+    if (!currentUser) {
+      console.log('❌ No current user, cannot complete lesson');
+      toast.error('שגיאה בהרשאת המשתמש');
+      return;
+    }
+    
+    // Double-check authentication state before proceeding
+    console.log('🔐 Double-checking auth state before lesson completion...');
+    const authCheck = {
+      currentUser: currentUser?.uid,
+      userProfile: userProfile?.uid,
+      lessonId: lesson?.id,
+      lessonOriginalId: lesson?.originalId
+    };
+    console.log('🔐 Auth check details:', authCheck);
+    
+    if (!authCheck.currentUser || !authCheck.userProfile) {
+      console.log('❌ Authentication check failed, aborting lesson completion');
+      return;
+    }
+    
+    // Get the actual lesson number from the lesson object
+    // lessonId from URL might be Firestore ID, but we need the lesson number for progress
+    const lessonNumber = lesson.originalId || parseInt(lessonId);
+    if (!lessonNumber || isNaN(lessonNumber)) {
+      console.error('❌ Invalid lesson ID:', lessonId, 'lesson.originalId:', lesson.originalId);
       return;
     }
 
-    console.log('🎯 Starting lesson completion for lesson:', lesson.originalId);
+    console.log('🎯 Starting lesson completion for lesson:', lessonNumber);
+    console.log('📋 Lesson object details:', {
+      lessonId: lessonId,
+      lessonOriginalId: lesson.originalId,
+      lessonNumber: lessonNumber,
+      lessonTitle: lesson.title,
+      lessonType: typeof lessonNumber
+    });
 
     // Add final slide time
     const slideTime = Math.floor((Date.now() - slideStartTime) / 1000);
     const finalTimeStudied = totalTimeStudied + slideTime;
     
     // Get all slide IDs to ensure complete tracking
-    const allSlideIds = lesson.content.slides.map(slide => slide.id);
+    const allSlideIds = lesson.slides ? lesson.slides.map(slide => slide.id) : [];
     
     // Ensure all slides are marked as engaged
     allSlideIds.forEach(slideId => {
-      trackSlideEngagement(lesson.originalId, slideId);
+      trackSlideEngagement(lessonNumber, slideId);
     });
     
     // Log lesson completion
-    logLessonCompletion(lesson.originalId, finalTimeStudied, finalTimeStudied);
+    logLessonCompletion(lessonNumber, finalTimeStudied, finalTimeStudied);
     
     // Export session data for analytics
     const sessionData = exportSessionData();
@@ -385,9 +476,9 @@ const InteractiveLesson = () => {
     
     // Log comprehensive completion summary
     console.log('🎉 LESSON COMPLETION SUMMARY:', {
-      lessonId: lesson.originalId,
+      lessonId: lessonNumber,
       lessonTitle: lesson.title,
-      totalSlides: lesson.content.slides.length,
+      totalSlides: lesson.slides ? lesson.slides.length : 0,
       slidesEngaged: allSlideIds.length,
       timeSpent: finalTimeStudied,
       timeFormatted: formatTimeStudied(finalTimeStudied),
@@ -402,14 +493,25 @@ const InteractiveLesson = () => {
     
     try {
       console.log('💾 Saving lesson progress...');
+      console.log('🔍 Debug: Calling updateUserProgress with:', {
+        lessonNumber,
+        completed: true,
+        score: finalTimeStudied,
+        temporary: false,
+        lastSlide: currentSlide,
+        slideId: null,
+        allSlideIds
+      });
       
       // Save progress with completion status and all slides engaged
-      await updateUserProgress(lesson.originalId, true, finalTimeStudied, false, currentSlide, null, allSlideIds);
+      // When completing a lesson, always reset lastSlide to 0
+      const result = await updateUserProgress(lessonNumber, true, finalTimeStudied, false, 0, null, allSlideIds, currentUser);
       
       console.log('✅ Progress saved successfully');
+      console.log('🔍 Debug: updateUserProgress result:', result);
       
       // Find next lesson before showing animation
-      const nextLesson = await getNextLesson(lesson.originalId);
+      const nextLesson = await getNextLesson(lessonNumber);
       console.log('📚 Next lesson found:', nextLesson);
       
       // Show celebration animation
@@ -442,12 +544,12 @@ const InteractiveLesson = () => {
       
       // Still try to navigate even if save failed
       setTimeout(async () => {
-        const nextLesson = await getNextLesson(lesson.originalId);
+        const nextLesson = await getNextLesson(lessonNumber);
         const navigateUrl = nextLesson ? `/roadmap?unlocked=${nextLesson.originalId}` : '/roadmap';
         navigate(navigateUrl, { replace: true });
       }, 1000);
     }
-  }, [lesson, userProfile, slideStartTime, totalTimeStudied, currentSlide, trackSlideEngagement, updateUserProgress, navigate]);
+  }, [lesson, userProfile, slideStartTime, totalTimeStudied, currentSlide, trackSlideEngagement, updateUserProgress, navigate, lessonId]);
 
   /**
    * Format time display for timer
@@ -495,6 +597,46 @@ const InteractiveLesson = () => {
     }
   };
 
+  /**
+   * Real-time user profile listener for live progress updates
+   */
+  useEffect(() => {
+    if (!currentUser) return;
+    
+    const setupListener = async () => {
+      const { doc, onSnapshot } = await import('firebase/firestore');
+      const { db } = await import('../firebase/firebase-config');
+      
+      const userRef = doc(db, 'users', currentUser.uid);
+      const unsubscribe = onSnapshot(userRef, (doc) => {
+        if (doc.exists()) {
+          const freshUserData = doc.data();
+          console.log('🔄 Real-time user profile update received:', {
+            totalTimeSpent: freshUserData.totalTimeSpent,
+            totalPagesEngaged: freshUserData.totalPagesEngaged,
+            completedLessons: freshUserData.completedLessons?.length || 0
+          });
+          
+          // The AuthContext listener should handle this automatically
+          // This is just for logging and debugging
+        }
+      }, (error) => {
+        console.error('❌ Error listening to user profile updates:', error);
+      });
+      
+      return unsubscribe;
+    };
+    
+    let unsubscribe;
+    setupListener().then(unsub => {
+      unsubscribe = unsub;
+    });
+    
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [currentUser]);
+
   // Loading state
   if (loading) {
     return (
@@ -512,8 +654,8 @@ const InteractiveLesson = () => {
     );
   }
 
-  const currentSlideData = lesson.content.slides[currentSlide];
-  const progressPercentage = ((currentSlide + 1) / lesson.content.slides.length) * 100;
+  const currentSlideData = lesson.slides ? lesson.slides[currentSlide] : null;
+  const progressPercentage = lesson.slides ? ((currentSlide + 1) / lesson.slides.length) * 100 : 0;
 
   // Defensive check: if slide is missing, show a message instead of crashing
   if (!currentSlideData) {
@@ -625,7 +767,7 @@ const InteractiveLesson = () => {
               <div className="text-center mb-7">
                 <div className="bg-gray-800/50 rounded-lg p-5 border border-gray-600/50">
                   <div className="text-3xl font-bold text-white">
-                    שקופית {currentSlide + 1} מתוך {lesson.content.slides.length}
+                    שקופית {currentSlide + 1} מתוך {lesson.slides ? lesson.slides.length : 0}
                   </div>
                 </div>
               </div>
@@ -643,9 +785,9 @@ const InteractiveLesson = () => {
                 </button>
                 
                 {/* Next/Finish Button */}
-                {currentSlide === lesson.content.slides.length - 1 ? (
+                {currentSlide === (lesson.slides ? lesson.slides.length - 1 : 0) ? (
                   <button
-                    onClick={handleLessonComplete}
+                    onClick={completeLesson}
                     className="group relative px-7 py-5 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 transition-all duration-300 hover:scale-105 hover:shadow-2xl text-white font-bold border-2 border-green-400/50 hover:border-green-300/70"
                     title="סיים שיעור"
                   >

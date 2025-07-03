@@ -24,7 +24,7 @@ import { logger } from '../../utils/logger';
 const StudentSession = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentUser, trackSlideEngagement } = useAuth();
   
   const [session, setSession] = useState(null);
   const [lesson, setLesson] = useState(null);
@@ -33,6 +33,7 @@ const StudentSession = () => {
   const [joining, setJoining] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [answers, setAnswers] = useState({});
+  const [slidesEngaged, setSlidesEngaged] = useState(new Set());
 
   useEffect(() => {
     if (sessionId && currentUser) {
@@ -46,7 +47,26 @@ const StudentSession = () => {
       const unsubscribe = listenToSession(sessionId, (updatedSession) => {
         if (updatedSession) {
           setSession(updatedSession);
-          setCurrentSlide(updatedSession.currentSlide || 0);
+          const newSlideIndex = updatedSession.currentSlide || 0;
+          
+          // Track slide engagement when slide changes
+          if (lesson && lesson.slides?.[newSlideIndex]) {
+            const slideData = lesson.slides[newSlideIndex];
+            if (slideData.id && !slidesEngaged.has(slideData.id)) {
+              trackSlideEngagement(lesson.originalId, slideData.id);
+              setSlidesEngaged(prev => new Set([...prev, slideData.id]));
+              
+              console.log('📊 Live Session Slide Engagement:', {
+                sessionId,
+                lessonId: lesson.originalId,
+                slideId: slideData.id,
+                slideTitle: slideData.title,
+                totalSlidesEngaged: slidesEngaged.size + 1
+              });
+            }
+          }
+          
+          setCurrentSlide(newSlideIndex);
         } else {
           toast.error('השיעור הסתיים');
           navigate('/student/dashboard');
@@ -55,7 +75,7 @@ const StudentSession = () => {
 
       return () => unsubscribe();
     }
-  }, [sessionId, navigate]);
+  }, [sessionId, navigate, lesson, trackSlideEngagement, slidesEngaged]);
 
   const loadSession = async () => {
     try {
@@ -105,10 +125,22 @@ const StudentSession = () => {
     }
   };
 
-
-
   const handleAnswer = (slideId, answer) => {
     setAnswers(prev => ({ ...prev, [slideId]: answer }));
+    
+    // Track slide engagement when student answers
+    if (lesson && slideId && !slidesEngaged.has(slideId)) {
+      trackSlideEngagement(lesson.originalId, slideId);
+      setSlidesEngaged(prev => new Set([...prev, slideId]));
+      
+      console.log('📝 Live Session Answer Submitted:', {
+        sessionId,
+        lessonId: lesson.originalId,
+        slideId,
+        answer,
+        totalSlidesEngaged: slidesEngaged.size + 1
+      });
+    }
   };
 
   const getSessionStatus = () => {
@@ -126,6 +158,12 @@ const StudentSession = () => {
   };
 
   const renderSlide = (slide) => {
+    // Track slide engagement when slide is rendered
+    if (lesson && slide.id && !slidesEngaged.has(slide.id)) {
+      trackSlideEngagement(lesson.originalId, slide.id);
+      setSlidesEngaged(prev => new Set([...prev, slide.id]));
+    }
+    
     // Use the exact same slide components as the student interface
     switch (slide.type) {
       case 'presentation':
@@ -203,133 +241,100 @@ const StudentSession = () => {
           </div>
           
           <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2 text-sm text-gray-300">
+            <div className="flex items-center space-x-2 text-gray-300">
               <Clock className="w-4 h-4" />
               <span>{formatSessionDuration(session.startTime)}</span>
             </div>
             
             <div className="flex items-center space-x-2">
-              {sessionStatus === 'locked' ? (
-                <Lock className="w-4 h-4 text-yellow-400" />
-              ) : (
-                <Unlock className="w-4 h-4 text-green-400" />
+              {sessionStatus === 'active' && (
+                <div className="flex items-center space-x-1 text-green-400">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  <span className="text-sm">פעיל</span>
+                </div>
               )}
-              <span className="text-sm text-gray-300">
-                {sessionStatus === 'locked' ? 'נעול' : 'פעיל'}
-              </span>
+              {sessionStatus === 'paused' && (
+                <div className="flex items-center space-x-1 text-yellow-400">
+                  <Pause className="w-4 h-4" />
+                  <span className="text-sm">מושהה</span>
+                </div>
+              )}
+              {sessionStatus === 'ended' && (
+                <div className="flex items-center space-x-1 text-red-400">
+                  <CheckCircle className="w-4 h-4" />
+                  <span className="text-sm">הסתיים</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="flex h-screen">
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col">
-          {/* Session Status Banner */}
-          {!isConnected && sessionStatus === 'active' && (
-            <div className="bg-blue-500/20 border-b border-blue-500/30 p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <AlertCircle className="w-5 h-5 text-blue-400" />
-                  <span className="text-blue-300">יש להתחבר לשיעור כדי להשתתף</span>
-                </div>
+      {/* Session Status Banner */}
+      {sessionStatus === 'locked' && (
+        <div className="bg-yellow-600/20 border-b border-yellow-500/30 p-3">
+          <div className="flex items-center justify-center space-x-2 text-yellow-300">
+            <Lock className="w-4 h-4" />
+            <span>השיעור נעול - המתן למורה לפתוח</span>
+          </div>
+        </div>
+      )}
+
+      {sessionStatus === 'ended' && (
+        <div className="bg-red-600/20 border-b border-red-500/30 p-3">
+          <div className="flex items-center justify-center space-x-2 text-red-300">
+            <CheckCircle className="w-4 h-4" />
+            <span>השיעור הסתיים</span>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="flex-1 relative">
+        {!isConnected ? (
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <Card className="max-w-md w-full">
+              <div className="text-center p-6">
+                <Users className="w-16 h-16 mx-auto mb-4 text-blue-400" />
+                <h2 className="text-xl font-bold text-white mb-2">הצטרף לשיעור</h2>
+                <p className="text-gray-400 mb-6">
+                  הצטרף לשיעור החי כדי לעקוב אחר המורה ולשתתף בפעילויות
+                </p>
                 <Button
                   onClick={handleJoinSession}
                   disabled={joining}
                   variant="primary"
-                  size="sm"
-                  className="flex items-center space-x-2"
+                  className="w-full"
                 >
-                  {joining ? (
-                    <LoadingSpinner size="sm" />
-                  ) : (
-                    <Play className="w-4 h-4" />
-                  )}
-                  <span>{joining ? 'מתחבר...' : 'הצטרף לשיעור'}</span>
+                  {joining ? 'מצטרף...' : 'הצטרף לשיעור'}
                 </Button>
               </div>
-            </div>
-          )}
-
-          {sessionStatus === 'ended' && (
-            <div className="bg-red-500/20 border-b border-red-500/30 p-4">
-              <div className="flex items-center space-x-2">
-                <AlertCircle className="w-5 h-5 text-red-400" />
-                <span className="text-red-300">השיעור הסתיים</span>
+            </Card>
+          </div>
+        ) : (
+          <div className="relative">
+            {/* Progress Indicator */}
+            <div className="bg-gray-800/50 border-b border-gray-700 p-2">
+              <div className="flex items-center justify-between text-sm text-gray-300">
+                <span>שקופית {currentSlide + 1} מתוך {lesson.content?.slides?.length || 0}</span>
+                <span>דפים נצפו: {slidesEngaged.size}</span>
+              </div>
+              <div className="w-full bg-gray-700 rounded-full h-1 mt-1">
+                <div 
+                  className="bg-blue-500 h-1 rounded-full transition-all duration-300"
+                  style={{ width: `${((currentSlide + 1) / (lesson.content?.slides?.length || 1)) * 100}%` }}
+                ></div>
               </div>
             </div>
-          )}
 
-          {/* Lesson Content */}
-          <div className="flex-1 bg-gray-900 p-8 flex items-center justify-center relative">
-            {lesson && currentSlideData && (
-              <div className="w-full max-w-4xl">
+            {/* Slide Content */}
+            {currentSlideData && (
+              <div className="min-h-[calc(100vh-200px)]">
                 {renderSlide(currentSlideData)}
               </div>
             )}
           </div>
-
-          {/* Teacher-Controlled Navigation Status */}
-          {isConnected && sessionStatus === 'active' && (
-            <div className="bg-gray-800/50 border-t border-gray-700 p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <AlertCircle className="w-4 h-4 text-blue-400" />
-                    <span className="text-sm text-gray-300">
-                      המורה שולט בניווט - שקופית {currentSlide + 1} מתוך {lesson?.content?.slides?.length || 0}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-4">
-                  <div className="w-32 bg-gray-700 rounded-full h-2">
-                    <div 
-                      className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${((currentSlide + 1) / (lesson?.content?.slides?.length || 1)) * 100}%` }}
-                    ></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Sidebar - Connected Students */}
-        <div className="w-80 bg-gray-800/50 border-l border-gray-700">
-          <div className="p-4">
-            <h3 className="text-lg font-bold text-white mb-4 flex items-center space-x-2">
-              <Users className="w-5 h-5" />
-              <span>תלמידים מחוברים ({session.connectedStudents?.length || 0})</span>
-            </h3>
-            
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {session.connectedStudents && session.connectedStudents.length > 0 ? (
-                session.connectedStudents.map((student) => (
-                  <div
-                    key={student.id}
-                    className="p-3 rounded-lg border border-gray-600 bg-gray-700/50"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-white font-medium">{student.name}</p>
-                        <p className="text-sm text-gray-400">
-                          שקופית {student.currentSlide + 1}
-                        </p>
-                      </div>
-                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-8">
-                  <Users className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                  <p className="text-gray-400">אין תלמידים מחוברים</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -911,6 +911,10 @@ export const initLessonSession = (userId, lessonId) => {
  * @param {string} direction - Navigation direction
  */
 export const logSlideNavigation = (fromSlide, toSlide, direction) => {
+  if (!sessionMonitor.userId || !sessionMonitor.lessonId) {
+    console.warn('⚠️ Session not initialized, skipping slide navigation log');
+    return;
+  }
   sessionMonitor.logSlideNavigation(fromSlide, toSlide, direction);
 };
 
@@ -922,6 +926,10 @@ export const logSlideNavigation = (fromSlide, toSlide, direction) => {
  * @param {number} timeSpent - Time spent on slide
  */
 export const logSlideEngagement = (slideId, slideType, timeSpent) => {
+  if (!sessionMonitor.userId || !sessionMonitor.lessonId) {
+    console.warn('⚠️ Session not initialized, skipping slide engagement log');
+    return;
+  }
   sessionMonitor.logSlideEngagement(slideId, slideType, timeSpent);
 };
 
@@ -933,6 +941,10 @@ export const logSlideEngagement = (slideId, slideType, timeSpent) => {
  * @param {number} score - Exercise score
  */
 export const logExerciseCompletion = (exerciseId, isCorrect, score) => {
+  if (!sessionMonitor.userId || !sessionMonitor.lessonId) {
+    console.warn('⚠️ Session not initialized, skipping exercise completion log');
+    return;
+  }
   sessionMonitor.logExerciseCompletion(exerciseId, isCorrect, score);
 };
 
@@ -944,6 +956,10 @@ export const logExerciseCompletion = (exerciseId, isCorrect, score) => {
  * @param {number} timeSpent - Total time spent
  */
 export const logLessonCompletion = (lessonId, totalScore, timeSpent) => {
+  if (!sessionMonitor.userId || !sessionMonitor.lessonId) {
+    console.warn('⚠️ Session not initialized, skipping lesson completion log');
+    return;
+  }
   sessionMonitor.logLessonCompletion(lessonId, totalScore, timeSpent);
 };
 

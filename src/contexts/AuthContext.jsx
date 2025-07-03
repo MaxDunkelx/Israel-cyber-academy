@@ -30,7 +30,7 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db, diagnoseFirestoreConnection } from '../firebase/firebase-config';
 import { grantTeacherLessonAccess } from '../firebase/teacher-service.jsx';
 
@@ -265,15 +265,11 @@ export const AuthProvider = ({ children }) => {
         if (userDoc.exists()) {
           const userData = userDoc.data();
           
-          // Ensure proper initialization for existing users
-          const updatedData = {
-            lastLogin: new Date(),
-            lastActivityDate: new Date()
-          };
-          
-          // If user doesn't have proper initial data, set it up
-          if (!userData.progress || Object.keys(userData.progress).length === 0) {
-            updatedData.progress = {
+          // Defensive fix: ensure progress is an object
+          let fixed = false;
+          let fixedUserData = { ...userData };
+          if (typeof userData.progress !== 'object' || Array.isArray(userData.progress) || userData.progress === null) {
+            fixedUserData.progress = {
               1: {
                 completed: false,
                 score: 0,
@@ -284,15 +280,26 @@ export const AuthProvider = ({ children }) => {
                 lastActivity: new Date()
               }
             };
-            updatedData.currentLesson = 1;
-            updatedData.completedLessons = userData.completedLessons || [];
-            updatedData.totalTimeSpent = userData.totalTimeSpent || 0;
-            updatedData.totalPagesEngaged = userData.totalPagesEngaged || 0;
-            updatedData.achievements = userData.achievements || [];
-            updatedData.streak = userData.streak || 0;
+            fixed = true;
           }
-          
-          await setDoc(userRef, updatedData, { merge: true });
+          if (!Array.isArray(userData.completedLessons)) {
+            fixedUserData.completedLessons = [];
+            fixed = true;
+          }
+          if (fixed) {
+            // Save the fixed profile back to Firestore
+            await setDoc(userRef, fixedUserData, { merge: true });
+            console.log('🛠️ Fixed user profile structure in Firestore');
+          }
+          const userProfileWithDefaults = {
+            ...fixedUserData,
+            firstName: fixedUserData.firstName || '',
+            lastName: fixedUserData.lastName || '',
+            age: fixedUserData.age || null,
+            sex: fixedUserData.sex || 'male',
+            displayName: fixedUserData.displayName || (fixedUserData.sex === 'female' ? 'לוחמת סייבר' : 'לוחם סייבר')
+          };
+          setUserProfile(userProfileWithDefaults);
         }
       }
       
@@ -316,21 +323,70 @@ export const AuthProvider = ({ children }) => {
    * @param {string} slideId - Specific slide ID for engagement tracking
    * @param {Array} allSlideIds - Array of all slide IDs to ensure complete tracking
    */
-  const updateUserProgress = async (lessonId, completed, score = 0, temporary = false, lastSlide = null, slideId = null, allSlideIds = null) => {
-    if (!currentUser) return;
+  const updateUserProgress = async (lessonId, completed, score = 0, temporary = false, lastSlide = null, slideId = null, allSlideIds = null, userOverride = null) => {
+    const userToUse = userOverride || currentUser;
+    
+    console.log('🚀 updateUserProgress called with:', {
+      lessonId,
+      completed,
+      score,
+      temporary,
+      lastSlide,
+      slideId,
+      allSlideIds,
+      currentUser: currentUser?.uid,
+      userOverride: userOverride?.uid,
+      userToUse: userToUse?.uid
+    });
+    
+    if (!userToUse) {
+      console.error('❌ No current user available for progress update');
+      console.error('❌ currentUser:', currentUser);
+      console.error('❌ userOverride:', userOverride);
+      return { success: false, error: "No current user available" };
+    }
+    
+    if (!userToUse.uid) {
+      console.error('❌ User object has no UID');
+      console.error('❌ userToUse:', userToUse);
+      return { success: false, error: "User object has no UID" };
+    }
     
     try {
       // Handle regular users with Firestore
-      const userRef = doc(db, 'users', currentUser.uid);
+      const userRef = doc(db, 'users', userToUse.uid);
       const userDoc = await getDoc(userRef);
       
       if (userDoc.exists()) {
         const userData = userDoc.data();
         const progress = userData.progress || {};
         
+        // Ensure lessonId is a Firestore ID (not lesson number)
+        // If lessonId is a number, we need to find the corresponding Firestore ID
+        let firestoreLessonId = lessonId;
+        if (typeof lessonId === 'number' || !isNaN(parseInt(lessonId))) {
+          // This is a lesson number, we need to find the Firestore ID
+          console.log(`🔄 Converting lesson number ${lessonId} to Firestore ID...`);
+          // Use the new clear lesson IDs
+          const lessonIdMapping = {
+            1: 'lesson1',
+            2: 'lesson2'
+          };
+          firestoreLessonId = lessonIdMapping[lessonId];
+          if (!firestoreLessonId) {
+            console.error(`❌ No Firestore ID mapping found for lesson number ${lessonId}`);
+            console.error(`📋 Available mappings:`, Object.keys(lessonIdMapping));
+            console.error(`📋 Lesson ID type:`, typeof lessonId, 'Value:', lessonId);
+            return { success: false, error: `No Firestore ID mapping found for lesson number ${lessonId}` };
+          }
+          console.log(`✅ Mapped lesson ${lessonId} to Firestore ID: ${firestoreLessonId}`);
+        } else {
+          console.log(`📋 Using lessonId directly as Firestore ID: ${lessonId}`);
+        }
+        
         // Initialize lesson progress if it doesn't exist
-        if (!progress[lessonId]) {
-          progress[lessonId] = {
+        if (!progress[firestoreLessonId]) {
+          progress[firestoreLessonId] = {
             completed: false,
             score: 0,
             completedAt: null,
@@ -342,29 +398,32 @@ export const AuthProvider = ({ children }) => {
         }
         
         // Update lesson progress with new data
-        progress[lessonId] = {
-          ...progress[lessonId],
+        // If lesson is completed, reset lastSlide to 0, otherwise use provided lastSlide
+        const finalLastSlide = completed ? 0 : (lastSlide !== null ? lastSlide : progress[firestoreLessonId].lastSlide);
+        
+        progress[firestoreLessonId] = {
+          ...progress[firestoreLessonId],
           completed,
           score,
-          completedAt: completed ? new Date() : progress[lessonId].completedAt,
+          completedAt: completed ? new Date() : progress[firestoreLessonId].completedAt,
           temporary: temporary && !completed ? true : false,
           lastActivity: new Date(),
-          ...(lastSlide !== null ? { lastSlide } : {})
+          lastSlide: finalLastSlide
         };
         
         // Track page engagement if slideId is provided
-        if (slideId && progress[lessonId].pagesEngaged) {
-          if (!progress[lessonId].pagesEngaged.includes(slideId)) {
-            progress[lessonId].pagesEngaged = [...progress[lessonId].pagesEngaged, slideId];
+        if (slideId && progress[firestoreLessonId].pagesEngaged) {
+          if (!progress[firestoreLessonId].pagesEngaged.includes(slideId)) {
+            progress[firestoreLessonId].pagesEngaged = [...progress[firestoreLessonId].pagesEngaged, slideId];
           }
         }
         
         // If lesson is completed, ensure all slides are marked as engaged
         if (completed && allSlideIds && Array.isArray(allSlideIds)) {
-          const currentEngaged = progress[lessonId].pagesEngaged || [];
+          const currentEngaged = progress[firestoreLessonId].pagesEngaged || [];
           const allEngaged = [...new Set([...currentEngaged, ...allSlideIds])];
-          progress[lessonId].pagesEngaged = allEngaged;
-          console.log(`📊 All slides marked as engaged for lesson ${lessonId}: ${allEngaged.length} slides`);
+          progress[firestoreLessonId].pagesEngaged = allEngaged;
+          console.log(`📊 All slides marked as engaged for lesson ${firestoreLessonId}: ${allEngaged.length} slides`);
         }
         
         // Calculate total time spent and pages engaged across all lessons
@@ -386,21 +445,21 @@ export const AuthProvider = ({ children }) => {
         let newCurrentLesson = currentLesson;
         
         if (completed) {
-          // Add to completed lessons if not already there
-          if (!currentCompletedLessons.includes(lessonId)) {
-            newCompletedLessons = [...currentCompletedLessons, lessonId];
-            console.log(`✅ Lesson ${lessonId} completed and added to completedLessons`);
+          // Add to completed lessons if not already there (using Firestore ID)
+          if (!currentCompletedLessons.includes(firestoreLessonId)) {
+            newCompletedLessons = [...currentCompletedLessons, firestoreLessonId];
+            console.log(`✅ Lesson ${firestoreLessonId} completed and added to completedLessons`);
           }
           // Note: No automatic lesson unlocking - teachers control lesson access
-          console.log(`📚 Lesson ${lessonId} completed - waiting for teacher to unlock next lesson`);
+          console.log(`📚 Lesson ${firestoreLessonId} completed - waiting for teacher to unlock next lesson`);
         }
         
         // Calculate achievements based on progress
         const achievements = userData.achievements || [];
         const newAchievements = [...achievements];
         
-        // First lesson completion achievement
-        if (completed && lessonId === 1 && !achievements.includes('first_lesson')) {
+        // First lesson completion achievement (check by Firestore ID)
+        if (completed && firestoreLessonId === 'lesson1' && !achievements.includes('first_lesson')) {
           newAchievements.push('first_lesson');
           console.log('🏆 Achievement unlocked: First Lesson Completed!');
         }
@@ -419,16 +478,17 @@ export const AuthProvider = ({ children }) => {
         
         // Comprehensive console logging for session tracking
         console.log('📊 USER SESSION DATA UPDATE:', {
-          userId: currentUser.uid,
-          lessonId,
+          userId: userToUse.uid,
+          lessonId: firestoreLessonId,
+          originalLessonId: lessonId,
           action: completed ? 'LESSON_COMPLETED' : 'PROGRESS_UPDATED',
           timestamp: new Date().toISOString(),
           progress: {
-            lessonId,
+            lessonId: firestoreLessonId,
             completed,
             score,
-            lastSlide: lastSlide || progress[lessonId].lastSlide,
-            pagesEngaged: progress[lessonId].pagesEngaged?.length || 0,
+            lastSlide: finalLastSlide,
+            pagesEngaged: progress[firestoreLessonId].pagesEngaged?.length || 0,
             temporary
           },
           statistics: {
@@ -468,8 +528,10 @@ export const AuthProvider = ({ children }) => {
         }));
         
         // Log final state for verification
-        console.log('💾 PROGRESS SAVED SUCCESSFULLY:', {
-          lessonId,
+        console.log('✅ Progress update completed successfully');
+        console.log('📊 Final user state:', {
+          userId: userToUse.uid,
+          lessonId: firestoreLessonId,
           completed,
           score,
           totalTimeSpent,
@@ -477,9 +539,15 @@ export const AuthProvider = ({ children }) => {
           completedLessons: newCompletedLessons.length,
           achievements: newAchievements.length
         });
+        
+        return { success: true, data: { progress, completedLessons: newCompletedLessons } };
+      } else {
+        console.error('❌ User document does not exist in Firestore');
+        return { success: false, error: "User document does not exist" };
       }
     } catch (error) {
       console.error('❌ Error updating progress:', error);
+      return { success: false, error: error.message };
     }
   };
 
@@ -504,9 +572,24 @@ export const AuthProvider = ({ children }) => {
         const userData = userDoc.data();
         const progress = userData.progress || {};
         
+        // Ensure lessonId is a Firestore ID (not lesson number)
+        let firestoreLessonId = lessonId;
+        if (typeof lessonId === 'number' || !isNaN(parseInt(lessonId))) {
+          // This is a lesson number, we need to find the Firestore ID
+          const lessonIdMapping = {
+            1: 'lesson1',
+            2: 'lesson2'
+          };
+          firestoreLessonId = lessonIdMapping[lessonId];
+          if (!firestoreLessonId) {
+            console.error(`❌ No Firestore ID mapping found for lesson number ${lessonId}`);
+            return;
+          }
+        }
+        
         // Initialize lesson progress if it doesn't exist
-        if (!progress[lessonId]) {
-          progress[lessonId] = {
+        if (!progress[firestoreLessonId]) {
+          progress[firestoreLessonId] = {
             completed: false,
             score: 0,
             completedAt: null,
@@ -518,14 +601,14 @@ export const AuthProvider = ({ children }) => {
         }
         
         // Initialize pagesEngaged array if it doesn't exist
-        if (!progress[lessonId].pagesEngaged) {
-          progress[lessonId].pagesEngaged = [];
+        if (!progress[firestoreLessonId].pagesEngaged) {
+          progress[firestoreLessonId].pagesEngaged = [];
         }
         
         // Add slide to pagesEngaged if not already present (ensures uniqueness)
-        if (!progress[lessonId].pagesEngaged.includes(slideId)) {
-          progress[lessonId].pagesEngaged = [...progress[lessonId].pagesEngaged, slideId];
-          progress[lessonId].lastActivity = new Date();
+        if (!progress[firestoreLessonId].pagesEngaged.includes(slideId)) {
+          progress[firestoreLessonId].pagesEngaged = [...progress[firestoreLessonId].pagesEngaged, slideId];
+          progress[firestoreLessonId].lastActivity = new Date();
           
           // Calculate total time spent and pages engaged across all lessons
           let totalTimeSpent = 0;
@@ -542,18 +625,20 @@ export const AuthProvider = ({ children }) => {
           console.log('👁️ SLIDE ENGAGEMENT TRACKED:', {
             userId: currentUser.uid,
             lessonId,
+            firestoreLessonId,
             slideId,
             timestamp: new Date().toISOString(),
             engagement: {
               lessonId,
+              firestoreLessonId,
               slideId,
-              totalSlidesInLesson: progress[lessonId].pagesEngaged.length,
+              totalSlidesInLesson: progress[firestoreLessonId].pagesEngaged.length,
               isNewEngagement: true
             },
             statistics: {
               totalTimeSpent,
               totalPagesEngaged,
-              lessonProgress: Math.round((progress[lessonId].pagesEngaged.length / 10) * 100) // Estimate total slides
+              lessonProgress: Math.round((progress[firestoreLessonId].pagesEngaged.length / 10) * 100) // Estimate total slides
             }
           });
           
@@ -576,10 +661,11 @@ export const AuthProvider = ({ children }) => {
           // Log engagement summary
           console.log('📈 ENGAGEMENT SUMMARY:', {
             lessonId,
+            firestoreLessonId,
             slideId,
             totalPagesEngaged,
             totalTimeSpent,
-            lessonProgress: `${progress[lessonId].pagesEngaged.length} slides engaged`
+            lessonProgress: `${progress[firestoreLessonId].pagesEngaged.length} slides engaged`
           });
         } else {
           // Log duplicate engagement attempt
@@ -750,7 +836,21 @@ export const AuthProvider = ({ children }) => {
    * @returns {number} Last slide index
    */
   const getLastLessonSlide = (lessonId) => {
-    const lastSlide = userProfile?.progress?.[lessonId]?.lastSlide ?? 0;
+    // Ensure lessonId is a Firestore ID
+    let firestoreLessonId = lessonId;
+    if (typeof lessonId === 'number' || !isNaN(parseInt(lessonId))) {
+      const lessonIdMapping = {
+        1: 'lesson1',
+        2: 'lesson2'
+      };
+      firestoreLessonId = lessonIdMapping[lessonId];
+      if (!firestoreLessonId) {
+        console.error(`❌ No Firestore ID mapping found for lesson number ${lessonId}`);
+        return 0;
+      }
+    }
+    
+    const lastSlide = userProfile?.progress?.[firestoreLessonId]?.lastSlide ?? 0;
     console.log(`📖 GET LAST SLIDE: Lesson ${lessonId} -> Slide ${lastSlide + 1}`);
     return lastSlide;
   };
@@ -772,9 +872,23 @@ export const AuthProvider = ({ children }) => {
         const userData = userDoc.data();
         const progress = userData.progress || {};
         
+        // Ensure lessonId is a Firestore ID
+        let firestoreLessonId = lessonId;
+        if (typeof lessonId === 'number' || !isNaN(parseInt(lessonId))) {
+          const lessonIdMapping = {
+            1: 'lesson1',
+            2: 'lesson2'
+          };
+          firestoreLessonId = lessonIdMapping[lessonId];
+          if (!firestoreLessonId) {
+            console.error(`❌ No Firestore ID mapping found for lesson number ${lessonId}`);
+            return;
+          }
+        }
+        
         // Initialize lesson progress if it doesn't exist
-        if (!progress[lessonId]) {
-          progress[lessonId] = {
+        if (!progress[firestoreLessonId]) {
+          progress[firestoreLessonId] = {
             completed: false,
             score: 0,
             completedAt: null,
@@ -786,13 +900,14 @@ export const AuthProvider = ({ children }) => {
         }
         
         // Update last slide
-        progress[lessonId].lastSlide = slideIndex;
-        progress[lessonId].lastActivity = new Date();
+        progress[firestoreLessonId].lastSlide = slideIndex;
+        progress[firestoreLessonId].lastActivity = new Date();
         
         // Console logging for slide position tracking
         console.log('💾 SLIDE POSITION SAVED:', {
           userId: currentUser.uid,
-          lessonId,
+          lessonId: firestoreLessonId,
+          originalLessonId: lessonId,
           slideIndex: slideIndex + 1, // Convert to 1-based for display
           timestamp: new Date().toISOString(),
           action: 'RESUME_POSITION_SAVED'
@@ -855,7 +970,8 @@ export const AuthProvider = ({ children }) => {
     
     // Regular user authentication listener
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log('🔄 Auth state changed:', user ? `User logged in: ${user.email}` : 'User logged out');
+      console.log('🔄 Auth state changed:', user ? `User logged in: ${user.email} (${user.uid})` : 'User logged out');
+      console.log('🔄 Previous currentUser:', currentUser?.uid);
       
       setCurrentUser(user);
       
@@ -873,22 +989,66 @@ export const AuthProvider = ({ children }) => {
           
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            console.log('✅ User profile loaded:', userData.displayName);
+            
+            // Defensive fix: ensure progress is an object and completedLessons is an array
+            let fixed = false;
+            let fixedUserData = { ...userData };
+            
+            if (typeof userData.progress !== 'object' || Array.isArray(userData.progress) || userData.progress === null) {
+              fixedUserData.progress = {
+                "lesson1": {
+                  completed: false,
+                  score: 0,
+                  completedAt: null,
+                  temporary: false,
+                  lastSlide: 0,
+                  pagesEngaged: [],
+                  lastActivity: new Date()
+                },
+                "lesson2": {
+                  completed: false,
+                  score: 0,
+                  completedAt: null,
+                  temporary: false,
+                  lastSlide: 0,
+                  pagesEngaged: [],
+                  lastActivity: new Date()
+                }
+              };
+              fixed = true;
+            }
+            
+            if (!Array.isArray(userData.completedLessons)) {
+              fixedUserData.completedLessons = [];
+              fixed = true;
+            }
+            
+            // Save fixed data back to Firestore if needed
+            if (fixed) {
+              try {
+                await updateDoc(userRef, fixedUserData);
+                console.log('🔧 Fixed corrupted user profile structure');
+              } catch (fixError) {
+                console.error('❌ Error fixing user profile:', fixError);
+              }
+            }
+            
+            console.log('✅ User profile loaded:', fixedUserData.displayName);
             console.log('📊 User data:', {
-              role: userData.role,
-              currentLesson: userData.currentLesson,
-              completedLessons: userData.completedLessons?.length || 0,
-              progress: Object.keys(userData.progress || {}).length
+              role: fixedUserData.role,
+              currentLesson: fixedUserData.currentLesson,
+              completedLessons: fixedUserData.completedLessons?.length || 0,
+              progress: Object.keys(fixedUserData.progress || {}).length
             });
             
             // Ensure default values for user credentials
             const userProfileWithDefaults = {
-              ...userData,
-              firstName: userData.firstName || '',
-              lastName: userData.lastName || '',
-              age: userData.age || null,
-              sex: userData.sex || 'male',
-              displayName: userData.displayName || (userData.sex === 'female' ? 'לוחמת סייבר' : 'לוחם סייבר')
+              ...fixedUserData,
+              firstName: fixedUserData.firstName || '',
+              lastName: fixedUserData.lastName || '',
+              age: fixedUserData.age || null,
+              sex: fixedUserData.sex || 'male',
+              displayName: fixedUserData.displayName || (fixedUserData.sex === 'female' ? 'לוחמת סייבר' : 'לוחם סייבר')
             };
             
             setUserProfile(userProfileWithDefaults);
@@ -970,6 +1130,30 @@ export const AuthProvider = ({ children }) => {
 
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    if (!currentUser) {
+      console.log('🔄 Real-time listener: No currentUser, skipping');
+      return;
+    }
+    console.log('🔄 Setting up real-time listener for user:', currentUser.uid);
+    // Set up real-time listener for user profile
+    const userDocRef = doc(db, 'users', currentUser.uid);
+    const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        console.log('🔄 Real-time profile update received for:', currentUser.uid);
+        setUserProfile(docSnap.data());
+      } else {
+        console.log('⚠️ Real-time listener: User document not found');
+      }
+    }, (error) => {
+      console.error('❌ Real-time listener error:', error);
+    });
+    return () => {
+      console.log('🔄 Cleaning up real-time listener for user:', currentUser.uid);
+      unsubscribe();
+    };
+  }, [currentUser]);
 
   // Memoize functions to prevent infinite re-renders
   const memoizedSignup = useCallback(signup, []);

@@ -7,8 +7,8 @@ export const slide3CyberIntro = {
     elements: [
       {
         type: "title",
-        text: "מה זה סייבר?",
-        style: { fontSize: "2.5rem", color: "white", textAlign: "center", marginBottom: "2rem" }
+        text: "מה זה סייבר? 🧭",
+        style: { fontSize: "3rem", color: "white", textAlign: "center", marginBottom: "2rem", fontWeight: "bold", textShadow: "0 4px 8px rgba(0,0,0,0.3)" }
       },
       {
         type: "list",
@@ -18,7 +18,7 @@ export const slide3CyberIntro = {
           "🔹 'סייבר התקפי' = תקיפות מחשבים",
           "🔹 'האקר' = אדם שמבצע פעולות בתחום"
         ],
-        style: { fontSize: "1.3rem", color: "white", textAlign: "right", lineHeight: "2" }
+        style: { fontSize: "1.5rem", color: "white", textAlign: "right", lineHeight: "2.5", margin: "2rem 0" }
       },
       {
         type: "animation",

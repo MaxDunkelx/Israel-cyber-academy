@@ -177,12 +177,17 @@ const Roadmap = () => {
       try {
         const lessonsData = await getAllLessons();
         
+        // Filter to only show lessons with clear IDs (lesson1, lesson2, etc.)
+        const clearIdLessons = lessonsData?.filter(lesson => 
+          lesson.id && lesson.id.startsWith('lesson')
+        ) || [];
+        
         // Sort lessons by originalId to ensure proper order (1, 2, 3, ..., 19)
-        const sortedLessons = lessonsData?.sort((a, b) => {
-          const aId = a.originalId || parseInt(a.id) || 0;
-          const bId = b.originalId || parseInt(b.id) || 0;
+        const sortedLessons = clearIdLessons.sort((a, b) => {
+          const aId = a.originalId || parseInt(a.id.replace('lesson', '')) || 0;
+          const bId = b.originalId || parseInt(b.id.replace('lesson', '')) || 0;
           return aId - bId;
-        }) || [];
+        });
         
         setLessons(sortedLessons);
         console.log('📚 Roadmap: Lessons data loaded and sorted:', {
@@ -330,9 +335,9 @@ const Roadmap = () => {
       console.log(`🔍 Lesson ${lessonNumber} (${lessonId}) status check:`, {
         completedLessons: completedLessonsArray,
         teacherAssignedLesson,
-        isCompleted: completedLessonsArray.includes(lessonNumber),
+        isCompleted: completedLessonsArray.includes(lessonId),
         isTeacherUnlocked: lessonNumber <= teacherAssignedLesson,
-        status: completedLessonsArray.includes(lessonNumber) ? 'completed' : 
+        status: completedLessonsArray.includes(lessonId) ? 'completed' : 
                 lessonNumber <= teacherAssignedLesson ? 'available' : 'locked',
         usingRefreshedProfile: !!refreshedProfile,
         activeProfileSource: refreshedProfile ? 'refreshed' : 'cached',
@@ -344,8 +349,12 @@ const Roadmap = () => {
     // Check if lesson is completed (either in completedLessons array or progress shows completed)
     // Ensure completedLessons is always an array
     const completedLessonsArray = Array.isArray(completedLessons) ? completedLessons : [];
-    const isCompleted = completedLessonsArray.includes(lessonNumber) || 
-                       (activeProfile.progress && activeProfile.progress[lessonNumber] && activeProfile.progress[lessonNumber].completed);
+    
+    // Convert lesson number to clear lesson ID for progress checking
+    const clearLessonId = `lesson${lessonNumber}`;
+    
+    const isCompleted = completedLessonsArray.includes(clearLessonId) || 
+                       (activeProfile.progress && activeProfile.progress[clearLessonId] && activeProfile.progress[clearLessonId].completed);
     
     if (isCompleted) {
       console.log(`✅ Lesson ${lessonNumber} (${lessonId}) is completed`);
@@ -370,12 +379,15 @@ const Roadmap = () => {
    */
   const getProgressPercentage = useCallback(() => {
     const activeProfile = refreshedProfile || userProfile;
-    if (!activeProfile || !lessons || !Array.isArray(lessons) || lessons.length === 0) return 0;
-    const completedLessons = activeProfile.completedLessons || [];
-    // Ensure completedLessons is always an array
-    const completedLessonsArray = Array.isArray(completedLessons) ? completedLessons : [];
-    return Math.round((completedLessonsArray.length / lessons.length) * 100);
-  }, [userProfile, refreshedProfile]);
+    if (!activeProfile || !lessons || lessons.length === 0) {
+      console.log('❌ Cannot calculate progress percentage - missing data');
+      return 0;
+    }
+    const completedCount = Array.isArray(activeProfile.completedLessons) ? activeProfile.completedLessons.length : 0;
+    const percentage = Math.round((completedCount / lessons.length) * 100);
+    console.log('📊 getProgressPercentage:', percentage + '%', `(${completedCount}/${lessons.length})`);
+    return percentage;
+  }, [userProfile, refreshedProfile, lessons]);
 
   /**
    * Get total time spent from user profile
@@ -384,8 +396,13 @@ const Roadmap = () => {
    */
   const getTotalTimeSpent = useCallback(() => {
     const activeProfile = refreshedProfile || userProfile;
-    if (!activeProfile) return 0;
-    return activeProfile.totalTimeSpent || 0;
+    if (!activeProfile) {
+      console.log('❌ No user profile available for totalTimeSpent');
+      return 0;
+    }
+    const minutes = Math.floor((activeProfile.totalTimeSpent || 0) / 60);
+    console.log('📊 getTotalTimeSpent:', minutes, 'from profile:', activeProfile.totalTimeSpent);
+    return minutes;
   }, [userProfile, refreshedProfile]);
 
   /**
@@ -395,8 +412,13 @@ const Roadmap = () => {
    */
   const getTotalPagesEngaged = useCallback(() => {
     const activeProfile = refreshedProfile || userProfile;
-    if (!activeProfile) return 0;
-    return activeProfile.totalPagesEngaged || 0;
+    if (!activeProfile) {
+      console.log('❌ No user profile available for totalPagesEngaged');
+      return 0;
+    }
+    const total = activeProfile.totalPagesEngaged || 0;
+    console.log('📊 getTotalPagesEngaged:', total, 'from profile:', activeProfile.totalPagesEngaged);
+    return total;
   }, [userProfile, refreshedProfile]);
 
   /**
@@ -408,6 +430,22 @@ const Roadmap = () => {
     const activeProfile = refreshedProfile || userProfile;
     if (!activeProfile) return [];
     return activeProfile.achievements || [];
+  }, [userProfile, refreshedProfile]);
+
+  /**
+   * Get completed lessons count
+   * 
+   * @returns {number} Number of completed lessons
+   */
+  const getCompletedLessonsCount = useCallback(() => {
+    const activeProfile = refreshedProfile || userProfile;
+    if (!activeProfile) {
+      console.log('❌ No user profile available for completedLessons');
+      return 0;
+    }
+    const count = Array.isArray(activeProfile.completedLessons) ? activeProfile.completedLessons.length : 0;
+    console.log('📊 getCompletedLessonsCount:', count, 'from profile:', activeProfile.completedLessons);
+    return count;
   }, [userProfile, refreshedProfile]);
 
   /**
@@ -477,15 +515,18 @@ const Roadmap = () => {
       return 0;
     }
     
-    // Use originalId (lesson number) to access progress
+    // Convert lesson number to clear lesson ID for progress checking
     const lessonNumber = lesson.originalId || parseInt(lessonId);
-    if (!userProfile?.progress?.[lessonNumber]) {
-      console.log(`⚠️ No progress found for lesson ${lessonNumber} (Firestore ID: ${lessonId})`);
+    const clearLessonId = `lesson${lessonNumber}`;
+    
+    // Use clear lesson ID to access progress
+    if (!userProfile?.progress?.[clearLessonId]) {
+      console.log(`⚠️ No progress found for lesson ${clearLessonId}`);
       return 0;
     }
     
-    const lastSlide = userProfile.progress[lessonNumber].lastSlide || 0;
-    console.log(`📊 Last slide for lesson ${lessonNumber} (${lessonId}): ${lastSlide}`);
+    const lastSlide = userProfile.progress[clearLessonId].lastSlide || 0;
+    console.log(`📊 Last slide for lesson ${clearLessonId}: ${lastSlide}`);
     return lastSlide;
   }, [userProfile, lessons]);
 
@@ -594,7 +635,7 @@ const Roadmap = () => {
                   <div className="relative flex flex-col items-center text-center">
                     <Trophy className="h-14 w-14 text-yellow-500 mb-4 group-hover:scale-110 transition-transform" />
                     <div className="text-4xl font-bold text-white mb-3">
-                      {Array.isArray(userProfile?.completedLessons) ? userProfile.completedLessons.length : 0}
+                      {getCompletedLessonsCount()}
                     </div>
                     <div className="text-base text-green-400 font-mono">
                       שיעורים הושלמו
@@ -654,7 +695,7 @@ const Roadmap = () => {
               </div>
               
               <p className="text-center text-green-400 text-base font-mono">
-                {'>'} התקדמות כללית: {getProgressPercentage()}% ({Array.isArray(userProfile?.completedLessons) ? userProfile.completedLessons.length : 0} מתוך {lessons?.length || 0} שיעורים)
+                {'>'} התקדמות כללית: {getProgressPercentage()}% ({getCompletedLessonsCount()} מתוך {lessons?.length || 0} שיעורים)
               </p>
             </motion.div>
           </div>
@@ -747,7 +788,7 @@ const Roadmap = () => {
                       
                       {/* Lesson Details */}
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-green-400 font-mono">⏱️ {lesson.duration || 'לא מוגדר'}</span>
+                        <span className="text-green-400 font-mono">⏱️ {lesson.timeRange || lesson.duration || 'לא מוגדר'}</span>
                         <span className="text-cyan-400 font-mono">🎯 {lesson.difficulty || 'לא מוגדר'}</span>
                       </div>
 

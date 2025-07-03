@@ -54,8 +54,24 @@ export const getAllLessons = async (forceRefresh = false) => {
     
     querySnapshot.forEach((doc) => {
       const data = doc.data();
+      // Add originalId based on lesson order or title mapping
+      let originalId = data.originalId || data.order;
+      
+      // If no originalId, try to extract from title or use a fallback
+      if (!originalId) {
+        // Try to extract lesson number from title (e.g., "שיעור 1" -> 1)
+        const titleMatch = data.title?.match(/שיעור\s*(\d+)/) || data.title?.match(/(\d+)/);
+        if (titleMatch) {
+          originalId = parseInt(titleMatch[1]);
+        } else {
+          // Fallback: use order field or generate based on position
+          originalId = data.order || 1;
+        }
+      }
+      
       dbLessons.push({
         id: doc.id,
+        originalId: originalId, // Add the originalId
         ...data,
         createdAt: data.createdAt?.toDate?.() || new Date(),
         updatedAt: data.updatedAt?.toDate?.() || new Date(),
@@ -87,8 +103,25 @@ export const getLessonById = async (lessonId) => {
     const lessonDoc = await getDoc(doc(db, 'lessons', normalizedLessonId));
     if (lessonDoc.exists()) {
       const data = lessonDoc.data();
+      
+      // Add originalId based on lesson order or title mapping
+      let originalId = data.originalId || data.order;
+      
+      // If no originalId, try to extract from title or use a fallback
+      if (!originalId) {
+        // Try to extract lesson number from title (e.g., "שיעור 1" -> 1)
+        const titleMatch = data.title?.match(/שיעור\s*(\d+)/) || data.title?.match(/(\d+)/);
+        if (titleMatch) {
+          originalId = parseInt(titleMatch[1]);
+        } else {
+          // Fallback: use order field or generate based on position
+          originalId = data.order || 1;
+        }
+      }
+      
       return {
         id: lessonDoc.id,
+        originalId: originalId, // Add the originalId
         ...data,
         createdAt: data.createdAt?.toDate?.() || new Date(),
         updatedAt: data.updatedAt?.toDate?.() || new Date()
@@ -204,11 +237,37 @@ export const getSlidesByLessonId = async (lessonId) => {
     // Normalize lessonId to string for consistent querying
     const normalizedLessonId = String(lessonId);
     
-    // First try to get from database with ordering
+    // Get slides from the lesson's subcollection with proper ordering
+    try {
+      // First try with sortOrder (for proper database sorting)
+      const slidesQuery = query(
+        collection(db, 'lessons', normalizedLessonId, 'slides'),
+        orderBy('sortOrder', 'asc')
+      );
+      
+      const snapshot = await getDocs(slidesQuery);
+      const slides = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate?.() || new Date(),
+          updatedAt: data.updatedAt?.toDate?.() || new Date()
+        };
+      });
+      
+      if (slides.length > 0) {
+        console.log(`✅ Loaded ${slides.length} slides from database for lesson ${normalizedLessonId} (with sortOrder)`);
+        return slides;
+      }
+    } catch (orderError) {
+      console.log('⚠️ sortOrder ordering failed, trying with order field...');
+    }
+    
+    // Try with order field
     try {
       const slidesQuery = query(
-        collection(db, 'slides'),
-        where('lessonId', '==', normalizedLessonId),
+        collection(db, 'lessons', normalizedLessonId, 'slides'),
         orderBy('order', 'asc')
       );
       
@@ -224,18 +283,17 @@ export const getSlidesByLessonId = async (lessonId) => {
       });
       
       if (slides.length > 0) {
-        console.log(`✅ Loaded ${slides.length} slides from database for lesson ${normalizedLessonId}`);
+        console.log(`✅ Loaded ${slides.length} slides from database for lesson ${normalizedLessonId} (with order)`);
         return slides;
       }
     } catch (orderError) {
-      console.log('⚠️ Ordering failed, trying without order...');
+      console.log('⚠️ order field failed, trying without ordering...');
     }
     
-    // Try without ordering
+    // Try without ordering (fallback)
     try {
       const slidesQuery = query(
-        collection(db, 'slides'),
-        where('lessonId', '==', normalizedLessonId)
+        collection(db, 'lessons', normalizedLessonId, 'slides')
       );
       
       const snapshot = await getDocs(slidesQuery);
@@ -249,53 +307,19 @@ export const getSlidesByLessonId = async (lessonId) => {
         };
       });
       
-      // Sort in memory
-      slides.sort((a, b) => (a.order || 0) - (b.order || 0));
+      // Sort in memory by slide ID (assuming format like "slide1", "slide2", etc.)
+      slides.sort((a, b) => {
+        const aNum = parseInt(a.id.replace(/\D/g, '')) || 0;
+        const bNum = parseInt(b.id.replace(/\D/g, '')) || 0;
+        return aNum - bNum;
+      });
       
       if (slides.length > 0) {
-        console.log(`✅ Loaded ${slides.length} slides for lesson ${normalizedLessonId} (without ordering)`);
+        console.log(`✅ Loaded ${slides.length} slides for lesson ${normalizedLessonId} (sorted in memory)`);
         return slides;
       }
     } catch (queryError) {
       console.error('Error querying slides:', queryError);
-    }
-    
-    // Try with different lessonId formats
-    const alternativeIds = [
-      lessonId.toString(),
-      parseInt(lessonId).toString(),
-      lessonId,
-      parseInt(lessonId)
-    ].filter(id => id !== normalizedLessonId);
-    
-    for (const altId of alternativeIds) {
-      try {
-        console.log(`🔄 Trying alternative lessonId: ${altId}`);
-        const slidesQuery = query(
-          collection(db, 'slides'),
-          where('lessonId', '==', String(altId))
-        );
-        
-        const snapshot = await getDocs(slidesQuery);
-        const slides = snapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            ...data,
-            createdAt: data.createdAt?.toDate?.() || new Date(),
-            updatedAt: data.updatedAt?.toDate?.() || new Date()
-          };
-        });
-        
-        slides.sort((a, b) => (a.order || 0) - (b.order || 0));
-        
-        if (slides.length > 0) {
-          console.log(`✅ Loaded ${slides.length} slides for lesson ${altId} (alternative ID)`);
-          return slides;
-        }
-      } catch (altError) {
-        console.log(`⚠️ Alternative ID ${altId} failed:`, altError.message);
-      }
     }
     
     console.log(`📋 No database slides found for lesson ${lessonId}`);
@@ -318,8 +342,7 @@ export const getSlidesByLessonId = async (lessonId) => {
       try {
         // Try without ordering
         const slidesQuery = query(
-          collection(db, 'slides'),
-          where('lessonId', '==', String(lessonId))
+          collection(db, 'lessons', normalizedLessonId, 'slides')
         );
         
         const snapshot = await getDocs(slidesQuery);
@@ -334,7 +357,11 @@ export const getSlidesByLessonId = async (lessonId) => {
         });
         
         // Sort in memory
-        slides.sort((a, b) => (a.order || 0) - (b.order || 0));
+        slides.sort((a, b) => {
+          const aNum = parseInt(a.id.replace(/\D/g, '')) || 0;
+          const bNum = parseInt(b.id.replace(/\D/g, '')) || 0;
+          return aNum - bNum;
+        });
         
         if (slides.length > 0) {
           console.log(`✅ Loaded ${slides.length} slides for lesson ${lessonId} (without ordering)`);
@@ -357,9 +384,8 @@ export const getSlidesByLessonId = async (lessonId) => {
 const getSlidesFromDatabase = async (lessonId) => {
   try {
     const slidesQuery = query(
-      collection(db, 'slides'),
-      where('lessonId', '==', String(lessonId)),
-      orderBy('order', 'asc')
+      collection(db, 'lessons', String(lessonId), 'slides'),
+      orderBy('sortOrder', 'asc')
     );
     const slidesSnapshot = await getDocs(slidesQuery);
     const slides = [];
@@ -653,12 +679,31 @@ export const getLessonWithSlides = async (lessonId) => {
       const querySnapshot = await getDocs(lessonsRef);
       
       lesson = querySnapshot.docs
-        .map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate?.() || new Date(),
-          updatedAt: doc.data().updatedAt?.toDate?.() || new Date()
-        }))
+        .map(doc => {
+          const data = doc.data();
+          // Add originalId based on lesson order or title mapping
+          let originalId = data.originalId || data.order;
+          
+          // If no originalId, try to extract from title or use a fallback
+          if (!originalId) {
+            // Try to extract lesson number from title (e.g., "שיעור 1" -> 1)
+            const titleMatch = data.title?.match(/שיעור\s*(\d+)/) || data.title?.match(/(\d+)/);
+            if (titleMatch) {
+              originalId = parseInt(titleMatch[1]);
+            } else {
+              // Fallback: use order field or generate based on position
+              originalId = data.order || 1;
+            }
+          }
+          
+          return {
+            id: doc.id,
+            originalId: originalId, // Add the originalId
+            ...data,
+            createdAt: data.createdAt?.toDate?.() || new Date(),
+            updatedAt: data.updatedAt?.toDate?.() || new Date()
+          };
+        })
         .find(l => l.originalId === parseInt(lessonId) || l.originalId === lessonId);
     }
     
