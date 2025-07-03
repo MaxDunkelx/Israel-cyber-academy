@@ -340,13 +340,27 @@ const ContentManagement = () => {
       console.log(`🔄 Loading slides for lesson ${lessonId}...`);
       
       const slidesData = await getSlidesByLessonId(lessonId);
+      console.log(`📊 Raw slides data from database:`, slidesData);
       
       // Generate unique keys for React using lessonId + slide order/ID
-      const slidesWithUniqueKeys = slidesData.map((slide, index) => ({
-        ...slide,
-        uniqueKey: `${lessonId}_slide_${slide.order || index + 1}`,
-        displayId: slide.order || index + 1
-      }));
+      const slidesWithUniqueKeys = slidesData.map((slide, index) => {
+        const uniqueKey = `${lessonId}_slide_${slide.order || index + 1}`;
+        const displayId = slide.order || index + 1;
+        
+        console.log(`🔑 Slide ${index + 1}:`, {
+          originalId: slide.originalId,
+          uniqueKey: uniqueKey,
+          displayId: displayId,
+          title: slide.title,
+          contentKeys: slide.content ? Object.keys(slide.content) : 'no content'
+        });
+        
+        return {
+          ...slide,
+          uniqueKey: uniqueKey,
+          displayId: displayId
+        };
+      });
       
       console.log(`✅ Loaded ${slidesWithUniqueKeys.length} slides for lesson ${lessonId}:`, 
         slidesWithUniqueKeys.map(s => ({ 
@@ -363,6 +377,11 @@ const ContentManagement = () => {
       }
     } catch (err) {
       console.error('❌ Error loading slides:', err);
+      console.error('❌ Error details:', {
+        message: err.message,
+        stack: err.stack,
+        lessonId: lessonId
+      });
       setError(`Failed to load slides: ${err.message}`);
       setSlides([]);
     }
@@ -421,8 +440,14 @@ const ContentManagement = () => {
       }
       
       console.log('💾 Saving slide...');
+      console.log('📊 Slide data to save:', slideData);
+      console.log('📊 Selected lesson:', selectedLesson);
+      console.log('📊 Editing slide:', editingSlide);
       
-      // Ensure the slide has the correct lessonId and generate unique key
+      // Always use originalId as the Firestore document ID
+      const slideId = slideData.originalId || editingSlide?.originalId || editingSlide?.id;
+      if (!slideId) throw new Error('No slideId (originalId) found for saving!');
+      
       const slideToSave = {
         ...slideData,
         lessonId: selectedLesson.id,
@@ -430,19 +455,27 @@ const ContentManagement = () => {
         displayId: slideData.order || slides.length + 1
       };
       
-      if (editingSlide.id) {
+      console.log('📊 Final slide data to save:', slideToSave);
+      
+      if (editingSlide.id || editingSlide.originalId) {
         // Update existing slide
-        await updateSlide(editingSlide.id, slideToSave);
+        console.log('🔄 Updating existing slide with ID:', slideId);
+        await updateSlide(slideId, slideToSave);
         setSuccessMessage('Slide updated successfully!');
         console.log('✅ Slide updated');
       } else {
-        // Create new slide
-        await createSlide(slideToSave);
+        // Create new slide with next slideN as ID
+        const nextSlideNum = slides.length + 1;
+        const newSlideId = `slide${nextSlideNum}`;
+        slideToSave.originalId = newSlideId;
+        console.log('🆕 Creating new slide with ID:', newSlideId);
+        await createSlide({ ...slideToSave, originalId: newSlideId }, newSlideId);
         setSuccessMessage('Slide created successfully!');
         console.log('✅ Slide created');
       }
       
       // Reload slides for this lesson to get fresh data
+      console.log('🔄 Reloading slides after save...');
       await loadSlides(selectedLesson.id);
       setEditingSlide(null);
       
@@ -450,6 +483,12 @@ const ContentManagement = () => {
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       console.error('❌ Error saving slide:', err);
+      console.error('❌ Error details:', {
+        message: err.message,
+        stack: err.stack,
+        slideData: slideData,
+        selectedLesson: selectedLesson
+      });
       setError(`Failed to save slide: ${err.message}`);
     }
   };
@@ -478,14 +517,27 @@ const ContentManagement = () => {
       setError('Please select a lesson first');
       return;
     }
-    
+
+    // Find the highest slideN number
+    let maxNum = 0;
+    slides.forEach(slide => {
+      const match = String(slide.originalId || slide.id).match(/^slide(\d+)$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
+      }
+    });
+    const newSlideNum = maxNum + 1;
+    const newSlideId = `slide${newSlideNum}`;
+
     const newSlide = {
       lessonId: selectedLesson.id,
+      originalId: newSlideId,
       title: 'שקופית חדשה',
       type: 'presentation',
-      order: slides.length + 1,
-      uniqueKey: `${selectedLesson.id}_slide_${slides.length + 1}`,
-      displayId: slides.length + 1,
+      order: newSlideNum,
+      uniqueKey: `${selectedLesson.id}_slide_${newSlideNum}`,
+      displayId: newSlideNum,
       content: {
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         elements: [
@@ -506,7 +558,7 @@ const ContentManagement = () => {
         ]
       }
     };
-    
+
     setEditingSlide(newSlide);
   };
 

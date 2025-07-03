@@ -18,26 +18,22 @@ class StudentLogger {
 
   debug(message, data = null) {
     if (this.logLevel <= LOG_LEVELS.DEBUG) {
-      console.log(`${this.prefix} [DEBUG] ${message}`, data || '');
-    }
+      }
   }
 
   info(message, data = null) {
     if (this.logLevel <= LOG_LEVELS.INFO) {
-      console.info(`${this.prefix} [INFO] ${message}`, data || '');
-    }
+      }
   }
 
   warn(message, data = null) {
     if (this.logLevel <= LOG_LEVELS.WARN) {
-      console.warn(`${this.prefix} [WARN] ${message}`, data || '');
-    }
+      }
   }
 
   error(message, error = null) {
     if (this.logLevel <= LOG_LEVELS.ERROR) {
-      console.error(`${this.prefix} [ERROR] ${message}`, error || '');
-    }
+      }
   }
 
   // Session-specific logging

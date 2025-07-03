@@ -211,9 +211,8 @@ export const logSecurityEvent = async (eventType, eventData = {}, metadata = {})
     try {
       await addDoc(collection(db, 'security_logs'), securityEvent);
     } catch (firebaseError) {
-      console.warn('Failed to log to Firebase:', firebaseError);
       // Log to console as fallback only
-      console.log('🔒 Security Event (Firebase failed):', securityEvent);
+      console.error('Failed to log security event to Firebase:', firebaseError);
     }
 
     // Send to analytics service if available
@@ -407,7 +406,6 @@ export const encryptData = (data, key) => {
     }
     return btoa(encrypted);
   } catch (error) {
-    console.error('Encryption error:', error);
     return data;
   }
 };
@@ -432,7 +430,6 @@ export const decryptData = (encryptedData, key) => {
     }
     return decrypted;
   } catch (error) {
-    console.error('Decryption error:', error);
     return encryptedData;
   }
 };
@@ -557,7 +554,6 @@ export const hashData = async (data) => {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   } catch (error) {
-    console.error('Hashing error:', error);
     return data;
   }
 }; 

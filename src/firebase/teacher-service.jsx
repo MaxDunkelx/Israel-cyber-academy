@@ -90,7 +90,6 @@ export const getAllAvailableStudents = async () => {
     
     return students;
   } catch (error) {
-    console.error('Error fetching available students:', error);
     logSecurityEvent('AVAILABLE_STUDENTS_FETCH_ERROR', {
       error: error.message,
       timestamp: new Date().toISOString()
@@ -173,7 +172,6 @@ export const createClass = async (classData, teacherId) => {
     
     return classDoc;
   } catch (error) {
-    console.error('Error creating class:', error);
     throw error;
   }
 };
@@ -213,7 +211,6 @@ export const getTeacherClasses = async (teacherId) => {
     
     return classes;
   } catch (error) {
-    console.error('Error fetching teacher classes:', error);
     throw error;
   }
 };
@@ -237,7 +234,6 @@ export const getClassById = async (classId) => {
       throw new Error('Class not found');
     }
   } catch (error) {
-    console.error('❌ Error fetching class:', error);
     throw error;
   }
 };
@@ -294,7 +290,6 @@ export const updateClass = async (classId, updates, teacherId) => {
     
     return true;
   } catch (error) {
-    console.error('Error updating class:', error);
     throw error;
   }
 };
@@ -363,7 +358,6 @@ export const deleteClass = async (classId, teacherId) => {
     
     return true;
   } catch (error) {
-    console.error('Error deleting class:', error);
     throw error;
   }
 };
@@ -394,7 +388,6 @@ export const assignStudentToClass = async (studentId, classId, teacherId) => {
     
     // Check if student is already assigned
     if (currentStudents.includes(studentId)) {
-      console.log('⚠️ Student already assigned to this class');
       return;
     }
     
@@ -404,9 +397,7 @@ export const assignStudentToClass = async (studentId, classId, teacherId) => {
       updatedAt: serverTimestamp()
     });
     
-    console.log('✅ Student assigned to class successfully');
-  } catch (error) {
-    console.error('Error assigning student to class:', error);
+    } catch (error) {
     logSecurityEvent('STUDENT_ASSIGNMENT_ERROR', {
       studentId,
       classId,
@@ -445,9 +436,7 @@ export const removeStudentFromClass = async (studentId, classId) => {
       updatedAt: serverTimestamp()
     });
     
-    console.log('✅ Student removed from class successfully');
-  } catch (error) {
-    console.error('Error removing student from class:', error);
+    } catch (error) {
     logSecurityEvent('STUDENT_REMOVAL_ERROR', {
       studentId,
       classId,
@@ -499,7 +488,6 @@ export const getClassStudents = async (classId) => {
     
     return students;
   } catch (error) {
-    console.error('Error fetching class students:', error);
     throw error;
   }
 };
@@ -535,7 +523,6 @@ export const getTeacherStudents = async (teacherId) => {
     
     return students;
   } catch (error) {
-    console.error('❌ Error fetching teacher students:', error);
     throw error;
   }
 };
@@ -565,10 +552,8 @@ export const addTeacherComment = async (commentData, teacherId) => {
     };
 
     const docRef = await addDoc(collection(db, 'teacherComments'), commentDoc);
-    console.log('✅ Teacher comment added successfully:', docRef.id);
     return docRef.id;
   } catch (error) {
-    console.error('❌ Error adding teacher comment:', error);
     throw error;
   }
 };
@@ -615,7 +600,6 @@ export const getLessonComments = async (lessonId, teacherId = null) => {
     
     return comments;
   } catch (error) {
-    console.error('❌ Error fetching lesson comments:', error);
     throw error;
   }
 };
@@ -633,9 +617,7 @@ export const updateTeacherComment = async (commentId, updates) => {
       ...updates,
       updatedAt: serverTimestamp()
     });
-    console.log('✅ Teacher comment updated successfully');
-  } catch (error) {
-    console.error('❌ Error updating teacher comment:', error);
+    } catch (error) {
     throw error;
   }
 };
@@ -652,9 +634,7 @@ export const deleteTeacherComment = async (commentId) => {
       isActive: false,
       updatedAt: serverTimestamp()
     });
-    console.log('✅ Teacher comment deleted successfully');
-  } catch (error) {
-    console.error('❌ Error deleting teacher comment:', error);
+    } catch (error) {
     throw error;
   }
 };
@@ -671,10 +651,8 @@ export const deleteTeacherComment = async (commentId) => {
 export const grantTeacherLessonAccess = async (teacherId) => {
   try {
     // This function can be expanded to grant specific lesson access
-    console.log('Teacher lesson access granted for:', teacherId);
     return true;
   } catch (error) {
-    console.error('Error granting teacher lesson access:', error);
     throw error;
   }
 };
@@ -697,7 +675,6 @@ export const checkTeacherLessonAccess = async (teacherId, lessonId) => {
     
     return false;
   } catch (error) {
-    console.error('❌ Error checking teacher lesson access:', error);
     return false;
   }
 };
@@ -718,7 +695,6 @@ export const getTeacherAccessibleLessons = async (teacherId) => {
     
     return [];
   } catch (error) {
-    console.error('❌ Error fetching teacher accessible lessons:', error);
     return [];
   }
 };
@@ -793,7 +769,6 @@ export const getClassAnalytics = async (classId) => {
     
     return analytics;
   } catch (error) {
-    console.error('❌ Error fetching class analytics:', error);
     throw error;
   }
 };
@@ -861,7 +836,6 @@ export const getTeacherAnalytics = async (teacherId) => {
     
     return analytics;
   } catch (error) {
-    console.error('❌ Error fetching teacher analytics:', error);
     throw error;
   }
 };
@@ -904,7 +878,6 @@ export const getTeacherProfile = async (teacherId) => {
     };
     
   } catch (error) {
-    console.error('Error fetching teacher profile:', error);
     logSecurityEvent('TEACHER_PROFILE_FETCH_ERROR', {
       teacherId,
       error: error.message,
@@ -956,7 +929,6 @@ export const updateTeacherProfile = async (teacherId, updateData) => {
     });
     
   } catch (error) {
-    console.error('Error updating teacher profile:', error);
     logSecurityEvent('TEACHER_PROFILE_UPDATE_ERROR', {
       teacherId,
       error: error.message,
@@ -999,7 +971,6 @@ export const getAllStudents = async () => {
     
     return students;
   } catch (error) {
-    console.error('Error fetching students:', error);
     throw error;
   }
 };
@@ -1032,7 +1003,6 @@ export const getAllClasses = async () => {
     
     return classes;
   } catch (error) {
-    console.error('Error fetching classes:', error);
     throw error;
   }
 };
@@ -1120,7 +1090,6 @@ export const assignStudentsToClass = async (classId, studentIds, teacherId) => {
     
     return true;
   } catch (error) {
-    console.error('Error assigning students to class:', error);
     throw error;
   }
 };
@@ -1143,7 +1112,6 @@ export const logTeacherActivity = async (teacherId, activityData) => {
     
     await addDoc(activitiesRef, activityDoc);
   } catch (error) {
-    console.error('Error logging teacher activity:', error);
     // Don't throw error - activity logging shouldn't break main functionality
   }
 };
@@ -1175,7 +1143,6 @@ export const getTeacherRecentActivities = async (teacherId, limit = 10) => {
     activities.sort((a, b) => b.timestamp - a.timestamp);
     return activities.slice(0, limit);
   } catch (error) {
-    console.error('Error fetching teacher activities:', error);
     return [];
   }
 };
@@ -1198,7 +1165,6 @@ export const getAllLessons = async () => {
     
     return lessons;
   } catch (error) {
-    console.error('Error fetching lessons:', error);
     throw error;
   }
 };
@@ -1208,8 +1174,6 @@ export const getAllLessons = async () => {
  */
 export const getTeacherNotes = async (teacherId, lessonId, slideId) => {
   try {
-    console.log('🔍 Fetching specific notes for teacher:', teacherId, 'lesson:', lessonId, 'slide:', slideId);
-    
     // Normalize lessonId to string for consistent querying
     const normalizedLessonId = String(lessonId);
     
@@ -1224,7 +1188,6 @@ export const getTeacherNotes = async (teacherId, lessonId, slideId) => {
     const querySnapshot = await getDocs(q);
     
     if (querySnapshot.empty) {
-      console.log('📝 No notes found for slide:', slideId);
       return null;
     }
     
@@ -1234,10 +1197,8 @@ export const getTeacherNotes = async (teacherId, lessonId, slideId) => {
       ...noteDoc.data()
     };
     
-    console.log('✅ Found note:', noteData.id);
     return noteData;
   } catch (error) {
-    console.error('❌ Error fetching teacher notes:', error);
     throw error;
   }
 };
@@ -1247,8 +1208,6 @@ export const getTeacherNotes = async (teacherId, lessonId, slideId) => {
  */
 export const saveTeacherNotes = async (teacherId, lessonId, slideId, notesData) => {
   try {
-    console.log('💾 Saving notes:', { teacherId, lessonId, slideId, notesData });
-    
     const notesRef = collection(db, 'teacherNotes');
     
     // Check if notes already exist
@@ -1262,8 +1221,6 @@ export const saveTeacherNotes = async (teacherId, lessonId, slideId, notesData) 
         slideIndex: notesData.slideIndex, // Ensure slideIndex is updated
         updatedAt: serverTimestamp()
       });
-      
-      console.log('✅ Updated existing note:', existingNotes.id);
       
       // Log activity
       await logTeacherActivity(teacherId, {
@@ -1290,11 +1247,7 @@ export const saveTeacherNotes = async (teacherId, lessonId, slideId, notesData) 
         updatedAt: serverTimestamp()
       };
       
-      console.log('📝 Creating new note:', noteDoc);
-      
       const docRef = await addDoc(notesRef, noteDoc);
-      
-      console.log('✅ Created note with ID:', docRef.id);
       
       // Log activity
       await logTeacherActivity(teacherId, {
@@ -1311,7 +1264,6 @@ export const saveTeacherNotes = async (teacherId, lessonId, slideId, notesData) 
       return { id: docRef.id, ...noteDoc };
     }
   } catch (error) {
-    console.error('❌ Error saving teacher notes:', error);
     throw error;
   }
 };
@@ -1321,19 +1273,14 @@ export const saveTeacherNotes = async (teacherId, lessonId, slideId, notesData) 
  */
 export const deleteTeacherNotes = async (teacherId, lessonId, slideId) => {
   try {
-    console.log('🗑️ Deleting notes for teacher:', teacherId, 'lesson:', lessonId, 'slide:', slideId);
-    
     const existingNotes = await getTeacherNotes(teacherId, lessonId, slideId);
     
     if (!existingNotes) {
-      console.log('📝 No notes found to delete');
       throw new Error('Notes not found');
     }
     
     const noteRef = doc(db, 'teacherNotes', existingNotes.id);
     await deleteDoc(noteRef);
-    
-    console.log('✅ Deleted note:', existingNotes.id);
     
     // Log activity
     await logTeacherActivity(teacherId, {
@@ -1348,7 +1295,6 @@ export const deleteTeacherNotes = async (teacherId, lessonId, slideId) => {
     
     return true;
   } catch (error) {
-    console.error('❌ Error deleting teacher notes:', error);
     throw error;
   }
 };
@@ -1358,8 +1304,6 @@ export const deleteTeacherNotes = async (teacherId, lessonId, slideId) => {
  */
 export const getTeacherNotesForLesson = async (teacherId, lessonId) => {
   try {
-    console.log('🔍 Fetching notes for teacher:', teacherId, 'lesson:', lessonId);
-    
     // Normalize lessonId to string for consistent querying
     const normalizedLessonId = String(lessonId);
     
@@ -1387,10 +1331,8 @@ export const getTeacherNotesForLesson = async (teacherId, lessonId) => {
       });
     });
     
-    console.log('✅ Found notes:', notes.length, 'notes for lesson', normalizedLessonId);
     return notes;
   } catch (error) {
-    console.error('❌ Error fetching teacher notes for lesson:', error);
     throw error;
   }
 };
@@ -1401,9 +1343,6 @@ export const getTeacherNotesForLesson = async (teacherId, lessonId) => {
  */
 export const cleanupTeacherNotesForLesson = async (lessonId, currentSlideIds) => {
   try {
-    console.log('🧹 Cleaning up teacher notes for lesson:', lessonId);
-    console.log('📋 Current slide IDs:', currentSlideIds);
-    
     const notesRef = collection(db, 'teacherNotes');
     const q = query(
       notesRef,
@@ -1425,21 +1364,15 @@ export const cleanupTeacherNotesForLesson = async (lessonId, currentSlideIds) =>
     });
     
     if (notesToDelete.length > 0) {
-      console.log('🗑️ Found notes to delete:', notesToDelete.length);
-      
       for (const note of notesToDelete) {
-        console.log('🗑️ Deleting note for non-existent slide:', note.slideId);
         await deleteDoc(doc(db, 'teacherNotes', note.id));
       }
       
-      console.log('✅ Cleanup completed - deleted', notesToDelete.length, 'notes');
-    } else {
-      console.log('✅ No cleanup needed - all notes are for existing slides');
-    }
+      } else {
+      }
     
     return notesToDelete.length;
   } catch (error) {
-    console.error('❌ Error cleaning up teacher notes:', error);
     throw error;
   }
 };
@@ -1450,9 +1383,6 @@ export const cleanupTeacherNotesForLesson = async (lessonId, currentSlideIds) =>
  */
 export const migrateTeacherNotes = async (lessonId, slideIdMapping) => {
   try {
-    console.log('🔄 Migrating teacher notes for lesson:', lessonId);
-    console.log('📋 Slide ID mapping:', slideIdMapping);
-    
     const notesRef = collection(db, 'teacherNotes');
     const q = query(
       notesRef,
@@ -1467,8 +1397,6 @@ export const migrateTeacherNotes = async (lessonId, slideIdMapping) => {
       const newSlideId = slideIdMapping[noteData.slideId];
       
       if (newSlideId && newSlideId !== noteData.slideId) {
-        console.log('🔄 Migrating note from', noteData.slideId, 'to', newSlideId);
-        
         // Update the note with the new slideId
         await updateDoc(doc(db, 'teacherNotes', docSnapshot.id), {
           slideId: newSlideId,
@@ -1479,10 +1407,8 @@ export const migrateTeacherNotes = async (lessonId, slideIdMapping) => {
       }
     }
     
-    console.log('✅ Migration completed - migrated', migratedCount, 'notes');
     return migratedCount;
   } catch (error) {
-    console.error('❌ Error migrating teacher notes:', error);
     throw error;
   }
 }; 

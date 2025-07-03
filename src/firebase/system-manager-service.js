@@ -42,11 +42,8 @@ export const getSystemStats = async (forceRefresh = false) => {
   try {
     // Check cache first
     if (!forceRefresh && statsCache && cacheTimestamp && (Date.now() - cacheTimestamp < CACHE_DURATION)) {
-      console.log('📊 Returning cached system stats');
       return statsCache;
     }
-
-    console.log('📊 Loading comprehensive system statistics...');
 
     // Get all collections in parallel
     const [usersSnapshot, lessonsSnapshot, sessionsSnapshot, activitiesSnapshot] = await Promise.all([
@@ -182,11 +179,9 @@ export const getSystemStats = async (forceRefresh = false) => {
     statsCache = stats;
     cacheTimestamp = Date.now();
 
-    console.log('✅ System statistics loaded successfully');
     return stats;
 
   } catch (error) {
-    console.error('❌ Error loading system statistics:', error);
     throw new Error('Failed to load system statistics');
   }
 };
@@ -196,8 +191,6 @@ export const getSystemStats = async (forceRefresh = false) => {
  */
 export const getSystemHealth = async () => {
   try {
-    console.log('🔍 Checking system health...');
-
     const healthChecks = await Promise.allSettled([
       // Database connectivity
       getDoc(doc(db, 'system', 'health')),
@@ -225,7 +218,6 @@ export const getSystemHealth = async () => {
     };
 
   } catch (error) {
-    console.error('❌ Error checking system health:', error);
     return {
       status: {
         database: 'unknown',
@@ -244,8 +236,6 @@ export const getSystemHealth = async () => {
  */
 export const getSystemMonitoring = async () => {
   try {
-    console.log('📈 Loading system monitoring data...');
-
     // Get recent security events
     const securityEventsRef = collection(db, 'securityEvents');
     const securityQuery = query(securityEventsRef, orderBy('timestamp', 'desc'), limit(50));
@@ -297,11 +287,9 @@ export const getSystemMonitoring = async () => {
       lastUpdated: new Date()
     };
 
-    console.log('✅ System monitoring data loaded');
     return monitoring;
 
   } catch (error) {
-    console.error('❌ Error loading system monitoring:', error);
     throw new Error('Failed to load system monitoring data');
   }
 };
@@ -311,8 +299,6 @@ export const getSystemMonitoring = async () => {
  */
 export const subscribeToSystemMonitoring = (callback) => {
   try {
-    console.log('👂 Setting up real-time system monitoring...');
-
     const unsubscribe = onSnapshot(
       collection(db, 'securityEvents'),
       (snapshot) => {
@@ -329,13 +315,11 @@ export const subscribeToSystemMonitoring = (callback) => {
         });
       },
       (error) => {
-        console.error('❌ Error in system monitoring subscription:', error);
-      }
+        }
     );
 
     return unsubscribe;
   } catch (error) {
-    console.error('❌ Error setting up system monitoring:', error);
     return () => {};
   }
 };
@@ -345,8 +329,6 @@ export const subscribeToSystemMonitoring = (callback) => {
  */
 export const getUserAnalytics = async (timeRange = '7d') => {
   try {
-    console.log('📊 Loading user analytics...');
-
     const now = new Date();
     let startDate;
 
@@ -426,11 +408,9 @@ export const getUserAnalytics = async (timeRange = '7d') => {
       analytics.activities.byType[type] = (analytics.activities.byType[type] || 0) + 1;
     });
 
-    console.log('✅ User analytics loaded');
     return analytics;
 
   } catch (error) {
-    console.error('❌ Error loading user analytics:', error);
     throw new Error('Failed to load user analytics');
   }
 };
@@ -440,8 +420,6 @@ export const getUserAnalytics = async (timeRange = '7d') => {
  */
 export const performSystemMaintenance = async (operations = []) => {
   try {
-    console.log('🔧 Performing system maintenance...');
-
     const batch = writeBatch(db);
     const results = [];
 
@@ -515,11 +493,9 @@ export const performSystemMaintenance = async (operations = []) => {
       userId: 'system_manager'
     });
 
-    console.log('✅ System maintenance completed');
     return results;
 
   } catch (error) {
-    console.error('❌ Error performing system maintenance:', error);
     throw new Error('Failed to perform system maintenance');
   }
 };
@@ -529,8 +505,6 @@ export const performSystemMaintenance = async (operations = []) => {
  */
 export const exportSystemData = async (dataType = 'all') => {
   try {
-    console.log('📤 Exporting system data...');
-
     const exportData = {};
 
     if (dataType === 'all' || dataType === 'users') {
@@ -579,11 +553,9 @@ export const exportSystemData = async (dataType = 'all') => {
       totalRecords: Object.values(exportData).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0)
     };
 
-    console.log('✅ System data exported successfully');
     return exportData;
 
   } catch (error) {
-    console.error('❌ Error exporting system data:', error);
     throw new Error('Failed to export system data');
   }
 }; 

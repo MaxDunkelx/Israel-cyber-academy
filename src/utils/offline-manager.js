@@ -48,7 +48,6 @@ class OfflineManager {
    * Handle when device comes online
    */
   async handleOnline() {
-    console.log('🌐 Device is online - syncing data...');
     toast.success('חיבור לאינטרנט חודש - מסנכרן נתונים...');
     
     // Sync any pending actions
@@ -62,7 +61,6 @@ class OfflineManager {
    * Handle when device goes offline
    */
   handleOffline() {
-    console.log('📴 Device is offline - enabling offline mode');
     toast.error('אין חיבור לאינטרנט - מופעל מצב לא מקוון');
     
     // Show offline indicators
@@ -94,10 +92,8 @@ class OfflineManager {
         version: this.getDataVersion()
       }));
       
-      console.log(`💾 Stored offline data for key: ${key}`);
-    } catch (error) {
-      console.error('Error storing offline data:', error);
-    }
+      } catch (error) {
+      }
   }
 
   /**
@@ -120,7 +116,6 @@ class OfflineManager {
       
       return null;
     } catch (error) {
-      console.error('Error retrieving offline data:', error);
       return null;
     }
   }
@@ -139,8 +134,7 @@ class OfflineManager {
     this.pendingActions.push(pendingAction);
     this.savePendingActions();
     
-    console.log(`📝 Added pending action: ${action.type}`);
-  }
+    }
 
   /**
    * Sync all pending actions when online
@@ -151,8 +145,6 @@ class OfflineManager {
     }
 
     this.syncInProgress = true;
-    console.log(`🔄 Syncing ${this.pendingActions.length} pending actions...`);
-
     const actionsToProcess = [...this.pendingActions];
     const successfulActions = [];
     const failedActions = [];
@@ -161,16 +153,13 @@ class OfflineManager {
       try {
         await this.executeAction(pendingAction.action);
         successfulActions.push(pendingAction);
-        console.log(`✅ Synced action: ${pendingAction.action.type}`);
-      } catch (error) {
-        console.error(`❌ Failed to sync action: ${pendingAction.action.type}`, error);
+        } catch (error) {
         pendingAction.retryCount++;
         
         if (pendingAction.retryCount < 3) {
           failedActions.push(pendingAction);
         } else {
-          console.error(`🚫 Action failed permanently: ${pendingAction.action.type}`);
-        }
+          }
       }
     }
 
@@ -238,8 +227,7 @@ class OfflineManager {
     try {
       localStorage.setItem('pendingActions', JSON.stringify(this.pendingActions));
     } catch (error) {
-      console.error('Error saving pending actions:', error);
-    }
+      }
   }
 
   /**
@@ -250,11 +238,9 @@ class OfflineManager {
       const stored = localStorage.getItem('pendingActions');
       if (stored) {
         this.pendingActions = JSON.parse(stored);
-        console.log(`📋 Loaded ${this.pendingActions.length} pending actions`);
-      }
+        }
     } catch (error) {
-      console.error('Error loading pending actions:', error);
-    }
+      }
   }
 
   /**
@@ -274,10 +260,8 @@ class OfflineManager {
         }
       });
       
-      console.log(`📚 Loaded ${offlineKeys.length} offline data items`);
-    } catch (error) {
-      console.error('Error loading offline data:', error);
-    }
+      } catch (error) {
+      }
   }
 
   /**
@@ -337,8 +321,7 @@ class OfflineManager {
       }
     });
     
-    console.log('🧹 Cleared all offline data');
-  }
+    }
 
   /**
    * Get offline status summary

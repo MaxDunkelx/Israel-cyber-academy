@@ -40,62 +40,31 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
  */
 export const getAllLessons = async (forceRefresh = false) => {
   try {
-    // Check cache first
-    if (!forceRefresh && lessonsCache && cacheTimestamp && (Date.now() - cacheTimestamp < CACHE_DURATION)) {
-      console.log('📋 Returning cached lessons');
+    // Return cached lessons if available and not expired
+    if (!forceRefresh && lessonsCache && cacheTimestamp && 
+        (Date.now() - cacheTimestamp) < CACHE_DURATION) {
       return lessonsCache;
     }
 
-    console.log('🔍 Loading lessons from Firestore...');
-    
+    // Get lessons from Firestore
     const lessonsRef = collection(db, 'lessons');
-    const querySnapshot = await getDocs(lessonsRef);
-    const dbLessons = [];
+    const lessonsQuery = query(lessonsRef, orderBy('originalId', 'asc'));
+    const snapshot = await getDocs(lessonsQuery);
     
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      // Add originalId based on lesson order or title mapping
-      let originalId = data.originalId || data.order;
-      
-      // If no originalId, try to extract from title or use a fallback
-      if (!originalId) {
-        // Try to extract lesson number from title (e.g., "שיעור 1" -> 1)
-        const titleMatch = data.title?.match(/שיעור\s*(\d+)/) || data.title?.match(/(\d+)/);
-        if (titleMatch) {
-          originalId = parseInt(titleMatch[1]);
-        } else {
-          // Fallback: use order field or generate based on position
-          originalId = data.order || 1;
-        }
-      }
-      
-      dbLessons.push({
-        id: doc.id,
-        originalId: originalId, // Add the originalId
-        ...data,
-        createdAt: data.createdAt?.toDate?.() || new Date(),
-        updatedAt: data.updatedAt?.toDate?.() || new Date(),
-        source: 'database'
-      });
-    });
-    
-    // Sort lessons by originalId or order
-    dbLessons.sort((a, b) => {
-      const aOrder = a.originalId || a.order || 0;
-      const bOrder = b.originalId || b.order || 0;
-      return aOrder - bOrder;
-    });
-    
-    console.log(`✅ Loaded ${dbLessons.length} lessons from database (sorted by order)`);
-    
-    // Cache the results
+    const dbLessons = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate?.() || new Date(),
+      updatedAt: doc.data().updatedAt?.toDate?.() || new Date()
+    }));
+
+    // Update cache
     lessonsCache = dbLessons;
     cacheTimestamp = Date.now();
     
     return dbLessons;
     
   } catch (error) {
-    console.error('❌ Error loading lessons:', error);
     throw new Error('Failed to load lessons from database. Please check your connection and try again.');
   }
 };
@@ -105,8 +74,6 @@ export const getAllLessons = async (forceRefresh = false) => {
  */
 export const getAllLessonsWithSlideCounts = async (forceRefresh = false) => {
   try {
-    console.log('🔍 Loading lessons with slide counts from Firestore...');
-    
     // Get all lessons first
     const lessons = await getAllLessons(forceRefresh);
     
@@ -121,7 +88,6 @@ export const getAllLessonsWithSlideCounts = async (forceRefresh = false) => {
             totalSlides: slides.length
           };
         } catch (error) {
-          console.warn(`⚠️ Could not load slides for lesson ${lesson.id}:`, error);
           return {
             ...lesson,
             slides: [],
@@ -131,12 +97,9 @@ export const getAllLessonsWithSlideCounts = async (forceRefresh = false) => {
       })
     );
     
-    console.log(`✅ Loaded ${lessonsWithCounts.length} lessons with slide counts from database`);
-    
     return lessonsWithCounts;
     
   } catch (error) {
-    console.error('❌ Error loading lessons with slide counts:', error);
     throw new Error('Failed to load lessons with slide counts from database. Please check your connection and try again.');
   }
 };
@@ -146,39 +109,21 @@ export const getAllLessonsWithSlideCounts = async (forceRefresh = false) => {
  */
 export const getLessonById = async (lessonId) => {
   try {
-    // Ensure lessonId is a string for Firestore
-    const normalizedLessonId = String(lessonId);
-    const lessonDoc = await getDoc(doc(db, 'lessons', normalizedLessonId));
+    const lessonRef = doc(db, 'lessons', lessonId);
+    const lessonDoc = await getDoc(lessonRef);
+    
     if (lessonDoc.exists()) {
-      const data = lessonDoc.data();
-      
-      // Add originalId based on lesson order or title mapping
-      let originalId = data.originalId || data.order;
-      
-      // If no originalId, try to extract from title or use a fallback
-      if (!originalId) {
-        // Try to extract lesson number from title (e.g., "שיעור 1" -> 1)
-        const titleMatch = data.title?.match(/שיעור\s*(\d+)/) || data.title?.match(/(\d+)/);
-        if (titleMatch) {
-          originalId = parseInt(titleMatch[1]);
-        } else {
-          // Fallback: use order field or generate based on position
-          originalId = data.order || 1;
-        }
-      }
-      
       return {
         id: lessonDoc.id,
-        originalId: originalId, // Add the originalId
-        ...data,
-        createdAt: data.createdAt?.toDate?.() || new Date(),
-        updatedAt: data.updatedAt?.toDate?.() || new Date()
+        ...lessonDoc.data(),
+        createdAt: lessonDoc.data().createdAt?.toDate?.() || new Date(),
+        updatedAt: lessonDoc.data().updatedAt?.toDate?.() || new Date()
       };
+    } else {
+      throw new Error('Lesson not found');
     }
-    return null;
   } catch (error) {
-    console.error('Error getting lesson:', error);
-    throw error;
+    throw new Error(`Failed to get lesson: ${error.message}`);
   }
 };
 
@@ -193,17 +138,21 @@ export const createLesson = async (lessonData) => {
       id: lessonRef.id,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+      createdBy: 'system',
+      updatedBy: 'system',
       version: 1,
-      totalSlides: 0,
-      slides: []
+      isActive: true
     };
     
     await setDoc(lessonRef, newLesson);
-    console.log('Lesson created:', lessonRef.id);
+    
+    // Clear cache to force refresh
+    lessonsCache = null;
+    cacheTimestamp = null;
+    
     return lessonRef.id;
   } catch (error) {
-    console.error('Error creating lesson:', error);
-    throw error;
+    throw new Error(`Failed to create lesson: ${error.message}`);
   }
 };
 
@@ -212,33 +161,22 @@ export const createLesson = async (lessonData) => {
  */
 export const updateLesson = async (lessonId, lessonData) => {
   try {
-    // Validate and sanitize lesson data
-    const sanitizedData = {
-      ...lessonData,
-      title: String(lessonData?.title || ''),
-      description: String(lessonData?.description || ''),
-      difficulty: lessonData?.difficulty || 'beginner',
-      targetAge: Number(lessonData?.targetAge) || 12,
-      duration: Number(lessonData?.duration) || 30,
-      order: Number(lessonData?.order) || 1,
-      tags: Array.isArray(lessonData?.tags) ? lessonData.tags : [],
-      totalSlides: Number(lessonData?.totalSlides) || 0,
-      isPublished: Boolean(lessonData?.isPublished)
-    };
-
     const lessonRef = doc(db, 'lessons', lessonId);
     const updateData = {
-      ...sanitizedData,
+      ...lessonData,
       updatedAt: serverTimestamp(),
-      version: (lessonData.version || 0) + 1
+      updatedBy: 'system'
     };
     
     await updateDoc(lessonRef, updateData);
-    console.log('Lesson updated:', lessonId);
+    
+    // Clear cache to force refresh
+    lessonsCache = null;
+    cacheTimestamp = null;
+    
     return lessonId;
   } catch (error) {
-    console.error('Error updating lesson:', error);
-    throw error;
+    throw new Error(`Failed to update lesson: ${error.message}`);
   }
 };
 
@@ -247,27 +185,27 @@ export const updateLesson = async (lessonId, lessonData) => {
  */
 export const deleteLesson = async (lessonId) => {
   try {
+    // Delete all slides for this lesson first
+    const slidesSnapshot = await getDocs(collection(db, 'lessons', lessonId, 'slides'));
     const batch = writeBatch(db);
-    
-    // Delete all slides for this lesson
-    const slidesQuery = query(
-      collection(db, 'slides'),
-      where('lessonId', '==', lessonId)
-    );
-    const slidesSnapshot = await getDocs(slidesQuery);
     
     slidesSnapshot.docs.forEach(slideDoc => {
       batch.delete(slideDoc.ref);
     });
     
     // Delete the lesson
-    batch.delete(doc(db, 'lessons', lessonId));
+    const lessonRef = doc(db, 'lessons', lessonId);
+    batch.delete(lessonRef);
     
     await batch.commit();
-    console.log(`Lesson ${lessonId} and ${slidesSnapshot.size} slides deleted`);
+    
+    // Clear cache to force refresh
+    lessonsCache = null;
+    cacheTimestamp = null;
+    
+    return true;
   } catch (error) {
-    console.error('Error deleting lesson:', error);
-    throw error;
+    throw new Error(`Failed to delete lesson: ${error.message}`);
   }
 };
 
@@ -280,8 +218,6 @@ export const deleteLesson = async (lessonId) => {
  */
 export const getSlidesByLessonId = async (lessonId) => {
   try {
-    console.log(`🔍 Loading slides for lesson ${lessonId} from database...`);
-    
     // Normalize lessonId to string for consistent querying
     const normalizedLessonId = String(lessonId);
     
@@ -294,29 +230,43 @@ export const getSlidesByLessonId = async (lessonId) => {
       );
       
       const snapshot = await getDocs(slidesQuery);
-      const slidesMap = new Map(); // Use Map to deduplicate by ID
       
-      snapshot.docs.forEach(doc => {
+      // Group slides by originalId and keep the most recent version
+      const slidesByOriginalId = new Map();
+      
+      snapshot.docs.forEach((doc, index) => {
         const data = doc.data();
         const slideId = doc.id;
         const originalId = data.originalId || slideId;
+        const timestamp = data.updatedAt?.toDate?.() || data.createdAt?.toDate?.() || new Date(0);
+        
+        // Keep the most recent version of each slide
+        if (!slidesByOriginalId.has(originalId) || 
+            timestamp > slidesByOriginalId.get(originalId).timestamp) {
+          slidesByOriginalId.set(originalId, {
+            docId: slideId,
+            data: data,
+            timestamp: timestamp
+          });
+        }
+      });
+      
+      // Convert to array and generate unique keys
+      const slides = Array.from(slidesByOriginalId.values()).map(({ data, docId }, index) => {
+        const originalId = data.originalId || docId;
         
         // Ensure unique ID by combining lessonId and originalId to prevent React key conflicts
         const uniqueId = `${normalizedLessonId}_${originalId}`;
         
-        console.log(`🔑 Generated unique ID for slide: ${slideId} (originalId: ${originalId}) -> ${uniqueId}`);
-        
-        slidesMap.set(uniqueId, {
+        return {
           id: uniqueId, // Use unique ID to prevent React key conflicts
           originalId: originalId, // Keep original ID for database operations
           lessonId: normalizedLessonId,
           ...data,
           createdAt: data.createdAt?.toDate?.() || new Date(),
           updatedAt: data.updatedAt?.toDate?.() || new Date()
-        });
+        };
       });
-      
-      const slides = Array.from(slidesMap.values());
       
       // Sort by order field, then by ID as fallback
       slides.sort((a, b) => {
@@ -330,11 +280,10 @@ export const getSlidesByLessonId = async (lessonId) => {
       });
       
       if (slides.length > 0) {
-        console.log(`✅ Loaded ${slides.length} slides from database for lesson ${normalizedLessonId} (deduplicated and sorted)`);
         return slides;
       }
     } catch (orderError) {
-      console.log('⚠️ sortOrder ordering failed, trying with order field...');
+      // Continue to next fallback
     }
     
     // Try with order field
@@ -355,8 +304,6 @@ export const getSlidesByLessonId = async (lessonId) => {
         // Ensure unique ID by combining lessonId and originalId to prevent React key conflicts
         const uniqueId = `${normalizedLessonId}_${originalId}`;
         
-        console.log(`🔑 Generated unique ID for slide: ${slideId} (originalId: ${originalId}) -> ${uniqueId}`);
-        
         slidesMap.set(uniqueId, {
           id: uniqueId, // Use unique ID to prevent React key conflicts
           originalId: originalId, // Keep original ID for database operations
@@ -381,11 +328,10 @@ export const getSlidesByLessonId = async (lessonId) => {
       });
       
       if (slides.length > 0) {
-        console.log(`✅ Loaded ${slides.length} slides from database for lesson ${normalizedLessonId} (with order)`);
         return slides;
       }
     } catch (orderError) {
-      console.log('⚠️ order field failed, trying without ordering...');
+      // Continue to next fallback
     }
     
     // Try without ordering (fallback)
@@ -404,8 +350,6 @@ export const getSlidesByLessonId = async (lessonId) => {
         
         // Ensure unique ID by combining lessonId and originalId to prevent React key conflicts
         const uniqueId = `${normalizedLessonId}_${originalId}`;
-        
-        console.log(`🔑 Generated unique ID for slide: ${slideId} (originalId: ${originalId}) -> ${uniqueId}`);
         
         slidesMap.set(uniqueId, {
           id: uniqueId, // Use unique ID to prevent React key conflicts
@@ -433,115 +377,66 @@ export const getSlidesByLessonId = async (lessonId) => {
       });
       
       if (slides.length > 0) {
-        console.log(`✅ Loaded ${slides.length} slides for lesson ${normalizedLessonId} (deduplicated and sorted in memory)`);
         return slides;
       }
     } catch (queryError) {
-      console.error('Error querying slides:', queryError);
+      // Continue to fallback
     }
     
-    console.log(`📋 No database slides found for lesson ${lessonId}`);
-    return [];
-    
-  } catch (error) {
-    console.error('Error getting slides:', error);
-    
-    // Check if it's an index error
-    const isIndexError = error.message.includes('index') || 
-                        error.code === 'failed-precondition' ||
-                        error.message.includes('requires an index');
-    
-    if (isIndexError) {
-      console.log('⚠️ Index not found, trying without ordering...');
+    // Final fallback: try without any ordering
+    try {
+      const slidesQuery = query(
+        collection(db, 'lessons', normalizedLessonId, 'slides')
+      );
       
-      // Show user-friendly notification
-      showIndexNotification();
+      const snapshot = await getDocs(slidesQuery);
+      const slidesMap = new Map(); // Use Map to deduplicate by ID
       
-      try {
-        // Try without ordering
-        const slidesQuery = query(
-          collection(db, 'lessons', normalizedLessonId, 'slides')
-        );
+      snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const slideId = doc.id;
+        const originalId = data.originalId || slideId;
         
-        const snapshot = await getDocs(slidesQuery);
-        const slidesMap = new Map(); // Use Map to deduplicate by ID
+        // Ensure unique ID by combining lessonId and originalId to prevent React key conflicts
+        const uniqueId = `${normalizedLessonId}_${originalId}`;
         
-        snapshot.docs.forEach(doc => {
-          const data = doc.data();
-          const slideId = doc.id;
-          const originalId = data.originalId || slideId;
-          
-          // Ensure unique ID by combining lessonId and originalId to prevent React key conflicts
-          const uniqueId = `${normalizedLessonId}_${originalId}`;
-          
-          console.log(`🔑 Generated unique ID for slide: ${slideId} (originalId: ${originalId}) -> ${uniqueId}`);
-          
-          slidesMap.set(uniqueId, {
-            id: uniqueId, // Use unique ID to prevent React key conflicts
-            originalId: originalId, // Keep original ID for database operations
-            lessonId: normalizedLessonId,
-            ...data,
-            createdAt: data.createdAt?.toDate?.() || new Date(),
-            updatedAt: data.updatedAt?.toDate?.() || new Date()
-          });
+        slidesMap.set(uniqueId, {
+          id: uniqueId, // Use unique ID to prevent React key conflicts
+          originalId: originalId, // Keep original ID for database operations
+          lessonId: normalizedLessonId,
+          ...data,
+          createdAt: data.createdAt?.toDate?.() || new Date(),
+          updatedAt: data.updatedAt?.toDate?.() || new Date()
         });
-        
-        const slides = Array.from(slidesMap.values());
-        
-        // Sort in memory
-        slides.sort((a, b) => {
-          const aOrder = a.order || 0;
-          const bOrder = b.order || 0;
-          if (aOrder !== bOrder) {
-            return aOrder - bOrder;
-          }
-          const aNum = parseInt(a.originalId.replace(/\D/g, '')) || 0;
-          const bNum = parseInt(b.originalId.replace(/\D/g, '')) || 0;
-          return aNum - bNum;
-        });
-        
-        if (slides.length > 0) {
-          console.log(`✅ Loaded ${slides.length} slides for lesson ${lessonId} (deduplicated without ordering)`);
-          return slides;
-        }
-      } catch (fallbackError) {
-        console.error('Fallback error getting slides:', fallbackError);
-      }
-    }
-    
-    console.log(`❌ No slides found for lesson ${lessonId}`);
-    return [];
-  }
-};
-
-/**
- * Get slides from database only
- * No fallback to local content - ensures data consistency
- */
-const getSlidesFromDatabase = async (lessonId) => {
-  try {
-    const slidesQuery = query(
-      collection(db, 'lessons', String(lessonId), 'slides'),
-      orderBy('order', 'asc')
-    );
-    const slidesSnapshot = await getDocs(slidesQuery);
-    const slides = [];
-    
-    slidesSnapshot.forEach((doc) => {
-      const data = doc.data();
-      slides.push({
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt?.toDate?.() || new Date(),
-        updatedAt: data.updatedAt?.toDate?.() || new Date()
       });
-    });
+      
+      const slides = Array.from(slidesMap.values());
+      
+      // Sort in memory by order, then by slide ID
+      slides.sort((a, b) => {
+        const aOrder = a.order || 0;
+        const bOrder = b.order || 0;
+        if (aOrder !== bOrder) {
+          return aOrder - bOrder;
+        }
+        // If order is the same, sort by ID
+        const aNum = parseInt(a.originalId.replace(/\D/g, '')) || 0;
+        const bNum = parseInt(b.originalId.replace(/\D/g, '')) || 0;
+        return aNum - bNum;
+      });
+      
+      if (slides.length > 0) {
+        return slides;
+      }
+    } catch (fallbackError) {
+      // Continue to local fallback
+    }
     
-    console.log(`✅ Loaded ${slides.length} slides from database for lesson ${lessonId}`);
-    return slides;
+    // If no database slides found, return empty array
+    return [];
+    
   } catch (error) {
-    console.error(`❌ Error loading slides for lesson ${lessonId}:`, error);
-    throw new Error(`Failed to load slides for lesson ${lessonId}`);
+    throw new Error(`Failed to load slides for lesson ${lessonId}: ${error.message}`);
   }
 };
 
@@ -550,35 +445,31 @@ const getSlidesFromDatabase = async (lessonId) => {
  */
 export const getSlideById = async (slideId, lessonId) => {
   try {
-    // Use subcollection structure: lessons/{lessonId}/slides/{slideId}
     const slideRef = doc(db, 'lessons', lessonId, 'slides', slideId);
     const slideDoc = await getDoc(slideRef);
     
     if (slideDoc.exists()) {
-      const data = slideDoc.data();
       return {
         id: slideDoc.id,
-        ...data,
-        createdAt: data.createdAt?.toDate?.() || new Date(),
-        updatedAt: data.updatedAt?.toDate?.() || new Date()
+        ...slideDoc.data(),
+        createdAt: slideDoc.data().createdAt?.toDate?.() || new Date(),
+        updatedAt: slideDoc.data().updatedAt?.toDate?.() || new Date()
       };
+    } else {
+      throw new Error('Slide not found');
     }
-    return null;
   } catch (error) {
-    console.error('Error getting slide:', error);
-    throw error;
+    throw new Error(`Failed to get slide: ${error.message}`);
   }
 };
 
 /**
  * Enhanced create slide function with verification
  */
-export const createSlide = async (slideData) => {
+export const createSlide = async (slideData, overrideId = null) => {
   try {
-    console.log(`📝 Creating new slide with data:`, slideData);
-    
-    // Generate a proper ID for the slide
-    const slideId = `slide-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // Use provided originalId or overrideId as the Firestore document ID
+    const slideId = overrideId || slideData.originalId || `slide-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
     // Ensure lessonId is always a string
     const normalizedSlideData = {
@@ -598,25 +489,17 @@ export const createSlide = async (slideData) => {
       version: 1
     };
     
-    console.log(`✅ Creating slide with normalized data:`, newSlide);
-    
     await setDoc(slideRef, newSlide);
-    console.log('✅ Slide created successfully:', slideId);
     
     // Verify the creation
     const verifyDoc = await getDoc(slideRef);
     if (verifyDoc.exists()) {
-      const savedData = verifyDoc.data();
-      console.log('✅ Slide creation verified in database');
-      console.log('📊 Created lessonId:', savedData.lessonId);
       return slideId;
     } else {
       throw new Error('Slide was not created properly');
     }
     
   } catch (error) {
-    console.error('❌ Error creating slide:', error);
-    
     // Provide specific error messages
     if (error.code === 'permission-denied') {
       throw new Error('Permission denied. Please check your Firebase security rules.');
@@ -633,8 +516,6 @@ export const createSlide = async (slideData) => {
  */
 export const updateSlide = async (slideId, slideData) => {
   try {
-    console.log(`💾 Updating slide ${slideId} with data:`, slideData);
-    
     // Validate and sanitize slide data
     const sanitizedData = {
       ...slideData,
@@ -644,8 +525,6 @@ export const updateSlide = async (slideId, slideData) => {
       lessonId: String(slideData?.lessonId || ''), // Ensure lessonId is always a string
       content: slideData?.content || {}
     };
-
-    console.log(`✅ Sanitized data:`, sanitizedData);
 
     // Use subcollection structure: lessons/{lessonId}/slides/{slideId}
     const slideRef = doc(db, 'lessons', sanitizedData.lessonId, 'slides', slideId);
@@ -662,18 +541,11 @@ export const updateSlide = async (slideId, slideData) => {
         version: (slideData.version || 0) + 1
       };
       
-      console.log(`📝 Updating existing slide with data:`, updateData);
-      
       await updateDoc(slideRef, updateData);
-      console.log('✅ Slide updated successfully:', slideId);
       
       // Verify the update was saved
       const verifyDoc = await getDoc(slideRef);
       if (verifyDoc.exists()) {
-        const savedData = verifyDoc.data();
-        console.log('✅ Slide update verified in database');
-        console.log('📊 Updated fields:', Object.keys(updateData));
-        console.log('📊 Saved lessonId:', savedData.lessonId);
         return slideId;
       } else {
         throw new Error('Slide was not saved properly');
@@ -690,17 +562,11 @@ export const updateSlide = async (slideId, slideData) => {
         version: 1
       };
       
-      console.log(`📝 Creating new slide with data:`, newSlide);
-      
       await setDoc(slideRef, newSlide);
-      console.log('✅ Slide created (was missing):', slideId);
       
       // Verify the creation
       const verifyDoc = await getDoc(slideRef);
       if (verifyDoc.exists()) {
-        const savedData = verifyDoc.data();
-        console.log('✅ Slide creation verified in database');
-        console.log('📊 Created lessonId:', savedData.lessonId);
         return slideId;
       } else {
         throw new Error('Slide was not created properly');
@@ -708,8 +574,6 @@ export const updateSlide = async (slideId, slideData) => {
     }
     
   } catch (error) {
-    console.error('❌ Error updating slide:', error);
-    
     // Provide specific error messages
     if (error.code === 'permission-denied') {
       throw new Error('Permission denied. Please check your Firebase security rules.');
@@ -726,8 +590,6 @@ export const updateSlide = async (slideId, slideData) => {
  */
 export const deleteSlide = async (slideId, lessonId) => {
   try {
-    console.log('🗑️ Deleting slide:', slideId);
-    
     // Use subcollection structure: lessons/{lessonId}/slides/{slideId}
     const slideRef = doc(db, 'lessons', lessonId, 'slides', slideId);
     
@@ -742,7 +604,6 @@ export const deleteSlide = async (slideId, lessonId) => {
     
     // Delete the slide
     await deleteDoc(slideRef);
-    console.log('✅ Slide deleted successfully');
     
     // Clean up teacher notes for this slide
     try {
@@ -755,14 +616,12 @@ export const deleteSlide = async (slideId, lessonId) => {
       
       await cleanupTeacherNotesForLesson(lessonId, remainingSlideIds);
     } catch (cleanupError) {
-      console.warn('⚠️ Teacher notes cleanup failed:', cleanupError);
       // Don't throw error for cleanup failure, as the main operation succeeded
     }
     
     return true;
   } catch (error) {
-    console.error('❌ Error deleting slide:', error);
-    throw error;
+    throw new Error(`Failed to delete slide: ${error.message}`);
   }
 };
 
@@ -773,8 +632,8 @@ export const reorderSlides = async (lessonId, slideOrders, userId = 'system') =>
   try {
     const batch = writeBatch(db);
     
-    for (const { slideId, newOrder } of slideOrders) {
-      const slideRef = doc(db, 'slides', slideId);
+    for (const [slideId, newOrder] of Object.entries(slideOrders)) {
+      const slideRef = doc(db, 'lessons', lessonId, 'slides', slideId);
       batch.update(slideRef, {
         order: newOrder,
         updatedAt: serverTimestamp(),
@@ -785,24 +644,23 @@ export const reorderSlides = async (lessonId, slideOrders, userId = 'system') =>
     await batch.commit();
     return true;
   } catch (error) {
-    console.error('Error reordering slides:', error);
-    throw new Error('Failed to reorder slides');
+    throw new Error(`Failed to reorder slides: ${error.message}`);
   }
 };
 
 /**
- * Helper Functions
- */
-
-/**
- * Update lesson's total slides count
+ * Update lesson slide count
  */
 const updateLessonSlideCount = async (lessonId) => {
   try {
     const slides = await getSlidesByLessonId(lessonId);
-    await updateLesson(lessonId, { totalSlides: slides.length });
+    const lessonRef = doc(db, 'lessons', lessonId);
+    await updateDoc(lessonRef, {
+      totalSlides: slides.length,
+      updatedAt: serverTimestamp()
+    });
   } catch (error) {
-    console.error('Error updating lesson slide count:', error);
+    throw new Error(`Failed to update lesson slide count: ${error.message}`);
   }
 };
 
@@ -811,74 +669,39 @@ const updateLessonSlideCount = async (lessonId) => {
  */
 export const getLessonWithSlides = async (lessonId) => {
   try {
-    console.log(`🔍 Loading lesson ${lessonId} with slides...`);
-    
-    // First try to get lesson by Firestore ID
+    // Try to get lesson by ID first
     let lesson = await getLessonById(lessonId);
     
-    // If not found by ID, try to find by originalId (lesson number)
     if (!lesson) {
-      console.log(`🔄 Lesson not found by ID ${lessonId}, trying by originalId...`);
+      // If not found by ID, try to find by originalId
       const lessonsRef = collection(db, 'lessons');
-      const querySnapshot = await getDocs(lessonsRef);
+      const lessonQuery = query(lessonsRef, where('originalId', '==', parseInt(lessonId)));
+      const lessonSnapshot = await getDocs(lessonQuery);
       
-      lesson = querySnapshot.docs
-        .map(doc => {
-          const data = doc.data();
-          // Add originalId based on lesson order or title mapping
-          let originalId = data.originalId || data.order;
-          
-          // If no originalId, try to extract from title or use a fallback
-          if (!originalId) {
-            // Try to extract lesson number from title (e.g., "שיעור 1" -> 1)
-            const titleMatch = data.title?.match(/שיעור\s*(\d+)/) || data.title?.match(/(\d+)/);
-            if (titleMatch) {
-              originalId = parseInt(titleMatch[1]);
-            } else {
-              // Fallback: use order field or generate based on position
-              originalId = data.order || 1;
-            }
-          }
-          
-          return {
-            id: doc.id,
-            originalId: originalId, // Add the originalId
-            ...data,
-            createdAt: data.createdAt?.toDate?.() || new Date(),
-            updatedAt: data.updatedAt?.toDate?.() || new Date()
-          };
-        })
-        .find(l => {
-          // Handle both string and number lesson IDs
-          if (typeof lessonId === 'string' && lessonId.startsWith('lesson')) {
-            // If lessonId is "lesson1", "lesson2", etc., extract the number
-            const lessonNumber = parseInt(lessonId.replace('lesson', ''));
-            return l.originalId === lessonNumber || l.id === lessonId;
-          } else {
-            // If lessonId is already a number or other format
-            return l.originalId === parseInt(lessonId) || l.originalId === lessonId;
-          }
-        });
+      if (!lessonSnapshot.empty) {
+        const lessonDoc = lessonSnapshot.docs[0];
+        lesson = {
+          id: lessonDoc.id,
+          ...lessonDoc.data(),
+          createdAt: lessonDoc.data().createdAt?.toDate?.() || new Date(),
+          updatedAt: lessonDoc.data().updatedAt?.toDate?.() || new Date()
+        };
+      }
     }
     
     if (lesson) {
-      // Get slides from database using the lesson's Firestore ID
+      // Get slides for this lesson
       const slides = await getSlidesByLessonId(lesson.id);
       
-      console.log(`✅ Found lesson in database: ${lesson.title} with ${slides.length} slides`);
       return {
         ...lesson,
-        slides: slides,
-        source: 'database'
+        slides: slides
       };
+    } else {
+      throw new Error(`No lesson found for ID: ${lessonId}`);
     }
-    
-    console.log(`❌ No lesson found for ID: ${lessonId}`);
-    throw new Error(`Lesson with ID ${lessonId} not found in database`);
-    
   } catch (error) {
-    console.error('❌ Error fetching lesson with slides:', error);
-    throw new Error(`Failed to load lesson ${lessonId} from database`);
+    throw new Error(`Failed to fetch lesson with slides: ${error.message}`);
   }
 };
 
@@ -888,21 +711,16 @@ export const getLessonWithSlides = async (lessonId) => {
 export const searchLessons = async (searchTerm, limitCount = 10) => {
   try {
     const lessons = await getAllLessons();
+    const searchLower = searchTerm.toLowerCase();
     
-    // Ensure searchTerm is a string
-    const safeSearchTerm = String(searchTerm || '').toLowerCase();
-    
-    const filteredLessons = lessons.filter(lesson => {
-      const title = String(lesson?.title || '').toLowerCase();
-      const description = String(lesson?.description || '').toLowerCase();
-      
-      return title.includes(safeSearchTerm) || description.includes(safeSearchTerm);
-    });
-    
-    return filteredLessons.slice(0, limitCount);
+    return lessons
+      .filter(lesson => 
+        lesson.title?.toLowerCase().includes(searchLower) ||
+        lesson.description?.toLowerCase().includes(searchLower)
+      )
+      .slice(0, limitCount);
   } catch (error) {
-    console.error('Error searching lessons:', error);
-    throw new Error('Failed to search lessons');
+    throw new Error(`Failed to search lessons: ${error.message}`);
   }
 };
 
@@ -914,8 +732,7 @@ export const getLessonsByDifficulty = async (difficulty) => {
     const lessons = await getAllLessons();
     return lessons.filter(lesson => lesson.difficulty === difficulty);
   } catch (error) {
-    console.error('Error fetching lessons by difficulty:', error);
-    throw new Error('Failed to fetch lessons by difficulty');
+    throw new Error(`Failed to fetch lessons by difficulty: ${error.message}`);
   }
 };
 
@@ -927,42 +744,31 @@ export const getLessonsByTargetAge = async (targetAge) => {
     const lessons = await getAllLessons();
     return lessons.filter(lesson => lesson.targetAge === targetAge);
   } catch (error) {
-    console.error('Error fetching lessons by target age:', error);
-    throw new Error('Failed to fetch lessons by target age');
+    throw new Error(`Failed to fetch lessons by target age: ${error.message}`);
   }
 };
 
 /**
- * Get next lesson after the current one
+ * Get next lesson in sequence
  */
 export const getNextLesson = async (currentLessonId) => {
   try {
     const lessons = await getAllLessons();
+    const currentIndex = lessons.findIndex(lesson => lesson.id === currentLessonId);
     
-    // Find current lesson index
-    const currentIndex = lessons.findIndex(lesson => 
-      lesson.id === currentLessonId || 
-      lesson.originalId === parseInt(currentLessonId) ||
-      lesson.originalId === currentLessonId
-    );
-    
-    if (currentIndex === -1 || currentIndex === lessons.length - 1) {
-      return null; // No next lesson
+    if (currentIndex === -1) {
+      throw new Error('Current lesson not found');
     }
     
-    return lessons[currentIndex + 1];
+    const nextLesson = lessons[currentIndex + 1];
+    return nextLesson || null;
   } catch (error) {
-    console.error('Error getting next lesson:', error);
-    return null;
+    throw new Error(`Failed to get next lesson: ${error.message}`);
   }
 };
 
 /**
- * Bulk operations
- */
-
-/**
- * Import multiple lessons and slides
+ * Import lessons from external data
  */
 export const importLessons = async (lessonsData) => {
   try {
@@ -970,92 +776,71 @@ export const importLessons = async (lessonsData) => {
     const importedLessons = [];
     
     for (const lessonData of lessonsData) {
-      const lessonRef = doc(db, 'lessons', lessonData.id.toString());
-      const lesson = {
+      const lessonRef = doc(collection(db, 'lessons'));
+      const newLesson = {
         ...lessonData,
+        id: lessonRef.id,
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
+        createdBy: 'import',
+        updatedBy: 'import',
+        version: 1,
+        isActive: true
       };
       
-      batch.set(lessonRef, lesson);
-      importedLessons.push(lesson);
-      
-      // Import slides for this lesson
-      if (lessonData.slides && Array.isArray(lessonData.slides)) {
-        lessonData.slides.forEach((slide, index) => {
-          const slideId = `${lessonData.id}_${slide.id}`;
-          const slideRef = doc(db, 'slides', slideId);
-          const slideData = {
-            ...slide,
-            lessonId: lessonData.id.toString(),
-            order: index + 1,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-          };
-          
-          batch.set(slideRef, slideData);
-        });
-      }
+      batch.set(lessonRef, newLesson);
+      importedLessons.push(newLesson);
     }
     
     await batch.commit();
     
-    // Log security event
-    await logSecurityEvent('lessons_imported', {
-      lessonCount: lessonsData.length,
-      userId: 'system'
-    });
+    // Clear cache to force refresh
+    lessonsCache = null;
+    cacheTimestamp = null;
     
     return importedLessons;
   } catch (error) {
-    console.error('Error importing lessons:', error);
-    throw new Error('Failed to import lessons');
+    throw new Error(`Failed to import lessons: ${error.message}`);
   }
 };
 
 /**
- * Export lessons and slides for backup
+ * Export all lessons
  */
 export const exportLessons = async () => {
   try {
     const lessons = await getAllLessons();
-    const exportedData = [];
     
-    for (const lesson of lessons) {
-      const slides = await getSlidesByLessonId(lesson.id);
-      exportedData.push({
-        ...lesson,
-        slides
-      });
-    }
-    
-    return exportedData;
+    return lessons.map(lesson => {
+      const { slides, ...lessonData } = lesson;
+      return lessonData;
+    });
   } catch (error) {
-    console.error('Error exporting lessons:', error);
-    throw new Error('Failed to export lessons');
+    throw new Error(`Failed to export lessons: ${error.message}`);
   }
 };
 
 /**
- * Get slide history
+ * Get slide version history
  */
 export const getSlideHistory = async (slideId) => {
   try {
-    // For now, return basic history info
-    // In a full implementation, you'd store version history
-    const slide = await getSlideById(slideId);
-    if (slide) {
+    // This would require implementing versioning in the slide documents
+    // For now, return basic slide data
+    const slideRef = doc(db, 'slides', slideId);
+    const slideDoc = await getDoc(slideRef);
+    
+    if (slideDoc.exists()) {
       return [{
-        version: slide.version,
-        updatedAt: slide.updatedAt,
-        updatedBy: slide.updatedBy,
-        content: slide
+        version: slideDoc.data().version || 1,
+        data: slideDoc.data(),
+        timestamp: slideDoc.data().updatedAt?.toDate?.() || new Date()
       }];
+    } else {
+      throw new Error('Slide not found');
     }
-    return [];
   } catch (error) {
-    console.error('Error getting slide history:', error);
-    throw error;
+    throw new Error(`Failed to get slide history: ${error.message}`);
   }
 };
 
@@ -1064,338 +849,80 @@ export const getSlideHistory = async (slideId) => {
  */
 export const revertSlideToVersion = async (slideId, version) => {
   try {
+    // This would require implementing versioning in the slide documents
     // For now, just update the slide
-    // In a full implementation, you'd restore from version history
-    const slide = await getSlideById(slideId);
-    if (slide) {
-      await updateSlide(slideId, {
-        ...slide,
-        version: version + 1,
-        updatedBy: 'system-revert'
-      });
-    }
+    const slideRef = doc(db, 'slides', slideId);
+    await updateDoc(slideRef, {
+      version: version,
+      updatedAt: serverTimestamp()
+    });
+    
+    return true;
   } catch (error) {
-    console.error('Error reverting slide:', error);
-    throw error;
+    throw new Error(`Failed to revert slide: ${error.message}`);
   }
 };
 
 /**
- * MIGRATION FUNCTIONS - Sync local content with database
- */
-
-/**
- * Migrate all local lessons to Firebase
+ * Migrate local lessons to Firebase
  */
 export const migrateLocalLessonsToFirebase = async () => {
   try {
-    console.log('🔄 Starting local lessons migration to Firebase...');
-    
-    const batch = writeBatch(db);
+    const lessons = await getAllLessons();
     let migratedCount = 0;
     
-    for (const lesson of localLessons) {
-      // Check if lesson already exists
-      const existingLesson = await getLessonByTitle(lesson.title);
-      
-      if (!existingLesson) {
-        // Create lesson
-        const lessonRef = doc(collection(db, 'lessons'));
-        const lessonData = {
-          ...lesson,
-          id: lessonRef.id,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          source: 'local_migration',
-          totalSlides: lesson.content?.slides?.length || 0
-        };
+    for (const lesson of lessons) {
+      try {
+        // Check if lesson already exists
+        const existingLesson = await getLessonByTitle(lesson.title);
         
-        batch.set(lessonRef, lessonData);
-        console.log(`📝 Created lesson: ${lesson.title}`);
-        
-        // Migrate slides for this lesson
-        if (lesson.content?.slides) {
-          for (let i = 0; i < lesson.content.slides.length; i++) {
-            const slide = lesson.content.slides[i];
-            const slideRef = doc(collection(db, 'slides'));
-            const slideData = {
-              ...slide,
-              id: slideRef.id,
-              lessonId: lessonRef.id,
-              order: i + 1,
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-              source: 'local_migration',
-              version: 1
-            };
-            
-            batch.set(slideRef, slideData);
-            console.log(`  📄 Created slide: ${slide.title}`);
-          }
+        if (!existingLesson) {
+          // Create lesson
+          const lessonRef = doc(collection(db, 'lessons'));
+          const lessonData = {
+            ...lesson,
+            id: lessonRef.id,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            source: 'local_migration',
+            totalSlides: lesson.content?.slides?.length || 0
+          };
+          
+          await setDoc(lessonRef, lessonData);
+          migratedCount++;
         }
-        
-        migratedCount++;
-      } else {
-        console.log(`⏭️ Lesson already exists: ${lesson.title}`);
+      } catch (error) {
+        // Continue with next lesson
       }
     }
     
-    await batch.commit();
-    console.log(`✅ Migration completed! ${migratedCount} lessons migrated.`);
     return migratedCount;
-    
   } catch (error) {
-    console.error('❌ Migration failed:', error);
     throw new Error(`Migration failed: ${error.message}`);
   }
 };
 
 /**
- * Get lesson by title (for migration checks)
+ * Helper function to get lesson by title
  */
 const getLessonByTitle = async (title) => {
   try {
-    const q = query(collection(db, 'lessons'), where('title', '==', title));
-    const snapshot = await getDocs(q);
-    return snapshot.docs[0]?.data() || null;
-  } catch (error) {
-    console.error('Error getting lesson by title:', error);
+    const lessonsRef = collection(db, 'lessons');
+    const lessonQuery = query(lessonsRef, where('title', '==', title));
+    const lessonSnapshot = await getDocs(lessonQuery);
+    
+    if (!lessonSnapshot.empty) {
+      return lessonSnapshot.docs[0].data();
+    }
     return null;
-  }
-};
-
-/**
- * Sync local content with database content
- */
-export const syncLocalWithDatabase = async () => {
-  try {
-    console.log('🔄 Starting content synchronization...');
-    
-    const dbLessons = await getAllLessons();
-    const syncResults = {
-      created: 0,
-      updated: 0,
-      unchanged: 0,
-      errors: 0
-    };
-    
-    for (const localLesson of localLessons) {
-      try {
-        const existingLesson = dbLessons.find(dbLesson => dbLesson.title === localLesson.title);
-        
-        if (!existingLesson) {
-          // Create new lesson
-          await createLesson({
-            ...localLesson,
-            source: 'local_sync',
-            totalSlides: localLesson.content?.slides?.length || 0
-          });
-          
-          // Create slides
-          if (localLesson.content?.slides) {
-            for (let i = 0; i < localLesson.content.slides.length; i++) {
-              const slide = localLesson.content.slides[i];
-              await createSlide({
-                ...slide,
-                lessonId: localLesson.id,
-                order: i + 1,
-                source: 'local_sync'
-              });
-            }
-          }
-          
-          syncResults.created++;
-          console.log(`✅ Created: ${localLesson.title}`);
-        } else {
-          // Check if content needs updating
-          const needsUpdate = JSON.stringify(localLesson) !== JSON.stringify(existingLesson);
-          
-          if (needsUpdate) {
-            await updateLesson(existingLesson.id, {
-              ...localLesson,
-              source: 'local_sync',
-              updatedAt: serverTimestamp()
-            });
-            syncResults.updated++;
-            console.log(`🔄 Updated: ${localLesson.title}`);
-          } else {
-            syncResults.unchanged++;
-            console.log(`⏭️ Unchanged: ${localLesson.title}`);
-          }
-        }
-      } catch (error) {
-        console.error(`❌ Error syncing lesson ${localLesson.title}:`, error);
-        syncResults.errors++;
-      }
-    }
-    
-    console.log('📊 Sync Results:', syncResults);
-    return syncResults;
-    
   } catch (error) {
-    console.error('❌ Sync failed:', error);
-    throw new Error(`Sync failed: ${error.message}`);
+    throw new Error(`Failed to get lesson by title: ${error.message}`);
   }
 };
 
-/**
- * Get content status (local vs database)
- */
-export const getContentStatus = async () => {
-  try {
-    const dbLessons = await getAllLessons();
-    
-    const status = {
-      local: {
-        totalLessons: localLessons.length,
-        totalSlides: localLessons.reduce((sum, lesson) => 
-          sum + (lesson.content?.slides?.length || 0), 0
-        )
-      },
-      database: {
-        totalLessons: dbLessons.length,
-        totalSlides: dbLessons.reduce((sum, lesson) => 
-          sum + (lesson.totalSlides || 0), 0
-        )
-      },
-      comparison: []
-    };
-    
-    // Compare each lesson
-    for (const localLesson of localLessons) {
-      const dbLesson = dbLessons.find(db => db.title === localLesson.title);
-      
-      status.comparison.push({
-        title: localLesson.title,
-        local: {
-          exists: true,
-          slides: localLesson.content?.slides?.length || 0
-        },
-        database: {
-          exists: !!dbLesson,
-          slides: dbLesson?.totalSlides || 0
-        },
-        status: !dbLesson ? 'missing_in_db' : 
-                (localLesson.content?.slides?.length || 0) !== (dbLesson?.totalSlides || 0) ? 'different_slide_count' : 'synced'
-      });
-    }
-    
-    return status;
-    
-  } catch (error) {
-    console.error('Error getting content status:', error);
-    throw error;
-  }
+// Export all functions
+// Only include functions NOT already exported above
+export {
+  // If you have any utility functions that are NOT exported above, add them here
 };
 
-/**
- * Enhanced index notification with direct link
- */
-const showIndexNotification = () => {
-  const message = 'Firebase index needed for optimal performance. Click to create it now!';
-  const directLink = 'https://console.firebase.google.com/v1/r/project/israel-cyber-academy/firestore/indexes?create_composite=ClNwcm9qZWN0cy9pc3JhZWwtY3liZXItYWNhZGVteS9kYXRhYmFzZXMvKGRlZmF1bHQpL2NvbGxlY3Rpb25Hcm91cHMvc2xpZGVzL2luZGV4ZXMvXxABGgwKCGxlc3NvbklkEAEaCQoFb3JkZXIQARoMCghfX25hbWVfXxAB';
-  
-  console.log('⚠️ Firebase Index Required');
-  console.log('📝 Message:', message);
-  console.log('🔗 Direct Link:', directLink);
-  
-  // Show toast notification if available
-  if (typeof toast !== 'undefined') {
-    toast.error(message, {
-      duration: 10000,
-      action: {
-        label: 'Create Index',
-        onClick: () => window.open(directLink, '_blank')
-      }
-    });
-  }
-};
-
-/**
- * Fix lessonId consistency in the database
- * This function ensures all slides have consistent lessonId values
- */
-export const fixLessonIdConsistency = async () => {
-  try {
-    console.log('🔧 Starting lessonId consistency fix...');
-    
-    // Get all slides
-    const slidesQuery = query(collection(db, 'slides'));
-    const snapshot = await getDocs(slidesQuery);
-    const slides = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-    
-    console.log(`📊 Found ${slides.length} slides to check`);
-    
-    const batch = writeBatch(db);
-    let updatedCount = 0;
-    
-    for (const slide of slides) {
-      const currentLessonId = slide.lessonId;
-      const normalizedLessonId = String(currentLessonId);
-      
-      if (currentLessonId !== normalizedLessonId) {
-        console.log(`🔄 Fixing slide ${slide.id}: ${currentLessonId} -> ${normalizedLessonId}`);
-        
-        const slideRef = doc(db, 'slides', slide.id);
-        batch.update(slideRef, {
-          lessonId: normalizedLessonId,
-          updatedAt: serverTimestamp()
-        });
-        updatedCount++;
-      }
-    }
-    
-    if (updatedCount > 0) {
-      await batch.commit();
-      console.log(`✅ Fixed ${updatedCount} slides with inconsistent lessonId values`);
-    } else {
-      console.log('✅ All slides already have consistent lessonId values');
-    }
-    
-    return updatedCount;
-  } catch (error) {
-    console.error('❌ Error fixing lessonId consistency:', error);
-    throw error;
-  }
-};
-
-export default {
-  // Lesson operations
-  getAllLessons,
-  getLessonById,
-  createLesson,
-  updateLesson,
-  deleteLesson,
-  getLessonWithSlides,
-  searchLessons,
-  getLessonsByDifficulty,
-  getLessonsByTargetAge,
-  
-  // Slide operations
-  getSlidesByLessonId,
-  getSlideById,
-  createSlide,
-  updateSlide,
-  deleteSlide,
-  reorderSlides,
-  
-  // Bulk operations
-  importLessons,
-  exportLessons,
-  
-  // Slide history
-  getSlideHistory,
-  revertSlideToVersion,
-  
-  // Migration functions
-  migrateLocalLessonsToFirebase,
-  getLessonByTitle,
-  syncLocalWithDatabase,
-  getContentStatus,
-  
-  // New functions
-  fixLessonIdConsistency
-};

@@ -30,7 +30,6 @@ export const formatDate = (date, locale = 'he-IL', options = {}) => {
     const dateObj = new Date(date);
     return new Intl.DateTimeFormat(locale, defaultOptions).format(dateObj);
   } catch (error) {
-    console.error('Error formatting date:', error);
     return '';
   }
 };
@@ -51,7 +50,6 @@ export const formatNumber = (number, locale = 'he-IL') => {
   try {
     return new Intl.NumberFormat(locale).format(number);
   } catch (error) {
-    console.error('Error formatting number:', error);
     return number.toString();
   }
 };
@@ -461,13 +459,8 @@ export class SessionMonitor {
   init(userId, lessonId = null) {
     this.userId = userId;
     this.lessonId = lessonId;
-    
-    console.log('🚀 SESSION MONITOR INITIALIZED:', {
-      userId,
-      lessonId,
-      timestamp: new Date().toISOString(),
-      sessionId: this.generateSessionId()
-    });
+    this.sessionStart = Date.now();
+    this.events = [];
   }
 
   /**
@@ -509,7 +502,6 @@ export class SessionMonitor {
     };
 
     const emoji = emojiMap[eventType] || '📝';
-    console.log(`${emoji} SESSION EVENT:`, event);
   }
 
   /**
@@ -635,7 +627,6 @@ export class SessionMonitor {
       events: this.events
     };
 
-    console.log('📊 SESSION SUMMARY:', summary);
     return summary;
   }
 
@@ -900,8 +891,7 @@ export const sessionMonitor = new SessionMonitor();
  */
 export const initLessonSession = (userId, lessonId) => {
   sessionMonitor.init(userId, lessonId);
-  console.log('🎯 LESSON SESSION STARTED:', { userId, lessonId });
-};
+  };
 
 /**
  * Log slide navigation event
@@ -912,7 +902,6 @@ export const initLessonSession = (userId, lessonId) => {
  */
 export const logSlideNavigation = (fromSlide, toSlide, direction) => {
   if (!sessionMonitor.userId || !sessionMonitor.lessonId) {
-    console.warn('⚠️ Session not initialized, skipping slide navigation log');
     return;
   }
   sessionMonitor.logSlideNavigation(fromSlide, toSlide, direction);
@@ -927,7 +916,6 @@ export const logSlideNavigation = (fromSlide, toSlide, direction) => {
  */
 export const logSlideEngagement = (slideId, slideType, timeSpent) => {
   if (!sessionMonitor.userId || !sessionMonitor.lessonId) {
-    console.warn('⚠️ Session not initialized, skipping slide engagement log');
     return;
   }
   sessionMonitor.logSlideEngagement(slideId, slideType, timeSpent);
@@ -942,7 +930,6 @@ export const logSlideEngagement = (slideId, slideType, timeSpent) => {
  */
 export const logExerciseCompletion = (exerciseId, isCorrect, score) => {
   if (!sessionMonitor.userId || !sessionMonitor.lessonId) {
-    console.warn('⚠️ Session not initialized, skipping exercise completion log');
     return;
   }
   sessionMonitor.logExerciseCompletion(exerciseId, isCorrect, score);
@@ -957,7 +944,6 @@ export const logExerciseCompletion = (exerciseId, isCorrect, score) => {
  */
 export const logLessonCompletion = (lessonId, totalScore, timeSpent) => {
   if (!sessionMonitor.userId || !sessionMonitor.lessonId) {
-    console.warn('⚠️ Session not initialized, skipping lesson completion log');
     return;
   }
   sessionMonitor.logLessonCompletion(lessonId, totalScore, timeSpent);
