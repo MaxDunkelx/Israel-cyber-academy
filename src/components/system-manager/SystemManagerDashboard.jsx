@@ -376,7 +376,7 @@ const SystemManagerDashboard = () => {
         totalTeachers: systemStats.users.teachers,
         totalLessons: systemStats.content.totalLessons
       });
-
+      
       // Use real activities from the service
       const activities = systemStats.activities.recent.map(activity => ({
         id: activity.id,

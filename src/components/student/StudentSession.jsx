@@ -95,7 +95,7 @@ const StudentSession = () => {
           
           // Only update current slide if not in live mode
           if (!isLive) {
-            setCurrentSlide(newSlideIndex);
+          setCurrentSlide(newSlideIndex);
           }
         } else {
           toast.error('השיעור הסתיים');
@@ -521,7 +521,7 @@ const StudentSession = () => {
             {/* Progress Indicator */}
             <div className="bg-gray-800/50 border-b border-gray-700 p-2">
               <div className="flex items-center justify-between text-sm text-gray-300">
-                <span>שקופית {currentSlide + 1} מתוך {lesson.slides?.length || 0}</span>
+              <span>שקופית {currentSlide + 1} מתוך {lesson.slides?.length || 0}</span>
                 <span>דפים נצפו: {slidesEngaged.size}</span>
               </div>
             </div>
@@ -530,7 +530,7 @@ const StudentSession = () => {
             <div className="p-6">
               {currentSlideData ? (
                 <div className="max-w-4xl mx-auto">
-                  {renderSlide(currentSlideData)}
+                {renderSlide(currentSlideData)}
                 </div>
               ) : (
                 <div className="text-center text-gray-400">

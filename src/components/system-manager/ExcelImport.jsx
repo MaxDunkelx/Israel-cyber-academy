@@ -35,9 +35,8 @@ import {
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { setDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../../firebase/firebase-config';
+import { db } from '../../firebase/firebase-config';
 import { logSecurityEvent } from '../../utils/security';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
@@ -67,31 +66,21 @@ const ExcelImport = () => {
   const requiredFields = ['email', 'firstName', 'lastName'];
 
   /**
-   * Create user in Firebase Auth and Firestore
+   * Create user in Firestore (without Firebase Auth login)
    */
   const createUser = async (userData) => {
     try {
+      // Generate a unique user ID
+      const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
       // Generate a secure password
       const password = generateSecurePassword();
       
-      // Create user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(
-        auth, 
-        userData.email, 
-        password
-      );
-      
-      const user = userCredential.user;
-      
-      // Update display name in Auth
-      const displayName = `${userData.firstName} ${userData.lastName}`;
-      await updateProfile(user, { displayName });
-      
       // Create user profile in Firestore
       const userProfile = {
-        uid: user.uid,
-        email: user.email,
-        displayName: displayName,
+        uid: userId,
+        email: userData.email.toLowerCase(),
+        displayName: `${userData.firstName} ${userData.lastName}`,
         role: userData.role || 'student',
         // User credentials
         firstName: userData.firstName,
@@ -99,32 +88,50 @@ const ExcelImport = () => {
         age: userData.age ? parseInt(userData.age) : null,
         sex: userData.sex || null,
         // Progress tracking
-        progress: {},
+        progress: {
+          1: {
+            completed: false,
+            score: 0,
+            completedAt: null,
+            temporary: false,
+            lastSlide: 0,
+            pagesEngaged: [],
+            lastActivity: new Date()
+          }
+        },
         completedLessons: [],
         currentLesson: 1,
         totalTimeSpent: 0,
         totalPagesEngaged: 0,
         achievements: [],
         streak: 0,
+        // Password (for login verification)
+        password: password,
+        // Status flags
+        hasFirebaseAuth: false, // Will be created on first login
+        isActive: true,
+        // Timestamps
         createdAt: serverTimestamp(),
-        lastLogin: serverTimestamp(),
+        lastLogin: null,
         lastActivityDate: serverTimestamp(),
         updatedAt: serverTimestamp()
       };
       
       // Store profile in Firestore
-      await setDoc(doc(db, 'users', user.uid), userProfile);
+      await setDoc(doc(db, 'users', userId), userProfile);
       
       // Log security event
       logSecurityEvent('USER_CREATED_VIA_IMPORT', {
-        userId: user.uid,
+        userId: userId,
         userEmail: userData.email,
         userRole: userData.role || 'student',
-        createdBy: auth.currentUser?.uid,
+        createdBy: 'system_manager',
         timestamp: new Date().toISOString()
       });
       
-      return { success: true, userId: user.uid, password };
+      console.log('✅ User created via import:', userId);
+      
+      return { success: true, userId: userId, password };
     } catch (error) {
       console.error('Error creating user:', error);
       throw new Error(getUserCreationErrorMessage(error));
@@ -147,17 +154,14 @@ const ExcelImport = () => {
    * Get user-friendly error message
    */
   const getUserCreationErrorMessage = (error) => {
-    switch (error.code) {
-      case 'auth/email-already-in-use':
-        return 'כתובת האימייל כבר קיימת במערכת';
-      case 'auth/weak-password':
-        return 'הסיסמה חייבת להכיל לפחות 6 תווים';
-      case 'auth/invalid-email':
-        return 'כתובת האימייל אינה תקינה';
-      case 'auth/operation-not-allowed':
-        return 'יצירת משתמשים אינה מורשית';
-      default:
-        return 'אירעה שגיאה ביצירת המשתמש';
+    if (error.code === 'permission-denied') {
+      return 'אין הרשאה ליצור משתמשים';
+    } else if (error.message && error.message.includes('already exists')) {
+      return 'כתובת האימייל כבר קיימת במערכת';
+    } else if (error.message && error.message.includes('invalid')) {
+      return 'נתונים לא תקינים';
+    } else {
+      return 'אירעה שגיאה ביצירת המשתמש';
     }
   };
 

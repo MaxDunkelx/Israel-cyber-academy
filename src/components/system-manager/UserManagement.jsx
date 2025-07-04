@@ -43,7 +43,7 @@ import Button from '../ui/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
 
 // Import modals
-import CreateTeacherModal from './modals/CreateTeacherModal';
+import CreateStudentModal from './modals/CreateStudentModal';
 import AssignStudentsModal from './modals/AssignStudentsModal';
 import DeleteUserModal from './modals/DeleteUserModal';
 import EditUserModal from './modals/EditUserModal';
@@ -60,7 +60,7 @@ const UserManagement = () => {
   const [selectedUsers, setSelectedUsers] = useState([]);
   
   // Modal states
-  const [showCreateTeacher, setShowCreateTeacher] = useState(false);
+  const [showCreateStudent, setShowCreateStudent] = useState(false);
   const [showAssignStudents, setShowAssignStudents] = useState(false);
   const [showDeleteUser, setShowDeleteUser] = useState(false);
   const [showEditUser, setShowEditUser] = useState(false);
@@ -249,17 +249,15 @@ const UserManagement = () => {
             <RefreshCw className="w-4 h-4" />
             <span>רענן</span>
           </Button>
-          
           <Button
-            onClick={() => setShowCreateTeacher(true)}
+            onClick={() => setShowCreateStudent(true)}
             variant="primary"
             size="sm"
             className="flex items-center space-x-2"
           >
             <UserPlus className="w-4 h-4" />
-            <span>הוסף מורה</span>
+            <span>צור משתמש חדש</span>
           </Button>
-          
           <Button
             onClick={() => setShowAssignStudents(true)}
             variant="secondary"
@@ -486,16 +484,6 @@ const UserManagement = () => {
 
       {/* Modals */}
       <AnimatePresence>
-        {showCreateTeacher && (
-          <CreateTeacherModal
-            onClose={() => setShowCreateTeacher(false)}
-            onSuccess={() => {
-              setShowCreateTeacher(false);
-              loadUsers();
-              toast.success('המורה נוסף בהצלחה');
-            }}
-          />
-        )}
         
         {showAssignStudents && (
           <AssignStudentsModal
@@ -534,6 +522,12 @@ const UserManagement = () => {
             }}
           />
         )}
+        
+        <CreateStudentModal
+          isOpen={showCreateStudent}
+          onClose={() => setShowCreateStudent(false)}
+          onSuccess={() => { setShowCreateStudent(false); loadUsers(); }}
+        />
       </AnimatePresence>
     </div>
   );

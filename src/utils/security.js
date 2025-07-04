@@ -205,7 +205,7 @@ export const logSecurityEvent = async (eventType, eventData = {}, metadata = {})
     // Log to console in development
     if (process.env.NODE_ENV === 'development') {
       console.log('🔒 Security Event:', securityEvent);
-    }
+      }
 
     // Store in Firebase for production
     try {
@@ -226,7 +226,7 @@ export const logSecurityEvent = async (eventType, eventData = {}, metadata = {})
 
   } catch (error) {
     console.error('Error logging security event:', error);
-  }
+    }
 };
 
 /**

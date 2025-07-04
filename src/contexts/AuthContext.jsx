@@ -30,7 +30,7 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, onSnapshot, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { auth, db, diagnoseFirestoreConnection } from '../firebase/firebase-config';
 import { grantTeacherLessonAccess } from '../firebase/teacher-service.jsx';
 
@@ -222,6 +222,55 @@ export const AuthProvider = ({ children }) => {
    */
   const login = async (email, password) => {
     try {
+      // First, try to find user in Firestore (for users created by system manager)
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('email', '==', email.toLowerCase()));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        const userData = userDoc.data();
+        
+        // Check if this is a user created by system manager (has password field)
+        if (userData.password && userData.password === password && !userData.hasFirebaseAuth) {
+          console.log('🆕 Creating Firebase Auth account for system-created user:', email);
+          
+          try {
+            // Create Firebase Auth account
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            
+            // Update display name
+            await updateProfile(userCredential.user, { 
+              displayName: userData.displayName 
+            });
+            
+            // Update Firestore document to mark as having Firebase Auth
+            await updateDoc(doc(db, 'users', userDoc.id), {
+              hasFirebaseAuth: true,
+              firebaseUid: userCredential.user.uid,
+              lastLogin: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            });
+            
+            console.log('✅ Firebase Auth account created for system-created user');
+            
+            // Set user profile
+            setUserProfile({
+              ...userData,
+              uid: userCredential.user.uid,
+              hasFirebaseAuth: true,
+              firebaseUid: userCredential.user.uid
+            });
+            
+            return userCredential;
+          } catch (firebaseError) {
+            console.error('❌ Error creating Firebase Auth account:', firebaseError);
+            throw new Error('שגיאה ביצירת חשבון המשתמש');
+          }
+        }
+      }
+      
+      // Fallback to normal Firebase Auth login
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
       // Check if this is the system manager and update role if needed
@@ -1044,28 +1093,22 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  /**
-   * Authentication State Effect
-   * 
-   * Listens for Firebase authentication state changes.
-   * Handles user authentication and profile management.
-   */
+  // Single consolidated useEffect for authentication and real-time updates
   useEffect(() => {
     console.log('🔄 Setting up authentication listener...');
     
-    // Regular user authentication listener
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    // Set up Firebase Auth state listener
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       console.log('🔄 Auth state changed:', user ? `User logged in: ${user.email} (${user.uid})` : 'User logged out');
       console.log('🔄 Previous currentUser:', currentUser?.uid);
       
       setCurrentUser(user);
       
       if (user) {
+        console.log('📥 Fetching user profile for:', user.email);
+        console.log('🔍 User UID:', user.uid);
+        
         try {
-          console.log('📥 Fetching user profile for:', user.email);
-          console.log('🔍 User UID:', user.uid);
-          
-          // Fetch user profile from Firestore
           const userRef = doc(db, 'users', user.uid);
           console.log('📄 Firestore document reference created');
           
@@ -1075,7 +1118,7 @@ export const AuthProvider = ({ children }) => {
           if (userDoc.exists()) {
             const userData = userDoc.data();
             
-            // Defensive fix: ensure progress is an object and completedLessons is an array
+            // Fix corrupted user profile structure
             let fixed = false;
             let fixedUserData = { ...userData };
             
@@ -1213,32 +1256,33 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     });
 
-    return unsubscribe;
-  }, []);
-
-  useEffect(() => {
-    if (!currentUser) {
-      console.log('🔄 Real-time listener: No currentUser, skipping');
-      return;
+    // Set up real-time listener for user profile updates (only if user exists)
+    let unsubscribeProfile = null;
+    if (currentUser) {
+      console.log('🔄 Setting up real-time listener for user:', currentUser.uid);
+      const userDocRef = doc(db, 'users', currentUser.uid);
+      unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          console.log('🔄 Real-time profile update received for:', currentUser.uid);
+          setUserProfile(docSnap.data());
+        } else {
+          console.log('⚠️ Real-time listener: User document not found');
+        }
+      }, (error) => {
+        console.error('❌ Real-time listener error:', error);
+      });
     }
-    console.log('🔄 Setting up real-time listener for user:', currentUser.uid);
-    // Set up real-time listener for user profile
-    const userDocRef = doc(db, 'users', currentUser.uid);
-    const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        console.log('🔄 Real-time profile update received for:', currentUser.uid);
-        setUserProfile(docSnap.data());
-      } else {
-        console.log('⚠️ Real-time listener: User document not found');
-      }
-    }, (error) => {
-      console.error('❌ Real-time listener error:', error);
-    });
+
+    // Cleanup function
     return () => {
-      console.log('🔄 Cleaning up real-time listener for user:', currentUser.uid);
-      unsubscribe();
+      console.log('🔄 Cleaning up authentication listeners');
+      unsubscribeAuth();
+      if (unsubscribeProfile) {
+        console.log('🔄 Cleaning up real-time profile listener');
+        unsubscribeProfile();
+      }
     };
-  }, [currentUser]);
+  }, []); // Only run once on mount
 
   // Memoize functions to prevent infinite re-renders
   const memoizedSignup = useCallback(signup, []);

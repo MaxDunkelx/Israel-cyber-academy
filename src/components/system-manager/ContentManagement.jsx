@@ -568,16 +568,16 @@ const ContentManagement = () => {
       return;
     }
     
-    const duplicatedSlide = {
-      ...slide,
+      const duplicatedSlide = {
+        ...slide,
       id: null, // Remove ID to create new slide
       title: `${slide.title} (העתק)`,
       order: slides.length + 1,
       uniqueKey: `${selectedLesson.id}_slide_${slides.length + 1}`,
       displayId: slides.length + 1
-    };
-    
-    setEditingSlide(duplicatedSlide);
+      };
+      
+      setEditingSlide(duplicatedSlide);
   };
 
   const handleCreateNewLesson = () => {

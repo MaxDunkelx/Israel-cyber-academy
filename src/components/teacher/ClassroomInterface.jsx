@@ -42,6 +42,7 @@ import {
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { isTeacher, validateTeacherAccess, logSecurityEvent } from '../../utils/security';
+import { formatTimestamp } from '../../utils/helpers';
 import { 
   getTeacherClasses, 
   getClassStudents, 
@@ -901,7 +902,7 @@ const ClassroomInterface = () => {
                   <p className="text-white text-xs">{activity.description || 'אין תיאור'}</p>
                 </div>
                 <span className="text-white text-xs">
-                  {activity.timestamp?.toDate?.()?.toLocaleTimeString('he-IL') || 'לא ידוע'}
+                  {activity.timestamp ? formatTimestamp(activity.timestamp) : 'לא ידוע'}
                 </span>
               </div>
             ))}

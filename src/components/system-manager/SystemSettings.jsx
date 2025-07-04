@@ -200,11 +200,11 @@ const SystemSettings = () => {
               </>
             ) : (
               <>
-                <Save className="w-4 h-4" />
-                <span>שמור הגדרות</span>
+          <Save className="w-4 h-4" />
+          <span>שמור הגדרות</span>
               </>
             )}
-          </Button>
+        </Button>
         </div>
       </div>
 
@@ -383,7 +383,7 @@ const SystemSettings = () => {
                       <Icon className="w-4 h-4" />
                       <span className="text-sm">{statusInfo.text}</span>
                     </div>
-                  </div>
+              </div>
                 );
               })}
               
@@ -393,7 +393,7 @@ const SystemSettings = () => {
                     <CheckCircle className="w-4 h-4 text-green-400" />
                     <span>כל השירותים פעילים</span>
                   </div>
-                </div>
+              </div>
               </div>
             </div>
           </div>

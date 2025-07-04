@@ -502,7 +502,7 @@ export class SessionMonitor {
     };
 
     const emoji = emojiMap[eventType] || '📝';
-  }
+    }
 
   /**
    * Log slide navigation
