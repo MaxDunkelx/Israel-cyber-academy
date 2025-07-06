@@ -247,7 +247,7 @@ const AppContent = () => {
   }, [currentUser, role]);
 
   return (
-    <Router basename="/Israel-cyber-academy">
+    <Router>
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
         {/* Live Session Notification - only for students */}
         {currentUser && role === 'student' && <LiveSessionNotification />}
