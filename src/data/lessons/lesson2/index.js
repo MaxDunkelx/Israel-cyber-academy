@@ -1,33 +1,44 @@
 // Import all slides for lesson 2
 import { slide1Intro } from './slides/slide1-intro.js';
-import { slide2Poll } from './slides/slide2-poll.js';
-import { slide3History } from './slides/slide3-history.js';
+import { slide2History } from './slides/slide2-history.js';
+import { slide3Poll } from './slides/slide3-poll.js';
 import { slide4HistoryMatching } from './slides/slide4-history-matching.js';
-import { slide5WhatIsComputer } from './slides/slide5-what-is-computer.js';
-import { slide6DataVsInfo } from './slides/slide6-data-vs-info.js';
-import { slide7HardwareSoftware } from './slides/slide7-hardware-software.js';
-import { slide8HardwareSoftwareGame } from './slides/slide8-hardware-software-game.js';
-import { slide9MainComponents } from './slides/slide9-main-components.js';
-import { slide10Cpu } from './slides/slide10-cpu.js';
-import { slide11Storage } from './slides/slide11-storage.js';
-import { slide12Ram } from './slides/slide12-ram.js';
-import { slide13Motherboard } from './slides/slide13-motherboard.js';
-import { slide14Psu } from './slides/slide14-psu.js';
-import { slide15Gpu } from './slides/slide15-gpu.js';
-import { slide16ComponentMatching } from './slides/slide16-component-matching.js';
-import { slide17ComputerSimulator } from './slides/slide17-computer-simulator.js';
-import { slide18RecommendedSpecs } from './slides/slide18-recommended-specs.js';
-import { slide19LabSimulation } from './slides/slide19-lab-simulation.js';
-import { slide20Quiz } from './slides/slide20-quiz.js';
-import { slide21InputOutput } from './slides/slide21-input-output.js';
-import { slide22InputOutputGame } from './slides/slide22-input-output-game.js';
-import { slide23FinalPoll } from './slides/slide23-final-poll.js';
-import { slide24Summary } from './slides/slide24-summary.js';
-import { slide25Reflection } from './slides/slide25-reflection.js';
+import { slide5History } from './slides/slide5-history.js';
+import { slide6FirstMachines } from './slides/slide6-first-machines.js';
+import { slide7Video } from './slides/slide7-video.js';
+import { slide8WhatIsComputer } from './slides/slide8-what-is-computer.js';
+import { slide9DataToInfo } from './slides/slide9-data-to-info.js';
+import { slide10DataVsInfo } from './slides/slide10-data-vs-info.js';
+import { slide11HardwareSoftwareWorld } from './slides/slide11-hardware-software-world.js';
+import { slide12HardwareVsSoftware } from './slides/slide12-hardware-vs-software.js';
+import { slide13SoftwarePoll } from './slides/slide13-software-poll.js';
+import { slide14WhatIsIot } from './slides/slide14-what-is-iot.js';
+import { slide15HardwareSoftware } from './slides/slide15-hardware-software.js';
+import { slide16ModernComputers } from './slides/slide16-modern-computers.js';
+import { slide17HardwareSoftwareGame } from './slides/slide17-hardware-software-game.js';
+import { slide18InputOutput } from './slides/slide18-input-output.js';
+import { slide19VideoComputer } from './slides/slide19-videoComputer.js';
+import { slide20MainComponents } from './slides/slide20-main-components.js';
+import { slide21Cpu } from './slides/slide21-cpu.js';
+import { slide22Storage } from './slides/slide22-storage.js';
+import { slide23Ram } from './slides/slide23-ram.js';
+import { slide24Motherboard } from './slides/slide24-motherboard.js';
+import { slide25Psu } from './slides/slide25-psu.js';
+import { slide26Gpu } from './slides/slide26-gpu.js';
+import { slide28ComputerSimulator } from './slides/slide28-computer-simulator.js';
+import { slide29RecommendedSpecs } from './slides/slide29-recommended-specs.js';
+import { slide30LabSimulation } from './slides/slide30-lab-simulation.js';
+import { slide31Quiz } from './slides/slide31-quiz.js';
+import { slide32InputOutput } from './slides/slide32-input-output.js';
+import { slide33InputOutputGame } from './slides/slide33-input-output-game.js';
+import { slide34FinalPoll } from './slides/slide34-final-poll.js';
+import { slide35Summary } from './slides/slide35-summary.js';
+import { slide36Reflection } from './slides/slide36-reflection.js';
 
 // Export the complete lesson 2 structure
 export const lesson2 = {
   id: 2,
+  originalId: 2,
   title: "מבנה המחשב וחומרה",
   description: "שיעור אינטראקטיבי בן 2 שעות - הכרת רכיבי המחשב, היסטוריה, סימולטורים ומשחקי למידה",
   icon: "💻",
@@ -38,30 +49,40 @@ export const lesson2 = {
   content: {
     slides: [
       slide1Intro,
-      slide2Poll,
-      slide3History,
+      slide2History,
+      slide3Poll,
       slide4HistoryMatching,
-      slide5WhatIsComputer,
-      slide6DataVsInfo,
-      slide7HardwareSoftware,
-      slide8HardwareSoftwareGame,
-      slide9MainComponents,
-      slide10Cpu,
-      slide11Storage,
-      slide12Ram,
-      slide13Motherboard,
-      slide14Psu,
-      slide15Gpu,
-      slide16ComponentMatching,
-      slide17ComputerSimulator,
-      slide18RecommendedSpecs,
-      slide19LabSimulation,
-      slide20Quiz,
-      slide21InputOutput,
-      slide22InputOutputGame,
-      slide23FinalPoll,
-      slide24Summary,
-      slide25Reflection
+      slide5History,
+      slide6FirstMachines,
+      slide7Video,
+      slide8WhatIsComputer,
+      slide9DataToInfo,
+      slide10DataVsInfo,
+      slide11HardwareSoftwareWorld,
+      slide12HardwareVsSoftware,
+      slide13SoftwarePoll,
+      slide14WhatIsIot,
+      slide15HardwareSoftware,
+      slide16ModernComputers,
+      slide17HardwareSoftwareGame,
+      slide18InputOutput,
+      slide19VideoComputer,
+      slide20MainComponents,
+      slide21Cpu,
+      slide22Storage,
+      slide23Ram,
+      slide24Motherboard,
+      slide25Psu,
+      slide26Gpu,
+      slide28ComputerSimulator,
+      slide29RecommendedSpecs,
+      slide30LabSimulation,
+      slide31Quiz,
+      slide32InputOutput,
+      slide33InputOutputGame,
+      slide34FinalPoll,
+      slide35Summary,
+      slide36Reflection
     ]
   }
 }; 

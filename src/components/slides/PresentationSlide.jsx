@@ -106,6 +106,84 @@ const PresentationSlide = ({ slide }) => {
                       {element.element}
                     </div>
                   );
+                case 'timeline':
+                  return (
+                    <div
+                      key={`timeline-${index}`}
+                      className="my-10 px-2 md:px-8 py-6 bg-white/10 rounded-xl border-l-4 border-cyan-400"
+                      style={element.style}
+                    >
+                      <ul className="timeline space-y-8">
+                        {element.events.map((event, evIdx) => (
+                          <li key={evIdx} className="flex items-start gap-4">
+                            <span className="text-2xl">{event.icon || '•'}</span>
+                            <div>
+                              <div className="font-bold text-lg">{event.year} – {event.title}</div>
+                              <div className="text-md opacity-90">{event.description}</div>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                case 'definition':
+                  return (
+                    <div
+                      key={`definition-${index}`}
+                      className="my-8 mx-auto max-w-2xl text-center rounded-xl shadow-lg border-2 border-blue-300 bg-white/70"
+                      style={element.style}
+                    >
+                      <span className="text-2xl font-bold text-blue-800 block mb-2">הגדרה:</span>
+                      <span className="block text-xl font-semibold">{element.text}</span>
+                    </div>
+                  );
+                case 'comparison':
+                  return (
+                    <div
+                      key={`comparison-${index}`}
+                      className="flex flex-col md:flex-row gap-6 justify-center items-stretch my-8"
+                      style={element.style}
+                    >
+                      {element.items?.map((item, cmpIdx) => (
+                        <div
+                          key={cmpIdx}
+                          className="flex-1 p-6 rounded-xl bg-white/80 shadow border-2 border-gray-300 flex flex-col items-center"
+                        >
+                          <span className="text-3xl mb-2">{item.icon}</span>
+                          <div className="font-bold text-lg mb-1">{item.title}</div>
+                          <div className="text-md opacity-80">{item.description}</div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                case 'specs':
+                  return (
+                    <div
+                      key={`specs-${index}`}
+                      className="my-8 max-w-2xl mx-auto bg-white/10 rounded-xl shadow p-6 border border-white/20"
+                      style={element.style}
+                    >
+                      <ul className="space-y-4">
+                        {element.items.map((item, idx) => (
+                          <li key={idx} className="flex items-center gap-4 py-2 border-b border-white/20 last:border-b-0">
+                            <span className="text-2xl">{item.icon}</span>
+                            <span className="font-bold">{item.component}:</span>
+                            <span className="ml-2">{item.spec}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                case 'tip':
+                  return (
+                    <div
+                      key={`tip-${index}`}
+                      className="my-6 px-4 py-2 rounded-lg bg-blue-50 border-r-4 border-blue-400 text-blue-800 shadow"
+                      style={element.style}
+                    >
+                      {element.text}
+                    </div>
+                  );
                 default:
                   return null;
               }
@@ -115,6 +193,8 @@ const PresentationSlide = ({ slide }) => {
       </div>
     </div>
   );
+  
 };
+
 
 export default PresentationSlide; 
