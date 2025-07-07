@@ -867,36 +867,77 @@ export const getLessonsByTargetAge = async (targetAge) => {
  */
 export const getNextLesson = async (currentLessonId) => {
   try {
+    console.log('🔍 getNextLesson called with:', currentLessonId, 'type:', typeof currentLessonId);
+    
     const lessons = await getAllLessons();
+    console.log('📚 Available lessons:', lessons.map(l => ({ id: l.id, originalId: l.originalId, title: l.title })));
     
     // Handle both Firestore ID and lesson number (originalId)
     let currentIndex = -1;
     
     // First try to find by Firestore ID
     currentIndex = lessons.findIndex(lesson => lesson.id === currentLessonId);
+    console.log('🔍 Search by Firestore ID result:', currentIndex);
     
     // If not found by ID, try to find by originalId (lesson number)
     if (currentIndex === -1) {
       currentIndex = lessons.findIndex(lesson => lesson.originalId === parseInt(currentLessonId));
+      console.log('🔍 Search by originalId (parsed) result:', currentIndex);
     }
     
     // If still not found, try to find by lesson number as string
     if (currentIndex === -1) {
       currentIndex = lessons.findIndex(lesson => lesson.originalId === currentLessonId);
+      console.log('🔍 Search by originalId (string) result:', currentIndex);
+    }
+    
+    // If still not found, try to find by lesson number as number
+    if (currentIndex === -1) {
+      currentIndex = lessons.findIndex(lesson => lesson.originalId === Number(currentLessonId));
+      console.log('🔍 Search by originalId (Number) result:', currentIndex);
     }
     
     if (currentIndex === -1) {
-      console.error('Current lesson not found:', {
+      console.error('❌ Current lesson not found:', {
         currentLessonId,
         type: typeof currentLessonId,
+        parsedId: parseInt(currentLessonId),
+        numberId: Number(currentLessonId),
         availableLessons: lessons.map(l => ({ id: l.id, originalId: l.originalId, title: l.title }))
       });
+      
+      // Try fallback to local lessons
+      try {
+        console.log('🔄 Trying local fallback for getNextLesson...');
+        const { lessons: localLessons } = await import('../data/lessons.js');
+        const lessonNumber = parseInt(currentLessonId);
+        const currentIndexLocal = localLessons.findIndex(l => l.id === lessonNumber);
+        
+        if (currentIndexLocal !== -1) {
+          const nextLocalLesson = localLessons[currentIndexLocal + 1];
+          if (nextLocalLesson) {
+            console.log('✅ Found next lesson in local data:', nextLocalLesson.title);
+            return {
+              id: `local-${nextLocalLesson.id}`,
+              originalId: nextLocalLesson.id,
+              title: nextLocalLesson.title,
+              description: nextLocalLesson.description,
+              source: 'local_fallback'
+            };
+          }
+        }
+      } catch (fallbackError) {
+        console.error('❌ Local fallback also failed:', fallbackError);
+      }
+      
       throw new Error('Current lesson not found');
     }
     
     const nextLesson = lessons[currentIndex + 1];
+    console.log('✅ Next lesson found:', nextLesson ? nextLesson.title : 'No next lesson');
     return nextLesson || null;
   } catch (error) {
+    console.error('❌ getNextLesson error:', error);
     throw new Error(`Failed to get next lesson: ${error.message}`);
   }
 };
