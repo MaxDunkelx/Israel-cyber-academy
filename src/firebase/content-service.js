@@ -65,7 +65,36 @@ export const getAllLessons = async (forceRefresh = false) => {
     return dbLessons;
     
   } catch (error) {
-    throw new Error('Failed to load lessons from database. Please check your connection and try again.');
+    console.warn('Database unavailable, falling back to local lessons:', error.message);
+    
+          // Fallback to local lessons when database is unavailable
+      try {
+        const { lessons } = await import('../data/lessons.js');
+      const localLessons = lessons.map((lesson, index) => ({
+        id: `local-${lesson.id || index + 1}`,
+        originalId: lesson.id || index + 1,
+        title: lesson.title,
+        description: lesson.description,
+        difficulty: lesson.difficulty || 'beginner',
+        targetAge: lesson.targetAge || 'all',
+        estimatedDuration: lesson.estimatedDuration || 30,
+        slides: lesson.content?.slides || [],
+        totalSlides: lesson.content?.slides?.length || 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        isActive: true,
+        source: 'local_fallback'
+      }));
+      
+      // Update cache with local data
+      lessonsCache = localLessons;
+      cacheTimestamp = Date.now();
+      
+      return localLessons;
+    } catch (fallbackError) {
+      console.error('Both database and local fallback failed:', fallbackError);
+      throw new Error('Failed to load lessons. Please check your connection and try again.');
+    }
   }
 };
 
@@ -432,10 +461,65 @@ export const getSlidesByLessonId = async (lessonId) => {
       // Continue to local fallback
     }
     
-    // If no database slides found, return empty array
+    // If no database slides found, try local fallback
+    try {
+      console.warn('No database slides found, falling back to local slides for lesson:', lessonId);
+      const { lessons } = await import('../data/lessons.js');
+      const lessonNumber = parseInt(lessonId);
+      const localLesson = lessons.find(l => l.id === lessonNumber);
+      
+      if (localLesson && localLesson.content && localLesson.content.slides) {
+        const localSlides = localLesson.content.slides.map((slide, index) => ({
+          id: `local-${lessonNumber}-${slide.id || index + 1}`,
+          originalId: slide.id || index + 1,
+          lessonId: lessonId,
+          title: slide.title || `Slide ${index + 1}`,
+          type: slide.type || 'presentation',
+          content: slide.content || slide,
+          order: slide.order || index + 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          source: 'local_fallback'
+        }));
+        
+        return localSlides;
+      }
+    } catch (localError) {
+      console.warn('Local fallback also failed:', localError.message);
+    }
+    
+    // If no slides found anywhere, return empty array
     return [];
     
   } catch (error) {
+    console.warn('Database error, trying local fallback for slides:', error.message);
+    
+    // Try local fallback when database fails completely
+    try {
+      const { lessons } = await import('../data/lessons.js');
+      const lessonNumber = parseInt(lessonId);
+      const localLesson = lessons.find(l => l.id === lessonNumber);
+      
+      if (localLesson && localLesson.content && localLesson.content.slides) {
+        const localSlides = localLesson.content.slides.map((slide, index) => ({
+          id: `local-${lessonNumber}-${slide.id || index + 1}`,
+          originalId: slide.id || index + 1,
+          lessonId: lessonId,
+          title: slide.title || `Slide ${index + 1}`,
+          type: slide.type || 'presentation',
+          content: slide.content || slide,
+          order: slide.order || index + 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          source: 'local_fallback'
+        }));
+        
+        return localSlides;
+      }
+    } catch (fallbackError) {
+      console.error('Both database and local fallback failed for slides:', fallbackError);
+    }
+    
     throw new Error(`Failed to load slides for lesson ${lessonId}: ${error.message}`);
   }
 };
@@ -701,7 +785,37 @@ export const getLessonWithSlides = async (lessonId) => {
       throw new Error(`No lesson found for ID: ${lessonId}`);
     }
   } catch (error) {
-    throw new Error(`Failed to fetch lesson with slides: ${error.message}`);
+    console.warn('Database unavailable, falling back to local lesson:', error.message);
+    
+    // Fallback to local lesson when database is unavailable
+    try {
+      const { lessons } = await import('../data/lessons.js');
+      const lessonNumber = parseInt(lessonId);
+      const localLesson = lessons.find(l => l.id === lessonNumber);
+      
+      if (localLesson) {
+        return {
+          id: `local-${localLesson.id}`,
+          originalId: localLesson.id,
+          title: localLesson.title,
+          description: localLesson.description,
+          difficulty: localLesson.difficulty || 'beginner',
+          targetAge: localLesson.targetAge || 'all',
+          estimatedDuration: localLesson.estimatedDuration || 30,
+          slides: localLesson.content?.slides || [],
+          totalSlides: localLesson.content?.slides?.length || 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          isActive: true,
+          source: 'local_fallback'
+        };
+      } else {
+        throw new Error(`No lesson found for ID: ${lessonId}`);
+      }
+    } catch (fallbackError) {
+      console.error('Both database and local fallback failed:', fallbackError);
+      throw new Error(`Failed to fetch lesson with slides: ${error.message}`);
+    }
   }
 };
 
@@ -754,9 +868,29 @@ export const getLessonsByTargetAge = async (targetAge) => {
 export const getNextLesson = async (currentLessonId) => {
   try {
     const lessons = await getAllLessons();
-    const currentIndex = lessons.findIndex(lesson => lesson.id === currentLessonId);
+    
+    // Handle both Firestore ID and lesson number (originalId)
+    let currentIndex = -1;
+    
+    // First try to find by Firestore ID
+    currentIndex = lessons.findIndex(lesson => lesson.id === currentLessonId);
+    
+    // If not found by ID, try to find by originalId (lesson number)
+    if (currentIndex === -1) {
+      currentIndex = lessons.findIndex(lesson => lesson.originalId === parseInt(currentLessonId));
+    }
+    
+    // If still not found, try to find by lesson number as string
+    if (currentIndex === -1) {
+      currentIndex = lessons.findIndex(lesson => lesson.originalId === currentLessonId);
+    }
     
     if (currentIndex === -1) {
+      console.error('Current lesson not found:', {
+        currentLessonId,
+        type: typeof currentLessonId,
+        availableLessons: lessons.map(l => ({ id: l.id, originalId: l.originalId, title: l.title }))
+      });
       throw new Error('Current lesson not found');
     }
     
