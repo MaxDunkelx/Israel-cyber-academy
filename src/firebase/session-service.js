@@ -174,23 +174,34 @@ export const setSessionLock = async (sessionId, isLocked) => {
  * @returns {Promise<void>}
  */
 export const joinSession = async (sessionId, studentId, studentName) => {
-  try {
-    const sessionRef = doc(db, 'sessions', sessionId);
-    // Use arrayUnion for atomic update
-    await updateDoc(sessionRef, {
-      connectedStudents: arrayUnion({ id: studentId, name: studentName, joinedAt: serverTimestamp(), lastActivity: serverTimestamp(), currentSlide: 0 }),
-      lastActivity: serverTimestamp()
-    });
-    logSecurityEvent('STUDENT_JOINED_SESSION', {
-      sessionId,
-      studentId,
-      studentName,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Error joining session:', error);
-    throw new Error('Failed to join session');
+  const sessionRef = doc(db, 'sessions', sessionId);
+
+  // Step 1: Add to connectedStudents (atomic, simple object only)
+  await updateDoc(sessionRef, {
+    connectedStudents: arrayUnion({ id: studentId, name: studentName }),
+    lastActivity: serverTimestamp()
+  });
+
+  // Step 2: Set student progress (with joinedAt/lastActivity as serverTimestamp)
+  const sessionDoc = await getDoc(sessionRef);
+  if (sessionDoc.exists()) {
+    const sessionData = sessionDoc.data();
+    const studentProgress = sessionData.studentProgress || {};
+    studentProgress[studentId] = {
+      ...(studentProgress[studentId] || {}),
+      joinedAt: serverTimestamp(),
+      lastActivity: serverTimestamp(),
+      currentSlide: 0
+    };
+    await updateDoc(sessionRef, { studentProgress });
   }
+
+  logSecurityEvent('STUDENT_JOINED_SESSION', {
+    sessionId,
+    studentId,
+    studentName,
+    timestamp: new Date().toISOString()
+  });
 };
 
 /**
@@ -201,22 +212,17 @@ export const joinSession = async (sessionId, studentId, studentName) => {
  * @returns {Promise<void>}
  */
 export const leaveSession = async (sessionId, studentId, studentName) => {
-  try {
-    const sessionRef = doc(db, 'sessions', sessionId);
-    // Use arrayRemove for atomic update
-    await updateDoc(sessionRef, {
-      connectedStudents: arrayRemove({ id: studentId, name: studentName }),
-      lastActivity: serverTimestamp()
-    });
-    logSecurityEvent('STUDENT_LEFT_SESSION', {
-      sessionId,
-      studentId,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Error leaving session:', error);
-    throw new Error('Failed to leave session');
-  }
+  const sessionRef = doc(db, 'sessions', sessionId);
+  await updateDoc(sessionRef, {
+    connectedStudents: arrayRemove({ id: studentId, name: studentName }),
+    lastActivity: serverTimestamp()
+  });
+
+  logSecurityEvent('STUDENT_LEFT_SESSION', {
+    sessionId,
+    studentId,
+    timestamp: new Date().toISOString()
+  });
 };
 
 /**
