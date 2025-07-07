@@ -350,11 +350,20 @@ const Roadmap = () => {
     // Ensure completedLessons is always an array
     const completedLessonsArray = Array.isArray(completedLessons) ? completedLessons : [];
     
-    // Convert lesson number to clear lesson ID for progress checking
-    const clearLessonId = `lesson${lessonNumber}`;
+    // Check for completion using multiple possible ID formats
+    const possibleLessonIds = [
+      `lesson-${lessonNumber}`,  // New Firestore format
+      `lesson${lessonNumber}`,   // Old format
+      lessonNumber.toString(),   // Number format
+      lessonId                   // Original lessonId
+    ];
     
-    const isCompleted = completedLessonsArray.includes(clearLessonId) || 
-                       (activeProfile.progress && activeProfile.progress[clearLessonId] && activeProfile.progress[clearLessonId].completed);
+    const isCompleted = completedLessonsArray.some(id => possibleLessonIds.includes(id)) || 
+                       possibleLessonIds.some(id => 
+                         activeProfile.progress && 
+                         activeProfile.progress[id] && 
+                         activeProfile.progress[id].completed
+                       );
     
     if (isCompleted) {
       console.log(`✅ Lesson ${lessonNumber} (${lessonId}) is completed`);
@@ -515,18 +524,26 @@ const Roadmap = () => {
       return 0;
     }
     
-    // Convert lesson number to clear lesson ID for progress checking
     const lessonNumber = lesson.originalId || parseInt(lessonId);
-    const clearLessonId = `lesson${lessonNumber}`;
     
-    // Use clear lesson ID to access progress
-    if (!userProfile?.progress?.[clearLessonId]) {
-      console.log(`⚠️ No progress found for lesson ${clearLessonId}`);
+    // Check for progress using multiple possible ID formats
+    const possibleLessonIds = [
+      `lesson-${lessonNumber}`,  // New Firestore format
+      `lesson${lessonNumber}`,   // Old format
+      lessonNumber.toString(),   // Number format
+      lessonId                   // Original lessonId
+    ];
+    
+    // Find the first matching progress entry
+    const progressEntry = possibleLessonIds.find(id => userProfile?.progress?.[id]);
+    
+    if (!progressEntry) {
+      console.log(`⚠️ No progress found for lesson ${lessonId} (tried: ${possibleLessonIds.join(', ')})`);
       return 0;
     }
     
-    const lastSlide = userProfile.progress[clearLessonId].lastSlide || 0;
-    console.log(`📊 Last slide for lesson ${clearLessonId}: ${lastSlide}`);
+    const lastSlide = userProfile.progress[progressEntry].lastSlide || 0;
+    console.log(`📊 Last slide for lesson ${lessonId}: ${lastSlide} (found in: ${progressEntry})`);
     return lastSlide;
   }, [userProfile, lessons]);
 
