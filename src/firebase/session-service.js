@@ -1,18 +1,16 @@
 import { 
   collection, 
   doc, 
-  setDoc, 
   getDoc, 
   getDocs, 
   updateDoc, 
-  deleteDoc, 
   query, 
   where, 
-  orderBy, 
   onSnapshot,
   serverTimestamp,
   addDoc,
-  limit
+  arrayUnion,
+  arrayRemove
 } from 'firebase/firestore';
 import { db } from './firebase-config';
 import { logSecurityEvent } from '../utils/security';
@@ -20,6 +18,17 @@ import { logSecurityEvent } from '../utils/security';
 /**
  * Session Management Service
  * Handles real-time synchronized lessons between teachers and students
+ */
+
+/**
+ * NOTE: For very large classes, consider using a subcollection for connectedStudents
+ * instead of an array field to avoid Firestore's 1MB document size limit.
+ * Example: collection(db, 'sessions', sessionId, 'connectedStudents')
+ */
+
+/**
+ * NOTE: For large datasets, consider adding Firestore composite indexes and using orderBy in queries
+ * for better performance and scalability. See Firestore documentation for index creation.
  */
 
 /**
@@ -158,7 +167,7 @@ export const setSessionLock = async (sessionId, isLocked) => {
 };
 
 /**
- * Student joins session
+ * Student joins session (atomic array update)
  * @param {string} sessionId - Session ID
  * @param {string} studentId - Student ID
  * @param {string} studentName - Student name
@@ -167,30 +176,11 @@ export const setSessionLock = async (sessionId, isLocked) => {
 export const joinSession = async (sessionId, studentId, studentName) => {
   try {
     const sessionRef = doc(db, 'sessions', sessionId);
-    const sessionDoc = await getDoc(sessionRef);
-    
-    if (!sessionDoc.exists()) {
-      throw new Error('Session not found');
-    }
-
-    const sessionData = sessionDoc.data();
-    const connectedStudents = sessionData.connectedStudents || [];
-    
-    if (!connectedStudents.find(s => s.id === studentId)) {
-      connectedStudents.push({
-        id: studentId,
-        name: studentName,
-        joinedAt: serverTimestamp(),
-        lastActivity: serverTimestamp(),
-        currentSlide: 0
-      });
-    }
-
+    // Use arrayUnion for atomic update
     await updateDoc(sessionRef, {
-      connectedStudents,
+      connectedStudents: arrayUnion({ id: studentId, name: studentName, joinedAt: serverTimestamp(), lastActivity: serverTimestamp(), currentSlide: 0 }),
       lastActivity: serverTimestamp()
     });
-
     logSecurityEvent('STUDENT_JOINED_SESSION', {
       sessionId,
       studentId,
@@ -204,29 +194,20 @@ export const joinSession = async (sessionId, studentId, studentName) => {
 };
 
 /**
- * Student leaves session
+ * Student leaves session (atomic array update)
  * @param {string} sessionId - Session ID
  * @param {string} studentId - Student ID
+ * @param {string} studentName - Student name
  * @returns {Promise<void>}
  */
-export const leaveSession = async (sessionId, studentId) => {
+export const leaveSession = async (sessionId, studentId, studentName) => {
   try {
     const sessionRef = doc(db, 'sessions', sessionId);
-    const sessionDoc = await getDoc(sessionRef);
-    
-    if (!sessionDoc.exists()) {
-      throw new Error('Session not found');
-    }
-
-    const sessionData = sessionDoc.data();
-    const connectedStudents = sessionData.connectedStudents || [];
-    const updatedStudents = connectedStudents.filter(s => s.id !== studentId);
-
+    // Use arrayRemove for atomic update
     await updateDoc(sessionRef, {
-      connectedStudents: updatedStudents,
+      connectedStudents: arrayRemove({ id: studentId, name: studentName }),
       lastActivity: serverTimestamp()
     });
-
     logSecurityEvent('STUDENT_LEFT_SESSION', {
       sessionId,
       studentId,

@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection for role lookup
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    // Sessions collection
+    match /sessions/{sessionId} {
+      // Only authenticated users can read sessions
+      allow read: if request.auth != null && (
+        resource.data.teacherId == request.auth.uid ||
+        (resource.data.studentIds != null && resource.data.studentIds.hasAny([request.auth.uid]))
+      );
+      // Only teachers can create sessions
+      allow create: if request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "teacher";
+      // Only the teacher who owns the session can update or delete it
+      allow update, delete: if request.auth != null &&
+        resource.data.teacherId == request.auth.uid;
+      // Students can update their own presence in connectedStudents
+      allow update: if request.auth != null &&
+        request.resource.data.connectedStudents.hasAny([request.auth.uid]);
+    }
+  }
+} 

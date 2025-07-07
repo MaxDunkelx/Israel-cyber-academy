@@ -8,9 +8,8 @@ import { CheckCircle } from 'lucide-react';
  * @param {Object} props - Component props
  * @param {Object} props.slide - Slide data
  * @param {Function} props.onAnswer - Answer submission handler
- * @param {Object} props.answers - Current answers state
  */
-const PollSlide = ({ slide, onAnswer, answers }) => {
+const PollSlide = ({ slide, onAnswer }) => {
   const { content } = slide;
   const [selectedOption, setSelectedOption] = useState(null);
   const [showResults, setShowResults] = useState(false);
@@ -42,9 +41,9 @@ const PollSlide = ({ slide, onAnswer, answers }) => {
 
           {/* Options */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {content.options?.map((option) => (
+            {content.options?.map((option, idx) => (
               <button
-                key={option.id}
+                key={option.id || idx}
                 onClick={() => handleVote(option.id)}
                 disabled={showResults}
                 className={`p-5 rounded-2xl border-4 transition-all duration-300 transform hover:scale-105 text-lg md:text-xl lg:text-2xl font-bold tracking-wide select-none focus:outline-none focus:ring-4 focus:ring-blue-400/50 ${

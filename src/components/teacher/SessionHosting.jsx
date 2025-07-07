@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Play, 
@@ -34,8 +34,6 @@ import Card from '../ui/Card';
 import Button from '../ui/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { getTeacherNotesForLesson } from '../../firebase/teacher-service';
-import { doc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../firebase/firebase-config';
 
 const SessionHosting = () => {
   const { sessionId } = useParams();
@@ -50,21 +48,9 @@ const SessionHosting = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showStudentList, setShowStudentList] = useState(false);
-  const [showControls, setShowControls] = useState(true);
   const [showNotes, setShowNotes] = useState(false);
   const [teacherNotes, setTeacherNotes] = useState({});
-  const [sessionDuration, setSessionDuration] = useState(0);
   const [error, setError] = useState(null);
-  const [studentEngagement, setStudentEngagement] = useState({});
-  const [liveChat, setLiveChat] = useState([]);
-  const [chatEnabled, setChatEnabled] = useState(true);
-  const [screenShareEnabled, setScreenShareEnabled] = useState(false);
-  const [studentHands, setStudentHands] = useState([]);
-  const [sessionAnalytics, setSessionAnalytics] = useState({
-    totalEngagement: 0,
-    averageResponseTime: 0,
-    participationRate: 0
-  });
 
   useEffect(() => {
     // Security check - ensure only teachers can access this component
@@ -170,19 +156,6 @@ const SessionHosting = () => {
     }
   };
 
-  // Calculate session duration
-  useEffect(() => {
-    if (session?.startTime) {
-      const interval = setInterval(() => {
-        const startTime = session.startTime?.toDate?.() || new Date(session.startTime);
-        const duration = Math.floor((Date.now() - startTime.getTime()) / 1000);
-        setSessionDuration(duration);
-      }, 1000);
-      
-      return () => clearInterval(interval);
-    }
-  }, [session?.startTime]);
-
   const handlePlayPause = () => {
     setIsPlaying(!isPlaying);
     toast.success(isPlaying ? 'השיעור הושהה' : 'השיעור התחדש');
@@ -213,17 +186,6 @@ const SessionHosting = () => {
         console.error('Error updating slide:', error);
         toast.error('אירעה שגיאה בעדכון השקופית');
       }
-    }
-  };
-
-  const handleSlideSelect = async (slideIndex) => {
-    try {
-      await updateSessionSlide(sessionId, slideIndex);
-      setCurrentSlide(slideIndex);
-      toast.success(`עבר לשקופית ${slideIndex + 1}`);
-    } catch (error) {
-      console.error('Error updating slide:', error);
-      toast.error('אירעה שגיאה בעדכון השקופית');
     }
   };
 
@@ -258,19 +220,6 @@ const SessionHosting = () => {
     }
   };
 
-  const formatSessionDuration = (startTime) => {
-    if (!startTime) return '0 דקות';
-    const duration = Date.now() - startTime.toDate().getTime();
-    const minutes = Math.floor(duration / (1000 * 60));
-    const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
-    
-    if (hours > 0) {
-      return `${hours}ש ${remainingMinutes}ד`;
-    }
-    return `${minutes} דקות`;
-  };
-
   /**
    * Render slide based on type using proper slide components
    */
@@ -283,7 +232,7 @@ const SessionHosting = () => {
       case 'video':
         return <VideoSlide slide={slide} />;
       case 'interactive':
-        return <InteractiveSlide slide={slide} />;
+        return <InteractiveSlide slide={slide} onAnswer={() => {}} />;
       case 'break':
         return <BreakSlide slide={slide} />;
       case 'reflection':
@@ -292,81 +241,6 @@ const SessionHosting = () => {
         return <QuizSlide slide={slide} />;
       default:
         return <div className="text-white">סוג שקופית לא מוכר: {slide.type}</div>;
-    }
-  };
-
-  // Add this new function for real-time engagement tracking
-  const trackStudentEngagement = useCallback((studentId, engagementType, data = {}) => {
-    setStudentEngagement(prev => ({
-      ...prev,
-      [studentId]: {
-        ...prev[studentId],
-        [engagementType]: {
-          timestamp: Date.now(),
-          data
-        }
-      }
-    }));
-  }, []);
-
-  // Add live chat functionality
-  const sendChatMessage = async (message) => {
-    if (!message.trim()) return;
-    
-    const chatMessage = {
-      id: Date.now(),
-      sender: currentUser.displayName || currentUser.email,
-      senderId: currentUser.uid,
-      message: message.trim(),
-      timestamp: Date.now(),
-      type: 'teacher'
-    };
-    
-    setLiveChat(prev => [...prev, chatMessage]);
-    
-    // Save to Firebase for persistence
-    try {
-      const sessionRef = doc(db, 'sessions', sessionId);
-      await updateDoc(sessionRef, {
-        chatMessages: arrayUnion(chatMessage),
-        lastActivity: serverTimestamp()
-      });
-    } catch (error) {
-      console.error('Error saving chat message:', error);
-    }
-  };
-
-  // Add student hand raising functionality
-  const handleStudentHandRaise = (studentId, isRaised) => {
-    setStudentHands(prev => {
-      if (isRaised) {
-        return [...prev.filter(id => id !== studentId), studentId];
-      } else {
-        return prev.filter(id => id !== studentId);
-      }
-    });
-  };
-
-  // Add screen sharing functionality
-  const toggleScreenShare = async () => {
-    if (!screenShareEnabled) {
-      try {
-        const stream = await navigator.mediaDevices.getDisplayMedia({
-          video: { cursor: "always" },
-          audio: false
-        });
-        
-        // Here you would integrate with your video service
-        // For now, we'll just track the state
-        setScreenShareEnabled(true);
-        toast.success('שיתוף מסך מופעל');
-      } catch (error) {
-        console.error('Error starting screen share:', error);
-        toast.error('שגיאה בהפעלת שיתוף מסך');
-      }
-    } else {
-      setScreenShareEnabled(false);
-      toast.success('שיתוף מסך כובה');
     }
   };
 

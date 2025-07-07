@@ -21,7 +21,7 @@ import PasswordGenerator from './PasswordGenerator';
  * @param {Function} props.onAnswer - Answer submission handler
  * @param {Object} props.answers - Current answers state
  */
-const InteractiveSlide = ({ slide, onAnswer, answers }) => {
+const InteractiveSlide = ({ slide, onAnswer = () => {}, answers }) => {
   // Add null checks and default values
   const content = slide?.content || {};
   const [exerciseCompleted, setExerciseCompleted] = useState(false);
