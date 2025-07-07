@@ -71,6 +71,18 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true); // Loading state
 
   /**
+   * Helper to always get Firestore lesson ID
+   * 
+   * @param {number|string} lessonNumberOrId - Lesson number or ID
+   * @returns {string} Firestore lesson ID
+   */
+  const getLessonFirestoreId = (lessonNumberOrId) => {
+    if (typeof lessonNumberOrId === 'string' && lessonNumberOrId.startsWith('lesson-')) return lessonNumberOrId;
+    if (typeof lessonNumberOrId === 'number' || !isNaN(parseInt(lessonNumberOrId))) return `lesson-${parseInt(lessonNumberOrId)}`;
+    return lessonNumberOrId;
+  };
+
+  /**
    * User Registration Function
    * 
    * Creates a new user account with Firebase Auth and stores extended profile in Firestore.
@@ -411,39 +423,7 @@ export const AuthProvider = ({ children }) => {
         const progress = userData.progress || {};
         
         // Determine the correct lesson ID to use for progress tracking
-        let progressLessonId = lessonId;
-        
-        // If lessonId is a number (lesson number), we need to find the actual lesson in the database
-        if (typeof lessonId === 'number' || !isNaN(parseInt(lessonId))) {
-          console.log(`🔄 Looking up lesson ${lessonId} in database...`);
-          
-          try {
-            // Import the content service to get lesson data
-            const { getAllLessons } = await import('../firebase/content-service.js');
-            const lessons = await getAllLessons();
-            
-            // Find the lesson by originalId (lesson number)
-            const lesson = lessons.find(l => l.originalId === parseInt(lessonId));
-            
-            if (lesson) {
-              progressLessonId = lesson.id; // Use the actual Firestore ID
-              console.log(`✅ Found lesson ${lessonId} in database with ID: ${progressLessonId}`);
-            } else {
-              // Fallback: use lesson number as string
-              progressLessonId = `lesson${lessonId}`;
-              console.log(`⚠️ Lesson ${lessonId} not found in database, using fallback ID: ${progressLessonId}`);
-            }
-          } catch (error) {
-            console.warn('⚠️ Could not fetch lessons from database, using fallback:', error.message);
-            progressLessonId = `lesson${lessonId}`;
-          }
-        } else if (typeof lessonId === 'string') {
-          // If it's already a string, use it directly
-          progressLessonId = lessonId;
-          console.log(`📋 Using lessonId directly: ${progressLessonId}`);
-        }
-        
-        console.log(`🎯 Final progress lesson ID: ${progressLessonId}`);
+        const progressLessonId = getLessonFirestoreId(lessonId);
         
         // Initialize lesson progress if it doesn't exist
         if (!progress[progressLessonId]) {
@@ -634,32 +614,7 @@ export const AuthProvider = ({ children }) => {
         const progress = userData.progress || {};
         
         // Determine the correct lesson ID to use for progress tracking
-        let progressLessonId = lessonId;
-        
-        // If lessonId is a number (lesson number), we need to find the actual lesson in the database
-        if (typeof lessonId === 'number' || !isNaN(parseInt(lessonId))) {
-          try {
-            // Import the content service to get lesson data
-            const { getAllLessons } = await import('../firebase/content-service.js');
-            const lessons = await getAllLessons();
-            
-            // Find the lesson by originalId (lesson number)
-            const lesson = lessons.find(l => l.originalId === parseInt(lessonId));
-            
-            if (lesson) {
-              progressLessonId = lesson.id; // Use the actual Firestore ID
-            } else {
-              // Fallback: use lesson number as string
-              progressLessonId = `lesson${lessonId}`;
-            }
-          } catch (error) {
-            console.warn('⚠️ Could not fetch lessons from database, using fallback:', error.message);
-            progressLessonId = `lesson${lessonId}`;
-          }
-        } else if (typeof lessonId === 'string') {
-          // If it's already a string, use it directly
-          progressLessonId = lessonId;
-        }
+        const progressLessonId = getLessonFirestoreId(lessonId);
         
         // Initialize lesson progress if it doesn't exist
         if (!progress[progressLessonId]) {
@@ -699,20 +654,20 @@ export const AuthProvider = ({ children }) => {
           console.log('👁️ SLIDE ENGAGEMENT TRACKED:', {
             userId: currentUser.uid,
             lessonId,
-            firestoreLessonId,
+            progressLessonId,
             slideId,
             timestamp: new Date().toISOString(),
             engagement: {
               lessonId,
-              firestoreLessonId,
+              progressLessonId,
               slideId,
-              totalSlidesInLesson: progress[firestoreLessonId].pagesEngaged.length,
+              totalSlidesInLesson: progress[progressLessonId].pagesEngaged.length,
               isNewEngagement: true
             },
             statistics: {
               totalTimeSpent,
               totalPagesEngaged,
-              lessonProgress: Math.round((progress[firestoreLessonId].pagesEngaged.length / 10) * 100) // Estimate total slides
+              lessonProgress: Math.round((progress[progressLessonId].pagesEngaged.length / 10) * 100) // Estimate total slides
             }
           });
           
@@ -911,22 +866,7 @@ export const AuthProvider = ({ children }) => {
    */
   const getLastLessonSlide = (lessonId) => {
     // Try to find the lesson in the database to get the correct ID
-    let progressLessonId = lessonId;
-    
-    // If lessonId is a number, try to find the actual lesson ID
-    if (typeof lessonId === 'number' || !isNaN(parseInt(lessonId))) {
-      // First try to find in userProfile progress using lesson number as string
-      const lessonNumberString = `lesson${lessonId}`;
-      if (userProfile?.progress?.[lessonNumberString]) {
-        progressLessonId = lessonNumberString;
-      } else {
-        // Fallback to lesson number as string
-        progressLessonId = lessonNumberString;
-      }
-    } else if (typeof lessonId === 'string') {
-      // If it's already a string, use it directly
-      progressLessonId = lessonId;
-    }
+    const progressLessonId = getLessonFirestoreId(lessonId);
     
     const lastSlide = userProfile?.progress?.[progressLessonId]?.lastSlide ?? 0;
     console.log(`📖 GET LAST SLIDE: Lesson ${lessonId} -> Slide ${lastSlide + 1} (using ID: ${progressLessonId})`);
@@ -951,32 +891,7 @@ export const AuthProvider = ({ children }) => {
         const progress = userData.progress || {};
         
         // Determine the correct lesson ID to use for progress tracking
-        let progressLessonId = lessonId;
-        
-        // If lessonId is a number (lesson number), we need to find the actual lesson in the database
-        if (typeof lessonId === 'number' || !isNaN(parseInt(lessonId))) {
-          try {
-            // Import the content service to get lesson data
-            const { getAllLessons } = await import('../firebase/content-service.js');
-            const lessons = await getAllLessons();
-            
-            // Find the lesson by originalId (lesson number)
-            const lesson = lessons.find(l => l.originalId === parseInt(lessonId));
-            
-            if (lesson) {
-              progressLessonId = lesson.id; // Use the actual Firestore ID
-            } else {
-              // Fallback: use lesson number as string
-              progressLessonId = `lesson${lessonId}`;
-            }
-          } catch (error) {
-            console.warn('⚠️ Could not fetch lessons from database, using fallback:', error.message);
-            progressLessonId = `lesson${lessonId}`;
-          }
-        } else if (typeof lessonId === 'string') {
-          // If it's already a string, use it directly
-          progressLessonId = lessonId;
-        }
+        const progressLessonId = getLessonFirestoreId(lessonId);
         
         // Initialize lesson progress if it doesn't exist
         if (!progress[progressLessonId]) {
