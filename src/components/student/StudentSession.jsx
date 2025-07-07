@@ -136,15 +136,27 @@ const StudentSession = () => {
   };
 
   const handleJoinSession = async () => {
-    if (!session || !currentUser) return;
+    if (!session || !currentUser) {
+      console.warn('[handleJoinSession] Missing session or currentUser', { session, currentUser });
+      return;
+    }
+
+    console.log('[handleJoinSession] Called', {
+      sessionId,
+      studentId: currentUser.uid,
+      studentName: currentUser.displayName || currentUser.email,
+      session,
+      currentUser
+    });
 
     try {
       setJoining(true);
-      await joinSession(sessionId, currentUser.uid, currentUser.displayName || currentUser.email);
+      const result = await joinSession(sessionId, currentUser.uid, currentUser.displayName || currentUser.email);
+      console.log('[handleJoinSession] joinSession success', { result });
       setIsConnected(true);
       toast.success('הצטרפת לשיעור בהצלחה!');
     } catch (error) {
-      console.error('Error joining session:', error);
+      console.error('[handleJoinSession] Error joining session:', error);
       toast.error('אירעה שגיאה בהצטרפות לשיעור');
       setJoining(false);
     }
