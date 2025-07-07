@@ -186,11 +186,13 @@ const InteractiveLesson = () => {
           // Keep the slides in the root level for consistency
           if (isMounted) setLesson(lessonData);
           
-          // Check if lesson is already completed using lesson number from lesson object
+          // Check if lesson is already completed using Firestore lesson ID
           const lessonNumber = lessonData.originalId || parseInt(lessonId);
+          const lessonFirestoreId = `lesson-${lessonNumber}`;
           let lessonCompleted = false;
-          if (userProfile && userProfile.progress && lessonNumber && userProfile.progress[lessonNumber]) {
-            const lessonProgress = userProfile.progress[lessonNumber];
+          
+          if (userProfile && userProfile.progress && lessonFirestoreId && userProfile.progress[lessonFirestoreId]) {
+            const lessonProgress = userProfile.progress[lessonFirestoreId];
             if (lessonProgress.completed) {
               isCompletedLesson.current = true;
               lessonCompleted = true;
@@ -198,7 +200,7 @@ const InteractiveLesson = () => {
             }
           }
           
-          // Load saved slide position using lesson number
+          // Load saved slide position using lesson number (getLastLessonSlide handles the conversion)
           if (userProfile && lessonNumber && !isNaN(lessonNumber)) {
             let savedSlide = getLastLessonSlide(lessonNumber);
             // If lesson is completed or savedSlide is out of bounds, reset to 0
@@ -443,6 +445,26 @@ const InteractiveLesson = () => {
     const lessonNumber = lesson.originalId || parseInt(lessonId);
     if (!lessonNumber || isNaN(lessonNumber)) {
       console.error('❌ Invalid lesson ID:', lessonId, 'lesson.originalId:', lesson.originalId);
+      return;
+    }
+
+    // Check if lesson is already completed to prevent duplicate completion
+    const lessonFirestoreId = `lesson-${lessonNumber}`;
+    if (userProfile?.progress?.[lessonFirestoreId]?.completed) {
+      console.log('✅ Lesson already completed, showing completion state without re-saving');
+      toast.info('השיעור כבר הושלם! 🎉');
+      
+      // Still navigate to roadmap but don't save again
+      setTimeout(async () => {
+        try {
+          const nextLesson = await getNextLesson(lessonNumber);
+          const navigateUrl = nextLesson ? `/roadmap?unlocked=${nextLesson.originalId}` : '/roadmap';
+          navigate(navigateUrl, { replace: true });
+        } catch (error) {
+          console.error('❌ Error navigating after completion:', error);
+          navigate('/roadmap', { replace: true });
+        }
+      }, 2000);
       return;
     }
 
