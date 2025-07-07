@@ -538,7 +538,11 @@ const Roadmap = () => {
     const progressEntry = possibleLessonIds.find(id => userProfile?.progress?.[id]);
     
     if (!progressEntry) {
-      console.log(`⚠️ No progress found for lesson ${lessonId} (tried: ${possibleLessonIds.join(', ')})`);
+      // Only log for lessons that are actually available (not locked)
+      const status = getLessonStatus(lessonId);
+      if (status === 'available' || status === 'completed') {
+        console.log(`⚠️ No progress found for lesson ${lessonId} (tried: ${possibleLessonIds.join(', ')})`);
+      }
       return 0;
     }
     

@@ -452,7 +452,7 @@ const InteractiveLesson = () => {
     const lessonFirestoreId = `lesson-${lessonNumber}`;
     if (userProfile?.progress?.[lessonFirestoreId]?.completed) {
       console.log('✅ Lesson already completed, showing completion state without re-saving');
-      toast.info('השיעור כבר הושלם! 🎉');
+      toast.success('השיעור כבר הושלם! 🎉');
       
       // Still navigate to roadmap but don't save again
       setTimeout(async () => {
