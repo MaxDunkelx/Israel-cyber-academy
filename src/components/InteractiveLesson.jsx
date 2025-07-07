@@ -458,11 +458,11 @@ const InteractiveLesson = () => {
       setTimeout(async () => {
         try {
           const nextLesson = await getNextLesson(lessonNumber);
-          const navigateUrl = nextLesson ? `/roadmap?unlocked=${nextLesson.originalId}` : '/roadmap';
+          const navigateUrl = nextLesson ? `/student/roadmap?unlocked=${nextLesson.originalId}` : '/student/roadmap';
           navigate(navigateUrl, { replace: true });
         } catch (error) {
           console.error('❌ Error navigating after completion:', error);
-          navigate('/roadmap', { replace: true });
+          navigate('/student/roadmap', { replace: true });
         }
       }, 2000);
       return;
@@ -545,8 +545,8 @@ const InteractiveLesson = () => {
         try {
           console.log('🧭 Starting navigation to roadmap...');
           
-          // Navigate to roadmap with unlock animation param
-          const navigateUrl = nextLesson ? `/roadmap?unlocked=${nextLesson.originalId}` : '/roadmap';
+          // Navigate to student roadmap with unlock animation param
+          const navigateUrl = nextLesson ? `/student/roadmap?unlocked=${nextLesson.originalId}` : '/student/roadmap';
           console.log('🧭 Navigating to:', navigateUrl);
           
           // Force navigation with replace to ensure it works
@@ -567,7 +567,7 @@ const InteractiveLesson = () => {
       // Still try to navigate even if save failed
       setTimeout(async () => {
         const nextLesson = await getNextLesson(lessonNumber);
-        const navigateUrl = nextLesson ? `/roadmap?unlocked=${nextLesson.originalId}` : '/roadmap';
+        const navigateUrl = nextLesson ? `/student/roadmap?unlocked=${nextLesson.originalId}` : '/student/roadmap';
         navigate(navigateUrl, { replace: true });
       }, 1000);
     }
