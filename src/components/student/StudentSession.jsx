@@ -48,6 +48,9 @@ const StudentSession = () => {
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+
+  // Add live session state
+  const [isLiveSession, setIsLiveSession] = useState(false);
   
   // Enhanced UI state
   const [showStatistics, setShowStatistics] = useState(false);
@@ -211,6 +214,7 @@ const StudentSession = () => {
       const isLive = updatedSession.status === 'active' && updatedSession.teacherId;
       setSessionMode(isLive ? 'live' : 'individual');
       setTeacherControlsSession(isLive);
+      setIsLiveSession(isLive); // <-- Fix: set live session state
       
       // Handle slide changes
       const newSlideIndex = updatedSession.currentSlide || 0;

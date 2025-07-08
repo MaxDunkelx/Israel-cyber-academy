@@ -27,7 +27,7 @@ export const slide18InputOutput = {
       {
         type: "tip",
         text: "כשאתם כותבים במקלדת (קלט), המחשב מעבד את המידע, ומציג את הטקסט על המסך (פלט).",
-        style: { fontSize: "1.1rem", color: "white", textAlign: "center" }
+        style: { fontSize: "1.1rem", color: "black", textAlign: "center" }
       }
     ]
   }
