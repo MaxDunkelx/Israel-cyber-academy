@@ -17,8 +17,8 @@ export const slide16ModernComputers = {
       },
       {
         type: "image",
-        src: "image.png",
-        alt: "https://upload.wikimedia.org/wikipedia/commons/9/98/Apple_II_typical_configuration_1977.png",
+        src: "https://upload.wikimedia.org/wikipedia/commons/9/98/Apple_II_typical_configuration_1977.png",
+        alt: "Apple II computer from 1977",
         style: { width: "300px", borderRadius: "15px", margin: "2rem auto" }
       },
       {

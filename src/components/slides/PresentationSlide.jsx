@@ -80,7 +80,7 @@ const PresentationSlide = ({ slide }) => {
                     <div key={`${element.type}-${index}-${element.src?.substring(0, 20)}`} className="my-8">
                       <img
                         src={element.src}
-                        alt={element.alt}
+                        alt={element.alt || 'תמונה'}
                         style={{
                           ...element.style,
                           boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
@@ -90,6 +90,22 @@ const PresentationSlide = ({ slide }) => {
                         }}
                         className="mx-auto transform hover:scale-105 transition-transform duration-300"
                         loading="lazy"
+                        onError={(e) => {
+                          console.warn(`⚠️ Failed to load image: ${element.src}`);
+                          e.target.style.display = 'none';
+                          // Show a fallback message
+                          const fallbackDiv = document.createElement('div');
+                          fallbackDiv.className = 'text-center p-4 bg-gray-200 rounded-lg border-2 border-dashed border-gray-400';
+                          fallbackDiv.innerHTML = `
+                            <div class="text-gray-600 text-lg mb-2">🖼️</div>
+                            <div class="text-gray-500">תמונה לא זמינה</div>
+                            <div class="text-sm text-gray-400 mt-1">${element.alt || 'תמונה'}</div>
+                          `;
+                          e.target.parentNode.appendChild(fallbackDiv);
+                        }}
+                        onLoad={() => {
+                          console.log(`✅ Image loaded successfully: ${element.src}`);
+                        }}
                       />
                     </div>
                   );
