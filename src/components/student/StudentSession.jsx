@@ -21,6 +21,7 @@ import Card from '../ui/Card';
 import Button from '../ui/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
 import LiveSessionNotification from './LiveSessionNotification';
+import { logger } from '../../utils/logger';
 import { doc, updateDoc, arrayUnion, arrayRemove, serverTimestamp } from 'firebase/firestore';
 import { db } from "../../firebase/firebase-config";
 
@@ -37,8 +38,15 @@ const StudentSession = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [answers, setAnswers] = useState({});
   const [slidesEngaged, setSlidesEngaged] = useState(new Set());
+  const [liveChat, setLiveChat] = useState([]);
   const [chatMessage, setChatMessage] = useState('');
   const [handRaised, setHandRaised] = useState(false);
+  const [sessionNotes, setSessionNotes] = useState('');
+  const [engagementMetrics, setEngagementMetrics] = useState({
+    slidesViewed: 0,
+    interactions: 0,
+    timeSpent: 0
+  });
   const [isLiveSession, setIsLiveSession] = useState(false);
   const [sessionMode, setSessionMode] = useState('individual'); // 'individual' or 'live'
   const [teacherControlsSession, setTeacherControlsSession] = useState(false);
@@ -147,8 +155,6 @@ const StudentSession = () => {
       console.log('[handleJoinSession] joinSession success', { result });
       setIsConnected(true);
       toast.success('הצטרפת לשיעור בהצלחה!');
-      sessionStorage.setItem(`joinedSession_${sessionId}`, 'true');
-      navigate(`/student/session/${sessionId}`);
     } catch (error) {
       console.error('[handleJoinSession] Error joining session:', error);
       toast.error('אירעה שגיאה בהצטרפות לשיעור');
@@ -160,7 +166,7 @@ const StudentSession = () => {
     if (!session || !currentUser) return;
 
     try {
-      await leaveSession(sessionId, currentUser.uid, currentUser.displayName || currentUser.email);
+      await leaveSession(sessionId, currentUser.uid);
       setIsConnected(false);
       toast.success('עזבת את השיעור');
       navigate('/student/dashboard');
@@ -242,7 +248,7 @@ const StudentSession = () => {
       type: 'student'
     };
     
-    // setLiveChat(prev => [...prev, message]); // This line was removed as per the edit hint
+    setLiveChat(prev => [...prev, message]);
     setChatMessage('');
     
     // Save to Firebase
@@ -286,7 +292,7 @@ const StudentSession = () => {
       await updateDoc(sessionRef, {
         studentNotes: {
           [currentUser.uid]: {
-            notes: '', // sessionNotes is removed, so pass an empty string or remove this line
+            notes: sessionNotes,
             timestamp: serverTimestamp()
           }
         },
@@ -300,10 +306,10 @@ const StudentSession = () => {
   };
 
   const trackEngagement = useCallback((type, data = {}) => {
-    // setEngagementMetrics(prev => ({ // engagementMetrics is removed, so remove this line
-    //   ...prev,
-    //   interactions: prev.interactions + 1
-    // }));
+    setEngagementMetrics(prev => ({
+      ...prev,
+      interactions: prev.interactions + 1
+    }));
     
     // Send to Firebase for teacher analytics
     try {
@@ -358,6 +364,20 @@ const StudentSession = () => {
     }
   };
 
+  const handleSlideSelect = (slideIndex) => {
+    if (teacherControlsSession) {
+      toast.error('המורה שולט בניווט במהלך השיעור החי');
+      return;
+    }
+    
+    setCurrentSlide(slideIndex);
+    
+    // Update session slide if in live mode
+    if (isLiveSession) {
+      updateSessionSlide(sessionId, slideIndex);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -390,7 +410,7 @@ const StudentSession = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
       {/* Live Session Notification */}
-      <LiveSessionNotification isVisible={!isConnected} />
+      <LiveSessionNotification />
       
       {/* Header */}
       <div className="bg-gray-800/50 border-b border-gray-700 p-4">
