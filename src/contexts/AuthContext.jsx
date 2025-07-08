@@ -71,6 +71,18 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true); // Loading state
 
   /**
+   * Helper to always get Firestore lesson ID
+   * 
+   * @param {number|string} lessonNumberOrId - Lesson number or ID
+   * @returns {string} Firestore lesson ID
+   */
+  const getLessonFirestoreId = (lessonNumberOrId) => {
+    if (typeof lessonNumberOrId === 'string' && lessonNumberOrId.startsWith('lesson-')) return lessonNumberOrId;
+    if (typeof lessonNumberOrId === 'number' || !isNaN(parseInt(lessonNumberOrId))) return `lesson-${parseInt(lessonNumberOrId)}`;
+    return lessonNumberOrId;
+  };
+
+  /**
    * User Registration Function
    * 
    * Creates a new user account with Firebase Auth and stores extended profile in Firestore.
@@ -364,7 +376,7 @@ export const AuthProvider = ({ children }) => {
    * Tracks user progress through lessons, exercises, and slide engagement.
    * Manages lesson completion, scoring, and automatic lesson unlocking.
    * 
-   * @param {number} lessonId - Lesson number (originalId), NOT Firestore ID
+   * @param {number|string} lessonId - Lesson number (originalId) or Firestore ID
    * @param {boolean} completed - Whether the lesson is completed
    * @param {number} score - User's score (0-100)
    * @param {boolean} temporary - Whether this is temporary progress (for auto-save)
@@ -375,19 +387,7 @@ export const AuthProvider = ({ children }) => {
   const updateUserProgress = async (lessonId, completed, score = 0, temporary = false, lastSlide = null, slideId = null, allSlideIds = null, userOverride = null) => {
     const userToUse = userOverride || currentUser;
     
-    console.log('🚀 updateUserProgress called with:', {
-      lessonId,
-      completed,
-      score,
-      temporary,
-      lastSlide,
-      slideId,
-      allSlideIds,
-      currentUser: currentUser?.uid,
-      userOverride: userOverride?.uid,
-      userToUse: userToUse?.uid
-    });
-    
+    // 🔒 ROLE-BASED CHECK: Only students should have progress tracked
     if (!userToUse) {
       console.error('❌ No current user available for progress update');
       console.error('❌ currentUser:', currentUser);
@@ -401,6 +401,38 @@ export const AuthProvider = ({ children }) => {
       return { success: false, error: "User object has no UID" };
     }
     
+    // Get user role to determine if progress should be saved
+    let userRole = 'student'; // default
+    try {
+      const userRef = doc(db, 'users', userToUse.uid);
+      const userDoc = await getDoc(userRef);
+      if (userDoc.exists()) {
+        userRole = userDoc.data().role || 'student';
+      }
+    } catch (error) {
+      console.error('❌ Error getting user role:', error);
+    }
+    
+    // 🚫 BLOCK PROGRESS SAVING FOR NON-STUDENTS
+    if (userRole !== 'student') {
+      console.log(`🚫 Progress tracking blocked for ${userRole} role (UID: ${userToUse.uid})`);
+      return { success: true, data: { blocked: true, reason: `Progress tracking not allowed for ${userRole} role` } };
+    }
+    
+    console.log('🚀 updateUserProgress called with:', {
+      lessonId,
+      completed,
+      score,
+      temporary,
+      lastSlide,
+      slideId,
+      allSlideIds,
+      currentUser: currentUser?.uid,
+      userOverride: userOverride?.uid,
+      userToUse: userToUse?.uid,
+      userRole
+    });
+    
     try {
       // Handle regular users with Firestore
       const userRef = doc(db, 'users', userToUse.uid);
@@ -410,54 +442,12 @@ export const AuthProvider = ({ children }) => {
         const userData = userDoc.data();
         const progress = userData.progress || {};
         
-        // Ensure lessonId is a Firestore ID (not lesson number)
-        // If lessonId is a number, we need to find the corresponding Firestore ID
-        let firestoreLessonId = lessonId;
-        
-        // Check if lessonId is already a clear ID (like "lesson1", "lesson2")
-        if (typeof lessonId === 'string' && lessonId.startsWith('lesson')) {
-          console.log(`📋 Using lessonId directly as Firestore ID: ${lessonId}`);
-          firestoreLessonId = lessonId;
-        } else if (typeof lessonId === 'number' || !isNaN(parseInt(lessonId))) {
-          // This is a lesson number, we need to find the Firestore ID
-          console.log(`🔄 Converting lesson number ${lessonId} to Firestore ID...`);
-          // Use the new clear lesson IDs
-          const lessonIdMapping = {
-            1: 'lesson1',
-            2: 'lesson2',
-            3: 'lesson3',
-            4: 'lesson4',
-            5: 'lesson5',
-            6: 'lesson6',
-            7: 'lesson7',
-            8: 'lesson8',
-            9: 'lesson9',
-            10: 'lesson10',
-            11: 'lesson11',
-            12: 'lesson12',
-            13: 'lesson13',
-            14: 'lesson14',
-            15: 'lesson15',
-            16: 'lesson16',
-            17: 'lesson17',
-            18: 'lesson18',
-            19: 'lesson19'
-          };
-          firestoreLessonId = lessonIdMapping[lessonId];
-          if (!firestoreLessonId) {
-            console.error(`❌ No Firestore ID mapping found for lesson number ${lessonId}`);
-            console.error(`📋 Available mappings:`, Object.keys(lessonIdMapping));
-            console.error(`📋 Lesson ID type:`, typeof lessonId, 'Value:', lessonId);
-            return { success: false, error: `No Firestore ID mapping found for lesson number ${lessonId}` };
-          }
-          console.log(`✅ Mapped lesson ${lessonId} to Firestore ID: ${firestoreLessonId}`);
-        } else {
-          console.log(`📋 Using lessonId directly as Firestore ID: ${lessonId}`);
-        }
+        // Determine the correct lesson ID to use for progress tracking
+        const progressLessonId = getLessonFirestoreId(lessonId);
         
         // Initialize lesson progress if it doesn't exist
-        if (!progress[firestoreLessonId]) {
-          progress[firestoreLessonId] = {
+        if (!progress[progressLessonId]) {
+          progress[progressLessonId] = {
             completed: false,
             score: 0,
             completedAt: null,
@@ -470,31 +460,31 @@ export const AuthProvider = ({ children }) => {
         
         // Update lesson progress with new data
         // If lesson is completed, reset lastSlide to 0, otherwise use provided lastSlide
-        const finalLastSlide = completed ? 0 : (lastSlide !== null ? lastSlide : progress[firestoreLessonId].lastSlide);
+        const finalLastSlide = completed ? 0 : (lastSlide !== null ? lastSlide : progress[progressLessonId].lastSlide);
         
-        progress[firestoreLessonId] = {
-          ...progress[firestoreLessonId],
+        progress[progressLessonId] = {
+          ...progress[progressLessonId],
           completed,
           score,
-          completedAt: completed ? new Date() : progress[firestoreLessonId].completedAt,
+          completedAt: completed ? new Date() : progress[progressLessonId].completedAt,
           temporary: temporary && !completed ? true : false,
           lastActivity: new Date(),
           lastSlide: finalLastSlide
         };
         
         // Track page engagement if slideId is provided
-        if (slideId && progress[firestoreLessonId].pagesEngaged) {
-          if (!progress[firestoreLessonId].pagesEngaged.includes(slideId)) {
-            progress[firestoreLessonId].pagesEngaged = [...progress[firestoreLessonId].pagesEngaged, slideId];
+        if (slideId && progress[progressLessonId].pagesEngaged) {
+          if (!progress[progressLessonId].pagesEngaged.includes(slideId)) {
+            progress[progressLessonId].pagesEngaged = [...progress[progressLessonId].pagesEngaged, slideId];
           }
         }
         
         // If lesson is completed, ensure all slides are marked as engaged
         if (completed && allSlideIds && Array.isArray(allSlideIds)) {
-          const currentEngaged = progress[firestoreLessonId].pagesEngaged || [];
+          const currentEngaged = progress[progressLessonId].pagesEngaged || [];
           const allEngaged = [...new Set([...currentEngaged, ...allSlideIds])];
-          progress[firestoreLessonId].pagesEngaged = allEngaged;
-          console.log(`📊 All slides marked as engaged for lesson ${firestoreLessonId}: ${allEngaged.length} slides`);
+          progress[progressLessonId].pagesEngaged = allEngaged;
+          console.log(`📊 All slides marked as engaged for lesson ${progressLessonId}: ${allEngaged.length} slides`);
         }
         
         // Calculate total time spent and pages engaged across all lessons
@@ -516,21 +506,21 @@ export const AuthProvider = ({ children }) => {
         let newCurrentLesson = currentLesson;
         
         if (completed) {
-          // Add to completed lessons if not already there (using Firestore ID)
-          if (!currentCompletedLessons.includes(firestoreLessonId)) {
-            newCompletedLessons = [...currentCompletedLessons, firestoreLessonId];
-            console.log(`✅ Lesson ${firestoreLessonId} completed and added to completedLessons`);
+          // Add to completed lessons if not already there (using progress lesson ID)
+          if (!currentCompletedLessons.includes(progressLessonId)) {
+            newCompletedLessons = [...currentCompletedLessons, progressLessonId];
+            console.log(`✅ Lesson ${progressLessonId} completed and added to completedLessons`);
           }
           // Note: No automatic lesson unlocking - teachers control lesson access
-          console.log(`📚 Lesson ${firestoreLessonId} completed - waiting for teacher to unlock next lesson`);
+          console.log(`📚 Lesson ${progressLessonId} completed - waiting for teacher to unlock next lesson`);
         }
         
         // Calculate achievements based on progress
         const achievements = userData.achievements || [];
         const newAchievements = [...achievements];
         
-        // First lesson completion achievement (check by Firestore ID)
-        if (completed && firestoreLessonId === 'lesson1' && !achievements.includes('first_lesson')) {
+        // First lesson completion achievement (check by progress lesson ID or lesson number)
+        if (completed && (progressLessonId === 'lesson1' || lessonId === 1) && !achievements.includes('first_lesson')) {
           newAchievements.push('first_lesson');
           console.log('🏆 Achievement unlocked: First Lesson Completed!');
         }
@@ -550,16 +540,16 @@ export const AuthProvider = ({ children }) => {
         // Comprehensive console logging for session tracking
         console.log('📊 USER SESSION DATA UPDATE:', {
           userId: userToUse.uid,
-          lessonId: firestoreLessonId,
+          lessonId: progressLessonId,
           originalLessonId: lessonId,
           action: completed ? 'LESSON_COMPLETED' : 'PROGRESS_UPDATED',
           timestamp: new Date().toISOString(),
           progress: {
-            lessonId: firestoreLessonId,
+            lessonId: progressLessonId,
             completed,
             score,
             lastSlide: finalLastSlide,
-            pagesEngaged: progress[firestoreLessonId].pagesEngaged?.length || 0,
+            pagesEngaged: progress[progressLessonId].pagesEngaged?.length || 0,
             temporary
           },
           statistics: {
@@ -602,7 +592,7 @@ export const AuthProvider = ({ children }) => {
         console.log('✅ Progress update completed successfully');
         console.log('📊 Final user state:', {
           userId: userToUse.uid,
-          lessonId: firestoreLessonId,
+          lessonId: progressLessonId,
           completed,
           score,
           totalTimeSpent,
@@ -614,10 +604,10 @@ export const AuthProvider = ({ children }) => {
         return { success: true, data: { progress, completedLessons: newCompletedLessons } };
       } else {
         console.error('❌ User document does not exist in Firestore');
-        return { success: false, error: "User document does not exist" };
+        return { success: false, error: "User document not found" };
       }
     } catch (error) {
-      console.error('❌ Error updating progress:', error);
+      console.error('❌ Error updating user progress:', error);
       return { success: false, error: error.message };
     }
   };
@@ -628,60 +618,35 @@ export const AuthProvider = ({ children }) => {
    * Records which specific slides/pages a user has engaged with.
    * Used for analytics and to ensure users don't skip content.
    * 
-   * @param {number} lessonId - Lesson number (originalId), NOT Firestore ID
+   * @param {number|string} lessonId - Lesson number (originalId) or Firestore ID
    * @param {string} slideId - ID of the specific slide
    */
   const trackSlideEngagement = async (lessonId, slideId) => {
     if (!currentUser) return;
     
+    // 🔒 ROLE-BASED CHECK: Only students should have engagement tracked
     try {
-      // Handle regular users with Firestore
       const userRef = doc(db, 'users', currentUser.uid);
       const userDoc = await getDoc(userRef);
       
       if (userDoc.exists()) {
         const userData = userDoc.data();
-        const progress = userData.progress || {};
+        const userRole = userData.role || 'student';
         
-        // Ensure lessonId is a Firestore ID (not lesson number)
-        let firestoreLessonId = lessonId;
-        
-        // Check if lessonId is already a clear ID (like "lesson1", "lesson2")
-        if (typeof lessonId === 'string' && lessonId.startsWith('lesson')) {
-          firestoreLessonId = lessonId;
-        } else if (typeof lessonId === 'number' || !isNaN(parseInt(lessonId))) {
-          // This is a lesson number, we need to find the Firestore ID
-          const lessonIdMapping = {
-            1: 'lesson1',
-            2: 'lesson2',
-            3: 'lesson3',
-            4: 'lesson4',
-            5: 'lesson5',
-            6: 'lesson6',
-            7: 'lesson7',
-            8: 'lesson8',
-            9: 'lesson9',
-            10: 'lesson10',
-            11: 'lesson11',
-            12: 'lesson12',
-            13: 'lesson13',
-            14: 'lesson14',
-            15: 'lesson15',
-            16: 'lesson16',
-            17: 'lesson17',
-            18: 'lesson18',
-            19: 'lesson19'
-          };
-          firestoreLessonId = lessonIdMapping[lessonId];
-          if (!firestoreLessonId) {
-            console.error(`❌ No Firestore ID mapping found for lesson number ${lessonId}`);
-            return;
-          }
+        // 🚫 BLOCK ENGAGEMENT TRACKING FOR NON-STUDENTS
+        if (userRole !== 'student') {
+          console.log(`🚫 Slide engagement tracking blocked for ${userRole} role (UID: ${currentUser.uid})`);
+          return;
         }
         
+        const progress = userData.progress || {};
+        
+        // Determine the correct lesson ID to use for progress tracking
+        const progressLessonId = getLessonFirestoreId(lessonId);
+        
         // Initialize lesson progress if it doesn't exist
-        if (!progress[firestoreLessonId]) {
-          progress[firestoreLessonId] = {
+        if (!progress[progressLessonId]) {
+          progress[progressLessonId] = {
             completed: false,
             score: 0,
             completedAt: null,
@@ -693,14 +658,14 @@ export const AuthProvider = ({ children }) => {
         }
         
         // Initialize pagesEngaged array if it doesn't exist
-        if (!progress[firestoreLessonId].pagesEngaged) {
-          progress[firestoreLessonId].pagesEngaged = [];
+        if (!progress[progressLessonId].pagesEngaged) {
+          progress[progressLessonId].pagesEngaged = [];
         }
         
         // Add slide to pagesEngaged if not already present (ensures uniqueness)
-        if (!progress[firestoreLessonId].pagesEngaged.includes(slideId)) {
-          progress[firestoreLessonId].pagesEngaged = [...progress[firestoreLessonId].pagesEngaged, slideId];
-          progress[firestoreLessonId].lastActivity = new Date();
+        if (!progress[progressLessonId].pagesEngaged.includes(slideId)) {
+          progress[progressLessonId].pagesEngaged = [...progress[progressLessonId].pagesEngaged, slideId];
+          progress[progressLessonId].lastActivity = new Date();
           
           // Calculate total time spent and pages engaged across all lessons
           let totalTimeSpent = 0;
@@ -717,20 +682,20 @@ export const AuthProvider = ({ children }) => {
           console.log('👁️ SLIDE ENGAGEMENT TRACKED:', {
             userId: currentUser.uid,
             lessonId,
-            firestoreLessonId,
+            progressLessonId,
             slideId,
             timestamp: new Date().toISOString(),
             engagement: {
               lessonId,
-              firestoreLessonId,
+              progressLessonId,
               slideId,
-              totalSlidesInLesson: progress[firestoreLessonId].pagesEngaged.length,
+              totalSlidesInLesson: progress[progressLessonId].pagesEngaged.length,
               isNewEngagement: true
             },
             statistics: {
               totalTimeSpent,
               totalPagesEngaged,
-              lessonProgress: Math.round((progress[firestoreLessonId].pagesEngaged.length / 10) * 100) // Estimate total slides
+              lessonProgress: Math.round((progress[progressLessonId].pagesEngaged.length / 10) * 100) // Estimate total slides
             }
           });
           
@@ -753,11 +718,11 @@ export const AuthProvider = ({ children }) => {
           // Log engagement summary
           console.log('📈 ENGAGEMENT SUMMARY:', {
             lessonId,
-            firestoreLessonId,
+            progressLessonId,
             slideId,
             totalPagesEngaged,
             totalTimeSpent,
-            lessonProgress: `${progress[firestoreLessonId].pagesEngaged.length} slides engaged`
+            lessonProgress: `${progress[progressLessonId].pagesEngaged.length} slides engaged`
           });
         } else {
           // Log duplicate engagement attempt
@@ -782,11 +747,21 @@ export const AuthProvider = ({ children }) => {
    */
   const removeTemporaryProgress = async () => {
     if (!currentUser) return;
+    
+    // 🔒 ROLE-BASED CHECK: Only students should have temporary progress cleaned up
     try {
       const userRef = doc(db, 'users', currentUser.uid);
       const userDoc = await getDoc(userRef);
       if (userDoc.exists()) {
         const userData = userDoc.data();
+        const userRole = userData.role || 'student';
+        
+        // 🚫 BLOCK TEMPORARY PROGRESS CLEANUP FOR NON-STUDENTS
+        if (userRole !== 'student') {
+          console.log(`🚫 Temporary progress cleanup blocked for ${userRole} role (UID: ${currentUser.uid})`);
+          return;
+        }
+        
         const progress = userData.progress || {};
         let changed = false;
         
@@ -924,105 +899,50 @@ export const AuthProvider = ({ children }) => {
   /**
    * Get last slide for resume functionality
    * 
-   * @param {number} lessonId - Lesson number (originalId), NOT Firestore ID
+   * @param {number|string} lessonId - Lesson number (originalId) or Firestore ID
    * @returns {number} Last slide index
    */
   const getLastLessonSlide = (lessonId) => {
-    // Ensure lessonId is a Firestore ID
-    let firestoreLessonId = lessonId;
+    // Try to find the lesson in the database to get the correct ID
+    const progressLessonId = getLessonFirestoreId(lessonId);
     
-    // Check if lessonId is already a clear ID (like "lesson1", "lesson2")
-    if (typeof lessonId === 'string' && lessonId.startsWith('lesson')) {
-      firestoreLessonId = lessonId;
-    } else if (typeof lessonId === 'number' || !isNaN(parseInt(lessonId))) {
-      const lessonIdMapping = {
-        1: 'lesson1',
-        2: 'lesson2',
-        3: 'lesson3',
-        4: 'lesson4',
-        5: 'lesson5',
-        6: 'lesson6',
-        7: 'lesson7',
-        8: 'lesson8',
-        9: 'lesson9',
-        10: 'lesson10',
-        11: 'lesson11',
-        12: 'lesson12',
-        13: 'lesson13',
-        14: 'lesson14',
-        15: 'lesson15',
-        16: 'lesson16',
-        17: 'lesson17',
-        18: 'lesson18',
-        19: 'lesson19'
-      };
-      firestoreLessonId = lessonIdMapping[lessonId];
-      if (!firestoreLessonId) {
-        console.error(`❌ No Firestore ID mapping found for lesson number ${lessonId}`);
-        return 0;
-      }
-    }
-    
-    const lastSlide = userProfile?.progress?.[firestoreLessonId]?.lastSlide ?? 0;
-    console.log(`📖 GET LAST SLIDE: Lesson ${lessonId} -> Slide ${lastSlide + 1}`);
+    const lastSlide = userProfile?.progress?.[progressLessonId]?.lastSlide ?? 0;
+    console.log(`📖 GET LAST SLIDE: Lesson ${lessonId} -> Slide ${lastSlide + 1} (using ID: ${progressLessonId})`);
     return lastSlide;
   };
 
   /**
    * Set last slide for resume functionality
    * 
-   * @param {number} lessonId - Lesson number (originalId), NOT Firestore ID
+   * @param {number|string} lessonId - Lesson number (originalId) or Firestore ID
    * @param {number} slideIndex - Slide index to save (0-based)
    */
   const setLastLessonSlide = async (lessonId, slideIndex) => {
     if (!currentUser) return;
     
+    // 🔒 ROLE-BASED CHECK: Only students should have slide positions saved
     try {
       const userRef = doc(db, 'users', currentUser.uid);
       const userDoc = await getDoc(userRef);
       
       if (userDoc.exists()) {
         const userData = userDoc.data();
-        const progress = userData.progress || {};
+        const userRole = userData.role || 'student';
         
-        // Ensure lessonId is a Firestore ID
-        let firestoreLessonId = lessonId;
-        
-        // Check if lessonId is already a clear ID (like "lesson1", "lesson2")
-        if (typeof lessonId === 'string' && lessonId.startsWith('lesson')) {
-          firestoreLessonId = lessonId;
-        } else if (typeof lessonId === 'number' || !isNaN(parseInt(lessonId))) {
-          const lessonIdMapping = {
-            1: 'lesson1',
-            2: 'lesson2',
-            3: 'lesson3',
-            4: 'lesson4',
-            5: 'lesson5',
-            6: 'lesson6',
-            7: 'lesson7',
-            8: 'lesson8',
-            9: 'lesson9',
-            10: 'lesson10',
-            11: 'lesson11',
-            12: 'lesson12',
-            13: 'lesson13',
-            14: 'lesson14',
-            15: 'lesson15',
-            16: 'lesson16',
-            17: 'lesson17',
-            18: 'lesson18',
-            19: 'lesson19'
-          };
-          firestoreLessonId = lessonIdMapping[lessonId];
-          if (!firestoreLessonId) {
-            console.error(`❌ No Firestore ID mapping found for lesson number ${lessonId}`);
-            return;
-          }
+        // 🚫 BLOCK SLIDE POSITION SAVING FOR NON-STUDENTS
+        if (userRole !== 'student') {
+          console.log(`🚫 Slide position saving blocked for ${userRole} role (UID: ${currentUser.uid})`);
+          return;
         }
         
+        const progress = userData.progress || {};
+        
+        // Determine the correct lesson ID to use for progress tracking
+        const progressLessonId = getLessonFirestoreId(lessonId);
+        
         // Initialize lesson progress if it doesn't exist
-        if (!progress[firestoreLessonId]) {
-          progress[firestoreLessonId] = {
+        if (!progress[progressLessonId]) {
+          progress[progressLessonId] = {
             completed: false,
             score: 0,
             completedAt: null,
@@ -1034,13 +954,13 @@ export const AuthProvider = ({ children }) => {
         }
         
         // Update last slide
-        progress[firestoreLessonId].lastSlide = slideIndex;
-        progress[firestoreLessonId].lastActivity = new Date();
+        progress[progressLessonId].lastSlide = slideIndex;
+        progress[progressLessonId].lastActivity = new Date();
         
         // Console logging for slide position tracking
         console.log('💾 SLIDE POSITION SAVED:', {
           userId: currentUser.uid,
-          lessonId: firestoreLessonId,
+          lessonId: progressLessonId,
           originalLessonId: lessonId,
           slideIndex: slideIndex + 1, // Convert to 1-based for display
           timestamp: new Date().toISOString(),

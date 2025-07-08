@@ -76,35 +76,20 @@ const ExcelImport = () => {
       // Generate a secure password
       const password = generateSecurePassword();
       
-      // Create user profile in Firestore
+      // Determine user role
+      const userRole = userData.role || 'student';
+      
+      // Create base user profile
       const userProfile = {
         uid: userId,
         email: userData.email.toLowerCase(),
         displayName: `${userData.firstName} ${userData.lastName}`,
-        role: userData.role || 'student',
+        role: userRole,
         // User credentials
         firstName: userData.firstName,
         lastName: userData.lastName,
         age: userData.age ? parseInt(userData.age) : null,
         sex: userData.sex || null,
-        // Progress tracking
-        progress: {
-          1: {
-            completed: false,
-            score: 0,
-            completedAt: null,
-            temporary: false,
-            lastSlide: 0,
-            pagesEngaged: [],
-            lastActivity: new Date()
-          }
-        },
-        completedLessons: [],
-        currentLesson: 1,
-        totalTimeSpent: 0,
-        totalPagesEngaged: 0,
-        achievements: [],
-        streak: 0,
         // Password (for login verification)
         password: password,
         // Status flags
@@ -117,6 +102,58 @@ const ExcelImport = () => {
         updatedAt: serverTimestamp()
       };
       
+      // Add role-specific fields
+      if (userRole === 'student') {
+        // Students need progress tracking
+        userProfile.progress = {
+          1: {
+            completed: false,
+            score: 0,
+            completedAt: null,
+            temporary: false,
+            lastSlide: 0,
+            pagesEngaged: [],
+            lastActivity: new Date()
+          }
+        };
+        userProfile.completedLessons = [];
+        userProfile.currentLesson = 1;
+        userProfile.totalTimeSpent = 0;
+        userProfile.totalPagesEngaged = 0;
+        userProfile.achievements = [];
+        userProfile.streak = 0;
+      } else if (userRole === 'teacher') {
+        // Teachers need teacher-specific fields but no progress
+        userProfile.teacherClasses = [];
+        userProfile.teacherPermissions = ['manage_students', 'view_analytics', 'add_comments'];
+        userProfile.teacherSettings = {
+          defaultClassId: null,
+          notificationPreferences: {
+            emailNotifications: true,
+            studentProgressAlerts: true,
+            classUpdates: true
+          }
+        };
+      } else if (userRole === 'system_manager') {
+        // System managers need system manager-specific fields but no progress
+        userProfile.systemManagerPermissions = [
+          'manage_users', 
+          'manage_content', 
+          'manage_system', 
+          'view_logs',
+          'import_data',
+          'export_data'
+        ];
+        userProfile.systemManagerSettings = {
+          defaultLanguage: 'he',
+          notificationPreferences: {
+            emailNotifications: true,
+            systemAlerts: true,
+            userActivityReports: true
+          }
+        };
+      }
+      
       // Store profile in Firestore
       await setDoc(doc(db, 'users', userId), userProfile);
       
@@ -124,12 +161,12 @@ const ExcelImport = () => {
       logSecurityEvent('USER_CREATED_VIA_IMPORT', {
         userId: userId,
         userEmail: userData.email,
-        userRole: userData.role || 'student',
+        userRole: userRole,
         createdBy: 'system_manager',
         timestamp: new Date().toISOString()
       });
       
-      console.log('✅ User created via import:', userId);
+      console.log('✅ User created via import:', userId, 'Role:', userRole);
       
       return { success: true, userId: userId, password };
     } catch (error) {

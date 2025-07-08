@@ -186,11 +186,13 @@ const InteractiveLesson = () => {
           // Keep the slides in the root level for consistency
           if (isMounted) setLesson(lessonData);
           
-          // Check if lesson is already completed using lesson number from lesson object
+          // Check if lesson is already completed using Firestore lesson ID
           const lessonNumber = lessonData.originalId || parseInt(lessonId);
+          const lessonFirestoreId = `lesson-${lessonNumber}`;
           let lessonCompleted = false;
-          if (userProfile && userProfile.progress && lessonNumber && userProfile.progress[lessonNumber]) {
-            const lessonProgress = userProfile.progress[lessonNumber];
+          
+          if (userProfile && userProfile.progress && lessonFirestoreId && userProfile.progress[lessonFirestoreId]) {
+            const lessonProgress = userProfile.progress[lessonFirestoreId];
             if (lessonProgress.completed) {
               isCompletedLesson.current = true;
               lessonCompleted = true;
@@ -198,7 +200,7 @@ const InteractiveLesson = () => {
             }
           }
           
-          // Load saved slide position using lesson number
+          // Load saved slide position using lesson number (getLastLessonSlide handles the conversion)
           if (userProfile && lessonNumber && !isNaN(lessonNumber)) {
             let savedSlide = getLastLessonSlide(lessonNumber);
             // If lesson is completed or savedSlide is out of bounds, reset to 0
@@ -446,6 +448,26 @@ const InteractiveLesson = () => {
       return;
     }
 
+    // Check if lesson is already completed to prevent duplicate completion
+    const lessonFirestoreId = `lesson-${lessonNumber}`;
+    if (userProfile?.progress?.[lessonFirestoreId]?.completed) {
+      console.log('✅ Lesson already completed, showing completion state without re-saving');
+      toast.success('השיעור כבר הושלם! 🎉');
+      
+      // Still navigate to roadmap but don't save again
+      setTimeout(async () => {
+        try {
+          const nextLesson = await getNextLesson(lessonNumber);
+          const navigateUrl = nextLesson ? `/student/roadmap?unlocked=${nextLesson.originalId}` : '/student/roadmap';
+          navigate(navigateUrl, { replace: true });
+        } catch (error) {
+          console.error('❌ Error navigating after completion:', error);
+          navigate('/student/roadmap', { replace: true });
+        }
+      }, 2000);
+      return;
+    }
+
     console.log('🎯 Starting lesson completion for lesson:', lessonNumber);
     console.log('📋 Lesson object details:', {
       lessonId: lessonId,
@@ -523,8 +545,8 @@ const InteractiveLesson = () => {
         try {
           console.log('🧭 Starting navigation to roadmap...');
           
-          // Navigate to roadmap with unlock animation param
-          const navigateUrl = nextLesson ? `/roadmap?unlocked=${nextLesson.originalId}` : '/roadmap';
+          // Navigate to student roadmap with unlock animation param
+          const navigateUrl = nextLesson ? `/student/roadmap?unlocked=${nextLesson.originalId}` : '/student/roadmap';
           console.log('🧭 Navigating to:', navigateUrl);
           
           // Force navigation with replace to ensure it works
@@ -534,7 +556,7 @@ const InteractiveLesson = () => {
         } catch (error) {
           console.error('❌ Error navigating after completion:', error);
           // Fallback navigation
-          navigate('/roadmap', { replace: true });
+          navigate('/student/roadmap', { replace: true });
         }
       }, 3500); // Increased to 3.5 seconds to ensure state updates
       
@@ -544,8 +566,8 @@ const InteractiveLesson = () => {
       
       // Still try to navigate even if save failed
       setTimeout(async () => {
-        const nextLesson = await getNextLesson(lesson.id);
-        const navigateUrl = nextLesson ? `/roadmap?unlocked=${nextLesson.originalId}` : '/roadmap';
+        const nextLesson = await getNextLesson(lessonNumber);
+        const navigateUrl = nextLesson ? `/student/roadmap?unlocked=${nextLesson.originalId}` : '/student/roadmap';
         navigate(navigateUrl, { replace: true });
       }, 1000);
     }

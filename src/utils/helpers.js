@@ -502,7 +502,8 @@ export class SessionMonitor {
     };
 
     const emoji = emojiMap[eventType] || '📝';
-    }
+    console.log(`${emoji} [Session] ${eventType}:`, event);
+  }
 
   /**
    * Log slide navigation
