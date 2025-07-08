@@ -387,19 +387,7 @@ export const AuthProvider = ({ children }) => {
   const updateUserProgress = async (lessonId, completed, score = 0, temporary = false, lastSlide = null, slideId = null, allSlideIds = null, userOverride = null) => {
     const userToUse = userOverride || currentUser;
     
-    console.log('🚀 updateUserProgress called with:', {
-      lessonId,
-      completed,
-      score,
-      temporary,
-      lastSlide,
-      slideId,
-      allSlideIds,
-      currentUser: currentUser?.uid,
-      userOverride: userOverride?.uid,
-      userToUse: userToUse?.uid
-    });
-    
+    // 🔒 ROLE-BASED CHECK: Only students should have progress tracked
     if (!userToUse) {
       console.error('❌ No current user available for progress update');
       console.error('❌ currentUser:', currentUser);
@@ -412,6 +400,38 @@ export const AuthProvider = ({ children }) => {
       console.error('❌ userToUse:', userToUse);
       return { success: false, error: "User object has no UID" };
     }
+    
+    // Get user role to determine if progress should be saved
+    let userRole = 'student'; // default
+    try {
+      const userRef = doc(db, 'users', userToUse.uid);
+      const userDoc = await getDoc(userRef);
+      if (userDoc.exists()) {
+        userRole = userDoc.data().role || 'student';
+      }
+    } catch (error) {
+      console.error('❌ Error getting user role:', error);
+    }
+    
+    // 🚫 BLOCK PROGRESS SAVING FOR NON-STUDENTS
+    if (userRole !== 'student') {
+      console.log(`🚫 Progress tracking blocked for ${userRole} role (UID: ${userToUse.uid})`);
+      return { success: true, data: { blocked: true, reason: `Progress tracking not allowed for ${userRole} role` } };
+    }
+    
+    console.log('🚀 updateUserProgress called with:', {
+      lessonId,
+      completed,
+      score,
+      temporary,
+      lastSlide,
+      slideId,
+      allSlideIds,
+      currentUser: currentUser?.uid,
+      userOverride: userOverride?.uid,
+      userToUse: userToUse?.uid,
+      userRole
+    });
     
     try {
       // Handle regular users with Firestore
@@ -584,10 +604,10 @@ export const AuthProvider = ({ children }) => {
         return { success: true, data: { progress, completedLessons: newCompletedLessons } };
       } else {
         console.error('❌ User document does not exist in Firestore');
-        return { success: false, error: "User document does not exist" };
+        return { success: false, error: "User document not found" };
       }
     } catch (error) {
-      console.error('❌ Error updating progress:', error);
+      console.error('❌ Error updating user progress:', error);
       return { success: false, error: error.message };
     }
   };
@@ -604,13 +624,21 @@ export const AuthProvider = ({ children }) => {
   const trackSlideEngagement = async (lessonId, slideId) => {
     if (!currentUser) return;
     
+    // 🔒 ROLE-BASED CHECK: Only students should have engagement tracked
     try {
-      // Handle regular users with Firestore
       const userRef = doc(db, 'users', currentUser.uid);
       const userDoc = await getDoc(userRef);
       
       if (userDoc.exists()) {
         const userData = userDoc.data();
+        const userRole = userData.role || 'student';
+        
+        // 🚫 BLOCK ENGAGEMENT TRACKING FOR NON-STUDENTS
+        if (userRole !== 'student') {
+          console.log(`🚫 Slide engagement tracking blocked for ${userRole} role (UID: ${currentUser.uid})`);
+          return;
+        }
+        
         const progress = userData.progress || {};
         
         // Determine the correct lesson ID to use for progress tracking
@@ -719,11 +747,21 @@ export const AuthProvider = ({ children }) => {
    */
   const removeTemporaryProgress = async () => {
     if (!currentUser) return;
+    
+    // 🔒 ROLE-BASED CHECK: Only students should have temporary progress cleaned up
     try {
       const userRef = doc(db, 'users', currentUser.uid);
       const userDoc = await getDoc(userRef);
       if (userDoc.exists()) {
         const userData = userDoc.data();
+        const userRole = userData.role || 'student';
+        
+        // 🚫 BLOCK TEMPORARY PROGRESS CLEANUP FOR NON-STUDENTS
+        if (userRole !== 'student') {
+          console.log(`🚫 Temporary progress cleanup blocked for ${userRole} role (UID: ${currentUser.uid})`);
+          return;
+        }
+        
         const progress = userData.progress || {};
         let changed = false;
         
@@ -882,12 +920,21 @@ export const AuthProvider = ({ children }) => {
   const setLastLessonSlide = async (lessonId, slideIndex) => {
     if (!currentUser) return;
     
+    // 🔒 ROLE-BASED CHECK: Only students should have slide positions saved
     try {
       const userRef = doc(db, 'users', currentUser.uid);
       const userDoc = await getDoc(userRef);
       
       if (userDoc.exists()) {
         const userData = userDoc.data();
+        const userRole = userData.role || 'student';
+        
+        // 🚫 BLOCK SLIDE POSITION SAVING FOR NON-STUDENTS
+        if (userRole !== 'student') {
+          console.log(`🚫 Slide position saving blocked for ${userRole} role (UID: ${currentUser.uid})`);
+          return;
+        }
+        
         const progress = userData.progress || {};
         
         // Determine the correct lesson ID to use for progress tracking

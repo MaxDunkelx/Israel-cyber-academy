@@ -62,14 +62,7 @@ const CreateTeacherModal = ({ onClose, onSuccess }) => {
             classUpdates: true
           }
         },
-        // Progress tracking (for consistency)
-        progress: {},
-        completedLessons: [],
-        currentLesson: 1,
-        totalTimeSpent: 0,
-        totalPagesEngaged: 0,
-        achievements: [],
-        streak: 0,
+        // Teachers don't need progress tracking - removed progress fields
         createdAt: serverTimestamp(),
         lastLogin: serverTimestamp(),
         lastActivityDate: serverTimestamp(),
