@@ -59,51 +59,85 @@ const StudentSession = () => {
 
   useEffect(() => {
     if (session) {
-      // Listen to session changes in real-time
-      const unsubscribe = listenToSession(sessionId, (updatedSession) => {
-        if (updatedSession) {
-          setSession(updatedSession);
-          const newSlideIndex = updatedSession.currentSlide || 0;
-          
-          // Determine session mode and control state
-          const isLive = updatedSession.status === 'active' && updatedSession.teacherId;
-          setIsLiveSession(isLive);
-          setSessionMode(isLive ? 'live' : 'individual');
-          setTeacherControlsSession(isLive);
-          
-          // In live mode, force slide to match teacher's current slide
-          if (isLive) {
-            setCurrentSlide(newSlideIndex);
-          }
-          
-          // Track slide engagement when slide changes
-          if (lesson && lesson.slides?.[newSlideIndex]) {
-            const slideData = lesson.slides[newSlideIndex];
-            if (slideData.id && !slidesEngaged.has(slideData.id)) {
-              trackSlideEngagement(lesson.originalId, slideData.id);
-              setSlidesEngaged(prev => new Set([...prev, slideData.id]));
-              
-              console.log('📊 Live Session Slide Engagement:', {
-                sessionId,
-                lessonId: lesson.originalId,
-                slideId: slideData.id,
-                slideTitle: slideData.title,
-                totalSlidesEngaged: slidesEngaged.size + 1
-              });
-            }
-          }
-          
-          // Only update current slide if not in live mode
-          if (!isLive) {
-          setCurrentSlide(newSlideIndex);
-          }
-        } else {
-          toast.error('השיעור הסתיים');
-          navigate('/student/dashboard');
-        }
-      });
+      // Listen to session changes in real-time with error handling
+      let unsubscribe = null;
+      let retryCount = 0;
+      const maxRetries = 3;
 
-      return () => unsubscribe();
+      const setupListener = () => {
+        try {
+          console.log('🔍 Setting up session listener for student session:', sessionId);
+          
+          unsubscribe = listenToSession(sessionId, (updatedSession) => {
+            if (updatedSession) {
+              console.log('📡 Session updated:', updatedSession.lessonName);
+              setSession(updatedSession);
+              const newSlideIndex = updatedSession.currentSlide || 0;
+              
+              // Determine session mode and control state
+              const isLive = updatedSession.status === 'active' && updatedSession.teacherId;
+              setIsLiveSession(isLive);
+              setSessionMode(isLive ? 'live' : 'individual');
+              setTeacherControlsSession(isLive);
+              
+              // In live mode, force slide to match teacher's current slide
+              if (isLive) {
+                setCurrentSlide(newSlideIndex);
+              }
+              
+              // Track slide engagement when slide changes
+              if (lesson && lesson.slides?.[newSlideIndex]) {
+                const slideData = lesson.slides[newSlideIndex];
+                if (slideData.id && !slidesEngaged.has(slideData.id)) {
+                  trackSlideEngagement(lesson.originalId, slideData.id);
+                  setSlidesEngaged(prev => new Set([...prev, slideData.id]));
+                  
+                  console.log('📊 Live Session Slide Engagement:', {
+                    sessionId,
+                    lessonId: lesson.originalId,
+                    slideId: slideData.id,
+                    slideTitle: slideData.title,
+                    totalSlidesEngaged: slidesEngaged.size + 1
+                  });
+                }
+              }
+              
+              // Only update current slide if not in live mode
+              if (!isLive) {
+                setCurrentSlide(newSlideIndex);
+              }
+              
+              // Reset retry count on successful update
+              retryCount = 0;
+            } else {
+              console.log('📡 Session ended or not found');
+              toast.error('השיעור הסתיים');
+              navigate('/student/dashboard');
+            }
+          });
+
+        } catch (error) {
+          console.error('❌ Error setting up session listener:', error);
+          retryCount++;
+          
+          if (retryCount < maxRetries) {
+            console.log(`🔄 Retrying session listener (${retryCount}/${maxRetries})...`);
+            setTimeout(setupListener, 2000 * retryCount); // Exponential backoff
+          } else {
+            console.error('❌ Max retries reached for session listener');
+            toast.error('אירעה שגיאה בחיבור לשיעור');
+          }
+        }
+      };
+
+      setupListener();
+
+      return () => {
+        if (unsubscribe) {
+          console.log('🔌 Cleaning up session listener');
+          unsubscribe();
+        }
+      };
     }
   }, [sessionId, navigate, lesson, trackSlideEngagement, slidesEngaged]);
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Play, 
@@ -13,43 +13,23 @@ import { useAuth } from '../../hooks/useAuth';
 import { listenToCurrentActiveSession } from '../../firebase/session-service';
 import Button from '../ui/Button';
 
-const LiveSessionNotification = ({ isVisible: externalIsVisible }) => {
+const LiveSessionNotification = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   
   const [currentSession, setCurrentSession] = useState(null);
-  const [internalIsVisible, setInternalIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
   const [sessionDuration, setSessionDuration] = useState(0);
   const [isSessionValid, setIsSessionValid] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (!currentUser?.uid) return;
-
-    // Listen to current active session
-    const unsubscribe = listenToCurrentActiveSession(currentUser.uid, (session) => {
-      if (session) {
-        // Validate if session is actually active and teacher is online
-        const isValid = validateSession(session);
-        setCurrentSession(session);
-        setIsSessionValid(isValid);
-        setInternalIsVisible(isValid);
-      } else {
-        setCurrentSession(null);
-        setInternalIsVisible(false);
-        setIsSessionValid(false);
-      }
-    });
-
-    return () => unsubscribe();
-  }, [currentUser?.uid]);
-
-  // Validate session - check if teacher is online and session is recent
-  const validateSession = (session) => {
+  // Debounced session validation to reduce Firebase calls
+  const validateSession = useCallback((session) => {
     if (!session || session.status !== 'active') {
       return false;
     }
 
-    // Check if session has been inactive for more than 5 minutes (reduced from 10)
+    // Check if session has been inactive for more than 5 minutes
     const lastActivity = session.lastActivity?.toDate?.() || new Date(session.lastActivity);
     const now = new Date();
     const timeDiff = now.getTime() - lastActivity.getTime();
@@ -60,7 +40,7 @@ const LiveSessionNotification = ({ isVisible: externalIsVisible }) => {
       return false;
     }
 
-    // Check if session has been running for more than 4 hours (auto-end long sessions)
+    // Check if session has been running for more than 4 hours
     const startTime = session.startTime?.toDate?.() || new Date(session.startTime);
     const sessionDuration = now.getTime() - startTime.getTime();
     const maxSessionDuration = 4 * 60 * 60 * 1000; // 4 hours in milliseconds
@@ -71,7 +51,66 @@ const LiveSessionNotification = ({ isVisible: externalIsVisible }) => {
     }
 
     return true;
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+
+    let unsubscribe = null;
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    const setupListener = () => {
+      try {
+        console.log('🔍 Setting up live session listener for student:', currentUser.uid);
+        
+        // Listen to current active session with error handling
+        unsubscribe = listenToCurrentActiveSession(currentUser.uid, (session) => {
+          if (session) {
+            console.log('📡 Received session update:', session.lessonName);
+            
+            // Validate if session is actually active and teacher is online
+            const isValid = validateSession(session);
+            setCurrentSession(session);
+            setIsSessionValid(isValid);
+            setIsVisible(isValid);
+            setIsLoading(false);
+          } else {
+            console.log('📡 No active session found');
+            setCurrentSession(null);
+            setIsVisible(false);
+            setIsSessionValid(false);
+            setIsLoading(false);
+          }
+        });
+
+        // Reset retry count on successful connection
+        retryCount = 0;
+        
+      } catch (error) {
+        console.error('❌ Error setting up session listener:', error);
+        retryCount++;
+        
+        if (retryCount < maxRetries) {
+          console.log(`🔄 Retrying session listener (${retryCount}/${maxRetries})...`);
+          setTimeout(setupListener, 2000 * retryCount); // Exponential backoff
+        } else {
+          console.error('❌ Max retries reached for session listener');
+          setIsLoading(false);
+        }
+      }
+    };
+
+    setIsLoading(true);
+    setupListener();
+
+    return () => {
+      if (unsubscribe) {
+        console.log('🔌 Cleaning up session listener');
+        unsubscribe();
+      }
+    };
+  }, [currentUser?.uid, validateSession]);
 
   // Calculate session duration
   useEffect(() => {
@@ -89,11 +128,12 @@ const LiveSessionNotification = ({ isVisible: externalIsVisible }) => {
   const handleJoinSession = () => {
     if (!currentSession || !isSessionValid) {
       toast.error('השיעור כבר לא פעיל או שהמורה לא מחובר');
-      setInternalIsVisible(false);
+      setIsVisible(false);
       return;
     }
     
     try {
+      console.log('🎯 Student joining session:', currentSession.id);
       navigate(`/student/session/${currentSession.id}`);
       toast.success('מתחבר לשיעור החי...');
     } catch (error) {
@@ -103,7 +143,7 @@ const LiveSessionNotification = ({ isVisible: externalIsVisible }) => {
   };
 
   const handleDismiss = () => {
-    setInternalIsVisible(false);
+    setIsVisible(false);
   };
 
   const formatDuration = (seconds) => {
@@ -112,7 +152,8 @@ const LiveSessionNotification = ({ isVisible: externalIsVisible }) => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  if (!(externalIsVisible ?? internalIsVisible) || !currentSession) {
+  // Don't show anything if loading or no session
+  if (isLoading || !isVisible || !currentSession) {
     return null;
   }
 

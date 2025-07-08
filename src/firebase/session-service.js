@@ -16,20 +16,13 @@ import { db } from './firebase-config';
 import { logSecurityEvent } from '../utils/security';
 
 /**
- * Session Management Service
+ * Session Management Service - OPTIMIZED FOR QUOTA REDUCTION
  * Handles real-time synchronized lessons between teachers and students
  */
 
-/**
- * NOTE: For very large classes, consider using a subcollection for connectedStudents
- * instead of an array field to avoid Firestore's 1MB document size limit.
- * Example: collection(db, 'sessions', sessionId, 'connectedStudents')
- */
-
-/**
- * NOTE: For large datasets, consider adding Firestore composite indexes and using orderBy in queries
- * for better performance and scalability. See Firestore documentation for index creation.
- */
+// Cache for session data to reduce reads
+const sessionCache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Create a new session
@@ -71,12 +64,19 @@ export const createSession = async (sessionData) => {
 };
 
 /**
- * Get session by ID
+ * Get session by ID with caching
  * @param {string} sessionId - Session ID
  * @returns {Promise<Object>} Session data
  */
 export const getSession = async (sessionId) => {
   try {
+    // Check cache first
+    const cached = sessionCache.get(sessionId);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      console.log('📦 Using cached session data for:', sessionId);
+      return cached.data;
+    }
+
     const sessionRef = doc(db, 'sessions', sessionId);
     const sessionDoc = await getDoc(sessionRef);
     
@@ -84,10 +84,18 @@ export const getSession = async (sessionId) => {
       throw new Error('Session not found');
     }
 
-    return {
+    const sessionData = {
       id: sessionDoc.id,
       ...sessionDoc.data()
     };
+
+    // Cache the result
+    sessionCache.set(sessionId, {
+      data: sessionData,
+      timestamp: Date.now()
+    });
+
+    return sessionData;
   } catch (error) {
     console.error('Error getting session:', error);
     throw new Error('Failed to get session');
@@ -107,6 +115,13 @@ export const updateSessionSlide = async (sessionId, slideIndex) => {
       currentSlide: slideIndex,
       lastActivity: serverTimestamp()
     });
+
+    // Update cache
+    const cached = sessionCache.get(sessionId);
+    if (cached) {
+      cached.data.currentSlide = slideIndex;
+      cached.data.lastActivity = new Date();
+    }
   } catch (error) {
     console.error('Error updating session slide:', error);
     throw new Error('Failed to update session slide');
@@ -276,6 +291,9 @@ export const endSession = async (sessionId) => {
       lastActivity: serverTimestamp()
     });
 
+    // Clear cache
+    sessionCache.delete(sessionId);
+
     logSecurityEvent('SESSION_ENDED', {
       sessionId,
       timestamp: new Date().toISOString()
@@ -287,14 +305,14 @@ export const endSession = async (sessionId) => {
 };
 
 /**
- * Get active sessions for a teacher
+ * Get active sessions for a teacher - OPTIMIZED
  * @param {string} teacherId - Teacher ID
  * @returns {Promise<Array>} Array of active sessions
  */
 export const getTeacherActiveSessions = async (teacherId) => {
   try {
     const sessionsRef = collection(db, 'sessions');
-    // Remove orderBy to avoid index requirement - we'll sort in memory
+    // Use specific query to reduce reads
     const q = query(
       sessionsRef,
       where('teacherId', '==', teacherId),
@@ -326,31 +344,28 @@ export const getTeacherActiveSessions = async (teacherId) => {
 };
 
 /**
- * Get available sessions for a student
+ * Get available sessions for a student - OPTIMIZED with array-contains
  * @param {string} studentId - Student ID
  * @returns {Promise<Array>} Array of available sessions
  */
 export const getStudentAvailableSessions = async (studentId) => {
   try {
     const sessionsRef = collection(db, 'sessions');
-    // Remove orderBy to avoid index requirement - we'll sort in memory
+    // Use array-contains query for better performance
     const q = query(
       sessionsRef,
-      where('status', '==', 'active')
+      where('status', '==', 'active'),
+      where('studentIds', 'array-contains', studentId)
     );
     
     const querySnapshot = await getDocs(q);
     const sessions = [];
     
     querySnapshot.forEach((doc) => {
-      const sessionData = doc.data();
-      // Check if student is enrolled in this session
-      if (sessionData.studentIds && sessionData.studentIds.includes(studentId)) {
-        sessions.push({
-          id: doc.id,
-          ...sessionData
-        });
-      }
+      sessions.push({
+        id: doc.id,
+        ...doc.data()
+      });
     });
     
     // Sort by startTime in memory
@@ -368,7 +383,7 @@ export const getStudentAvailableSessions = async (studentId) => {
 };
 
 /**
- * Listen to session changes in real-time
+ * Listen to session changes in real-time - OPTIMIZED
  * @param {string} sessionId - Session ID
  * @param {Function} callback - Callback function for updates
  * @returns {Function} Unsubscribe function
@@ -378,10 +393,18 @@ export const listenToSession = (sessionId, callback) => {
   
   return onSnapshot(sessionRef, (doc) => {
     if (doc.exists()) {
-      callback({
+      const sessionData = {
         id: doc.id,
         ...doc.data()
+      };
+      
+      // Update cache
+      sessionCache.set(sessionId, {
+        data: sessionData,
+        timestamp: Date.now()
       });
+      
+      callback(sessionData);
     } else {
       callback(null);
     }
@@ -497,17 +520,18 @@ export const cleanupStaleSessions = async (teacherId) => {
 };
 
 /**
- * Get current active session for a student's class
+ * Get current active session for a student's class - OPTIMIZED
  * @param {string} studentId - Student ID
  * @returns {Promise<Object|null>} Current active session or null
  */
 export const getCurrentActiveSessionForStudent = async (studentId) => {
   try {
     const sessionsRef = collection(db, 'sessions');
-    // Remove orderBy to avoid index requirement - we'll sort in memory
+    // Use array-contains query for better performance
     const q = query(
       sessionsRef,
-      where('status', '==', 'active')
+      where('status', '==', 'active'),
+      where('studentIds', 'array-contains', studentId)
     );
     
     const querySnapshot = await getDocs(q);
@@ -515,13 +539,10 @@ export const getCurrentActiveSessionForStudent = async (studentId) => {
     
     // Collect all active sessions first
     querySnapshot.forEach((doc) => {
-      const sessionData = doc.data();
-      if (sessionData.studentIds && sessionData.studentIds.includes(studentId)) {
-        sessions.push({
-          id: doc.id,
-          ...sessionData
-        });
-      }
+      sessions.push({
+        id: doc.id,
+        ...doc.data()
+      });
     });
     
     // Sort by startTime in memory and take the most recent
@@ -555,17 +576,18 @@ export const getCurrentActiveSessionForStudent = async (studentId) => {
 };
 
 /**
- * Listen to current active session for a student
+ * Listen to current active session for a student - OPTIMIZED
  * @param {string} studentId - Student ID
  * @param {Function} callback - Callback function for updates
  * @returns {Function} Unsubscribe function
  */
 export const listenToCurrentActiveSession = (studentId, callback) => {
   const sessionsRef = collection(db, 'sessions');
-  // Remove orderBy to avoid index requirement - we'll sort in memory
+  // Use array-contains query for better performance
   const q = query(
     sessionsRef,
-    where('status', '==', 'active')
+    where('status', '==', 'active'),
+    where('studentIds', 'array-contains', studentId)
   );
   
   return onSnapshot(q, (querySnapshot) => {
@@ -574,13 +596,10 @@ export const listenToCurrentActiveSession = (studentId, callback) => {
     
     // Collect all active sessions first
     querySnapshot.forEach((doc) => {
-      const sessionData = doc.data();
-      if (sessionData.studentIds && sessionData.studentIds.includes(studentId)) {
-        sessions.push({
-          id: doc.id,
-          ...sessionData
-        });
-      }
+      sessions.push({
+        id: doc.id,
+        ...doc.data()
+      });
     });
     
     // Sort by startTime in memory and take the most recent
