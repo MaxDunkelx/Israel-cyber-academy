@@ -1,9 +1,11 @@
 /**
  * Firebase Configuration - Israel Cyber Academy
  * 
- * This file configures Firebase services for the application:
- * - Firebase Authentication for user management
- * - Firestore Database for lessons, slides, and user progress
+ * SECURE HYBRID APPROACH:
+ * - Uses environment variables when available (for production)
+ * - Falls back to hardcoded values (for development/GitHub Pages)
+ * - Provides security warnings in production
+ * - Maintains 100% compatibility with current system
  * 
  * Firebase Services Used:
  * - Authentication: User login, registration, and session management
@@ -20,24 +22,59 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 
-// Firebase project configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyC35sH38k9co_R0zBsbDT0S6RE1Cp-ksHE",
-  authDomain: "israel-cyber-academy.firebaseapp.com",
-  projectId: "israel-cyber-academy",
-  storageBucket: "israel-cyber-academy.appspot.com",
-  messagingSenderId: "750693821908",
-  appId: "1:750693821908:web:6518d1facad1d8095cfa41"
+// SECURE: Environment-aware Firebase configuration
+const getFirebaseConfig = () => {
+  // Check if environment variables are available
+  const hasEnvVars = import.meta.env.VITE_FIREBASE_API_KEY;
+  
+  if (hasEnvVars) {
+    // Use environment variables (most secure)
+    return {
+      apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+      storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+      appId: import.meta.env.VITE_FIREBASE_APP_ID
+    };
+  } else {
+    // Fallback to hardcoded values (for GitHub Pages compatibility)
+    return {
+      apiKey: "AIzaSyC35sH38k9co_R0zBsbDT0S6RE1Cp-ksHE",
+      authDomain: "israel-cyber-academy.firebaseapp.com",
+      projectId: "israel-cyber-academy",
+      storageBucket: "israel-cyber-academy.appspot.com",
+      messagingSenderId: "750693821908",
+      appId: "1:750693821908:web:6518d1facad1d8095cfa41"
+    };
+  }
 };
+
+const firebaseConfig = getFirebaseConfig();
 
 // Check if we're in development mode
 const isDevelopment = typeof import.meta !== 'undefined' && import.meta.env?.DEV;
+const isProduction = !isDevelopment;
+const usingEnvVars = !!import.meta.env.VITE_FIREBASE_API_KEY;
 
-console.log('🔥 Firebase Config:', {
+// Security logging
+console.log('🔥 Firebase Config Status:', {
   projectId: firebaseConfig.projectId,
   authDomain: firebaseConfig.authDomain,
-  mode: isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'
+  mode: isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION',
+  usingEnvVars: usingEnvVars,
+  secure: usingEnvVars || isDevelopment
 });
+
+// Security warnings
+if (isProduction && !usingEnvVars) {
+  console.warn('⚠️ SECURITY WARNING: Using hardcoded Firebase config in production!');
+  console.warn('💡 For better security, set environment variables:');
+  console.warn('   VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN, etc.');
+  console.warn('💡 Your app will continue working, but consider upgrading security.');
+} else if (usingEnvVars) {
+  console.log('✅ Using secure environment variables for Firebase config');
+}
 
 // Initialize Firebase app
 let app;
@@ -65,7 +102,8 @@ try {
   console.log('✅ Firebase services initialized:', {
     auth: !!auth,
     firestore: !!db,
-    mode: isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'
+    mode: isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION',
+    secure: usingEnvVars || isDevelopment
   });
 } catch (error) {
   console.error('❌ Firebase services initialization failed:', error);
@@ -124,12 +162,15 @@ service cloud.firestore {
     console.log('🔧 Project ID:', firebaseConfig.projectId);
     console.log('🔧 Auth Domain:', firebaseConfig.authDomain);
     console.log('🔧 API Key present:', !!firebaseConfig.apiKey);
+    console.log('🔧 Using Environment Variables:', usingEnvVars);
     
     return {
       success: true,
       projectId: firebaseConfig.projectId,
       authDomain: firebaseConfig.authDomain,
-      hasApiKey: !!firebaseConfig.apiKey
+      hasApiKey: !!firebaseConfig.apiKey,
+      usingEnvVars: usingEnvVars,
+      secure: usingEnvVars || isDevelopment
     };
     
   } catch (error) {
