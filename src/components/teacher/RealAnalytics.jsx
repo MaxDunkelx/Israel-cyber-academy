@@ -4,11 +4,7 @@ import {
   getTeacherClasses, 
   getTeacherStudents
 } from '../../firebase/teacher-service.jsx';
-import { 
-  getRealTeacherAnalytics, 
-  getRealClassProgress, 
-  getRealSessionAttendance 
-} from '../../firebase/real-analytics-service.js';
+// Removed real-analytics-service import - using teacher-service instead
 import Card from '../ui/Card';
 
 const RealAnalytics = () => {
@@ -35,12 +31,24 @@ const RealAnalytics = () => {
       console.log('Loading real analytics data for teacher:', currentUser.uid);
       
       // Load all data in parallel
-      const [classesData, studentsData, analyticsData, attendanceData] = await Promise.all([
+      const [classesData, studentsData] = await Promise.all([
         getTeacherClasses(currentUser.uid),
-        getTeacherStudents(currentUser.uid),
-        getRealTeacherAnalytics(currentUser.uid),
-        getRealSessionAttendance(currentUser.uid)
+        getTeacherStudents(currentUser.uid)
       ]);
+      
+      // Create mock analytics data since real-analytics-service was removed
+      const analyticsData = {
+        totalClasses: classesData.length,
+        totalStudents: studentsData.length,
+        totalActiveStudents: studentsData.filter(s => s.lastActivity > Date.now() - 7 * 24 * 60 * 60 * 1000).length,
+        averageProgress: Math.round(studentsData.reduce((acc, s) => acc + (s.progress?.completedLessons?.length || 0), 0) / Math.max(studentsData.length, 1) * 10),
+        averageTimeSpent: Math.round(studentsData.reduce((acc, s) => acc + (s.totalTimeSpent || 0), 0) / Math.max(studentsData.length, 1) / 60)
+      };
+      
+      const attendanceData = {
+        totalSessions: 0,
+        averageAttendance: 0
+      };
       
       console.log('Loaded data:', {
         classes: classesData.length,
@@ -71,7 +79,20 @@ const RealAnalytics = () => {
   const loadClassAnalytics = async (classId) => {
     try {
       console.log('Loading analytics for class:', classId);
-      const analytics = await getRealClassProgress(classId);
+      // Create mock class analytics since real-analytics-service was removed
+      const classStudents = students.filter(s => s.classId === classId);
+      const analytics = {
+        totalStudents: classStudents.length,
+        averageProgress: Math.round(classStudents.reduce((acc, s) => acc + (s.progress?.completedLessons?.length || 0), 0) / Math.max(classStudents.length, 1) * 10),
+        averageTimeSpent: Math.round(classStudents.reduce((acc, s) => acc + (s.totalTimeSpent || 0), 0) / Math.max(classStudents.length, 1) / 60),
+        completedLessons: classStudents.reduce((acc, s) => {
+          const lessons = s.progress?.completedLessons || [];
+          lessons.forEach(lesson => {
+            acc[lesson] = (acc[lesson] || 0) + 1;
+          });
+          return acc;
+        }, {})
+      };
       setClassAnalytics(analytics);
       console.log('Class analytics loaded:', analytics);
     } catch (error) {

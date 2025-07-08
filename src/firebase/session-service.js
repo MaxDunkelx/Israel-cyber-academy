@@ -388,7 +388,18 @@ export const getStudentAvailableSessions = async (studentId) => {
  * @param {Function} callback - Callback function for updates
  * @returns {Function} Unsubscribe function
  */
+/**
+ * Listen to session changes in real-time - OPTIMIZED
+ * @param {string} sessionId - Session ID
+ * @param {Function} callback - Callback function for updates
+ * @returns {Function} Unsubscribe function
+ */
 export const listenToSession = (sessionId, callback) => {
+  if (!sessionId) {
+    console.warn('⚠️ listenToSession called with null/undefined sessionId');
+    return () => {};
+  }
+
   const sessionRef = doc(db, 'sessions', sessionId);
   
   return onSnapshot(sessionRef, (doc) => {
@@ -398,18 +409,26 @@ export const listenToSession = (sessionId, callback) => {
         ...doc.data()
       };
       
-      // Update cache
+      // Update cache with new data
       sessionCache.set(sessionId, {
         data: sessionData,
         timestamp: Date.now()
       });
       
-      callback(sessionData);
+      // Call callback with session data
+      try {
+        callback(sessionData);
+      } catch (error) {
+        console.error('Error in session listener callback:', error);
+      }
     } else {
+      // Session doesn't exist or was deleted
+      sessionCache.delete(sessionId);
       callback(null);
     }
   }, (error) => {
     console.error('Error listening to session:', error);
+    // Don't call callback on error to avoid breaking the UI
   });
 };
 

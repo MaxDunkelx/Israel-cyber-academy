@@ -38,7 +38,7 @@ import { isTeacher, validateTeacherAccess, logSecurityEvent } from '../../utils/
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
-import { getSession, updateSessionSlide, endSession } from '../../firebase/session-service';
+import { getSession, updateSessionSlide, endSession, listenToSession } from '../../firebase/session-service';
 import { getTeacherNotesForLesson } from '../../firebase/teacher-service';
 import { getLessonWithSlides } from '../../firebase/content-service';
 // Removed local data import - using only Firebase database
@@ -81,6 +81,21 @@ const LessonController = () => {
     questionsAnswered: 0
   });
 
+  // Cleanup function to prevent memory leaks
+  const cleanup = () => {
+    setSession(null);
+    setLesson(null);
+    setStudents([]);
+    setConnectedStudents([]);
+    setSessionStats({
+      totalStudents: 0,
+      activeStudents: 0,
+      averageEngagement: 0,
+      questionsAnswered: 0
+    });
+  };
+
+  // Security and session loading effect
   useEffect(() => {
     // Security check - ensure only teachers can access this component
     if (!currentUser) {
@@ -99,9 +114,49 @@ const LessonController = () => {
       return;
     }
 
-    // Load session data
+    // Load initial session data
     loadSessionData();
   }, [currentUser, role, sessionId, navigate]);
+
+  // Real-time session listener - separate effect for better control
+  useEffect(() => {
+    if (!sessionId || !currentUser) return;
+
+    console.log('🎧 Setting up real-time session listener for:', sessionId);
+    
+    const unsubscribe = listenToSession(sessionId, (updatedSession) => {
+      if (updatedSession) {
+        // Only update if session data actually changed
+        setSession(prevSession => {
+          if (!prevSession || 
+              prevSession.connectedStudents?.length !== updatedSession.connectedStudents?.length ||
+              prevSession.currentSlide !== updatedSession.currentSlide ||
+              prevSession.status !== updatedSession.status) {
+            
+            console.log('🔄 Session updated:', {
+              connectedStudents: updatedSession.connectedStudents?.length || 0,
+              currentSlide: updatedSession.currentSlide,
+              status: updatedSession.status
+            });
+            
+            return updatedSession;
+          }
+          return prevSession;
+        });
+      } else {
+        console.log('⚠️ Session not found or ended');
+        toast.error('השיעור הסתיים או לא נמצא');
+        navigate('/teacher/dashboard');
+      }
+    });
+
+    // Cleanup listener on unmount or sessionId change
+    return () => {
+      console.log('🔇 Cleaning up session listener for:', sessionId);
+      unsubscribe();
+      cleanup();
+    };
+  }, [sessionId, currentUser]);
 
   // Security check - if not a teacher, show access denied
   if (!isTeacher({ role })) {
@@ -157,17 +212,23 @@ const LessonController = () => {
     }
   };
 
-  // Calculate session duration
+  // Calculate session duration - optimized with useCallback
   useEffect(() => {
-    if (session?.startTime) {
-      const interval = setInterval(() => {
-        const startTime = session.startTime?.toDate?.() || new Date(session.startTime);
-        const duration = Math.floor((Date.now() - startTime.getTime()) / 1000);
-        setSessionDuration(duration);
-      }, 1000);
-      
-      return () => clearInterval(interval);
+    if (!session?.startTime) {
+      setSessionDuration(0);
+      return;
     }
+
+    const startTime = session.startTime?.toDate?.() || new Date(session.startTime);
+    const initialDuration = Math.floor((Date.now() - startTime.getTime()) / 1000);
+    setSessionDuration(initialDuration);
+
+    const interval = setInterval(() => {
+      const duration = Math.floor((Date.now() - startTime.getTime()) / 1000);
+      setSessionDuration(duration);
+    }, 1000);
+    
+    return () => clearInterval(interval);
   }, [session?.startTime]);
 
   const handlePlayPause = () => {
@@ -618,36 +679,33 @@ const LessonController = () => {
           <div className="p-4">
             <h3 className="text-lg font-bold text-white mb-3 flex items-center space-x-2">
               <Users className="w-5 h-5" />
-              <span>תלמידים ({session.activeStudents || 0})</span>
+              <span>תלמידים ({session.connectedStudents?.length || 0})</span>
             </h3>
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {students.map((student) => (
-                <div
-                  key={student.id}
-                  className={`p-3 rounded-lg border ${
-                    student.status === 'active' 
-                      ? 'bg-green-500/10 border-green-500/20' 
-                      : 'bg-gray-700/50 border-gray-600'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div>
-                        <p className="text-white font-medium">{student.name}</p>
-                        <p className="text-sm text-gray-400">
-                          שקופית {student.currentSlide} • {student.progress}%
-                        </p>
+              {session.connectedStudents && session.connectedStudents.length > 0 ? (
+                session.connectedStudents.map((student) => (
+                  <div
+                    key={student.id}
+                    className="p-3 rounded-lg border bg-green-500/10 border-green-500/20"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div>
+                          <p className="text-white font-medium">{student.name}</p>
+                          <p className="text-sm text-gray-400">
+                            מחובר לשיעור
+                          </p>
+                        </div>
                       </div>
-                      {student.hasRaisedHand && (
-                        <Hand className="w-4 h-4 text-yellow-400" />
-                      )}
+                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
                     </div>
-                    <div className={`w-2 h-2 rounded-full ${
-                      student.status === 'active' ? 'bg-green-500' : 'bg-gray-500'
-                    }`}></div>
                   </div>
+                ))
+              ) : (
+                <div className="p-4 text-center">
+                  <p className="text-gray-400">אין תלמידים מחוברים</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
