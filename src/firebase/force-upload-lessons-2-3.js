@@ -232,3 +232,4 @@ export const forceUploadLessons2And3 = async () => {
 
 // Export for use in other modules
 export default forceUploadLessons2And3; 
+forceUploadLessons2And3(); 

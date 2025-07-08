@@ -1,7 +1,7 @@
 export const slide12HardwareVsSoftware = {
   id: "slide-12-hardware-vs-software",
   type: "presentation",
-  title: "חומרה לעומת תוכנה",
+  title: " בדיקה חומרה לעומת תוכנה",
   content: {
     background: "linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%)",
     elements: [
@@ -11,21 +11,17 @@ export const slide12HardwareVsSoftware = {
         style: { fontSize: "2.2rem", color: "#222", textAlign: "center", marginBottom: "1.5rem" }
       },
       {
-        type: "columns",
-        columns: [
+        type: "comparison",
+        items: [
           {
-            title: "חומרה – החלקים שאפשר לגעת בהם",
-            items: [
-              "מסך, מקלדת, עכבר, מעבד, לוח אם ועוד.",
-              "כל החלקים האלה עובדים יחד כדי שהמחשב יפעל כמו שצריך."
-            ]
+            icon: "💻",
+            title: "חומרה",
+            description: "החלקים שאפשר לגעת בהם – מסך, מקלדת, עכבר, מעבד, לוח אם ועוד. כל החלקים עובדים יחד כדי שהמחשב יפעל."
           },
           {
-            title: "תוכנה – מה שמפעיל את המחשב",
-            items: [
-              "התוכנה היא ההוראות שהמחשב מקבל כדי לדעת מה לעשות.",
-              "יש כל מיני סוגים של תוכנות: מערכת הפעלה (כמו Windows או Android), משחקים, תוכנות כתיבה (כמו Word)"
-            ]
+            icon: "💾",
+            title: "תוכנה",
+            description: "מה שמפעיל את המחשב – ההוראות שהמחשב מקבל כדי לדעת מה לעשות. דוג׳: מערכת הפעלה, משחקים, תוכנות כתיבה."
           }
         ],
         style: { fontSize: "1.1rem", color: "#222" }
@@ -33,4 +29,4 @@ export const slide12HardwareVsSoftware = {
     ],
     duration: 180
   }
-}; 
+};

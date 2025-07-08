@@ -11,6 +11,8 @@ import WebsiteBuilder from '../exercises/WebsiteBuilder';
 import DatabaseSimulator from '../exercises/DatabaseSimulator';
 import BrowserSimulator from '../exercises/BrowserSimulator';
 import PasswordGenerator from './PasswordGenerator';
+import ComputerBuildSimulator from '../exercises/ComputerBuildSimulator';
+import LabSimulation from '../exercises/LabSimulation';
 
 /**
  * Interactive Slide Component
@@ -140,6 +142,18 @@ const InteractiveSlide = ({ slide, onAnswer = () => {}, answers }) => {
               options={content.options}
               tips={content.tips}
               examples={content.examples}
+              onComplete={handleExerciseComplete}
+            />
+          )}
+          {content.type === 'computer-build' && (
+            <ComputerBuildSimulator
+              content={content}
+              onComplete={handleExerciseComplete}
+            />
+          )}
+          {content.type === 'lab-simulation' && (
+            <LabSimulation
+              content={content}
               onComplete={handleExerciseComplete}
             />
           )}

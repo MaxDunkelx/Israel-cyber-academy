@@ -13,12 +13,12 @@ import { useAuth } from '../../hooks/useAuth';
 import { listenToCurrentActiveSession } from '../../firebase/session-service';
 import Button from '../ui/Button';
 
-const LiveSessionNotification = () => {
+const LiveSessionNotification = ({ isVisible: externalIsVisible }) => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   
   const [currentSession, setCurrentSession] = useState(null);
-  const [isVisible, setIsVisible] = useState(false);
+  const [internalIsVisible, setInternalIsVisible] = useState(false);
   const [sessionDuration, setSessionDuration] = useState(0);
   const [isSessionValid, setIsSessionValid] = useState(true);
 
@@ -32,10 +32,10 @@ const LiveSessionNotification = () => {
         const isValid = validateSession(session);
         setCurrentSession(session);
         setIsSessionValid(isValid);
-        setIsVisible(isValid);
+        setInternalIsVisible(isValid);
       } else {
         setCurrentSession(null);
-        setIsVisible(false);
+        setInternalIsVisible(false);
         setIsSessionValid(false);
       }
     });
@@ -89,7 +89,7 @@ const LiveSessionNotification = () => {
   const handleJoinSession = () => {
     if (!currentSession || !isSessionValid) {
       toast.error('השיעור כבר לא פעיל או שהמורה לא מחובר');
-      setIsVisible(false);
+      setInternalIsVisible(false);
       return;
     }
     
@@ -103,7 +103,7 @@ const LiveSessionNotification = () => {
   };
 
   const handleDismiss = () => {
-    setIsVisible(false);
+    setInternalIsVisible(false);
   };
 
   const formatDuration = (seconds) => {
@@ -112,7 +112,7 @@ const LiveSessionNotification = () => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  if (!isVisible || !currentSession) {
+  if (!(externalIsVisible ?? internalIsVisible) || !currentSession) {
     return null;
   }
 

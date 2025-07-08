@@ -29,7 +29,6 @@ import { slide28ComputerSimulator } from './slides/slide28-computer-simulator.js
 import { slide29RecommendedSpecs } from './slides/slide29-recommended-specs.js';
 import { slide30LabSimulation } from './slides/slide30-lab-simulation.js';
 import { slide31Quiz } from './slides/slide31-quiz.js';
-import { slide32InputOutput } from './slides/slide32-input-output.js';
 import { slide33InputOutputGame } from './slides/slide33-input-output-game.js';
 import { slide34FinalPoll } from './slides/slide34-final-poll.js';
 import { slide35Summary } from './slides/slide35-summary.js';
@@ -78,7 +77,6 @@ export const lesson2 = {
       slide29RecommendedSpecs,
       slide30LabSimulation,
       slide31Quiz,
-      slide32InputOutput,
       slide33InputOutputGame,
       slide34FinalPoll,
       slide35Summary,

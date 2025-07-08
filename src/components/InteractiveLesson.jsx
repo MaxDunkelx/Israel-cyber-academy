@@ -511,7 +511,7 @@ const InteractiveLesson = () => {
       console.log('🔍 Debug: updateUserProgress result:', result);
       
       // Find next lesson before showing animation
-      const nextLesson = await getNextLesson(lessonNumber);
+      const nextLesson = await getNextLesson(lesson.id);
       console.log('📚 Next lesson found:', nextLesson);
       
       // Show celebration animation
@@ -544,7 +544,7 @@ const InteractiveLesson = () => {
       
       // Still try to navigate even if save failed
       setTimeout(async () => {
-        const nextLesson = await getNextLesson(lessonNumber);
+        const nextLesson = await getNextLesson(lesson.id);
         const navigateUrl = nextLesson ? `/roadmap?unlocked=${nextLesson.originalId}` : '/roadmap';
         navigate(navigateUrl, { replace: true });
       }, 1000);
