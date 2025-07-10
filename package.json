@@ -6,7 +6,7 @@
   "homepage": "https://maxdunkelx.github.io/Israel-cyber-academy",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build --mode production",
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",
