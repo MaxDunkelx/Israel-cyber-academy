@@ -42,7 +42,7 @@ import { useUserProfile } from '../../hooks/useAuth';
 import { logSecurityEvent } from '../../utils/security';
 import { getTeacherActiveSessions, listenToSession, cleanupStaleSessions } from '../../firebase/session-service';
 import { endSession } from '../../firebase/session-service';
-import LiveSessionIndicator from '../common/LiveSessionIndicator';
+
 
 const TeacherNavigation = () => {
   const location = useLocation();
@@ -227,8 +227,6 @@ const TeacherNavigation = () => {
 
           {/* Desktop Navigation - Clean and minimal */}
           <div className="hidden lg:flex items-center space-x-6">
-            {/* Live Session Indicator */}
-            <LiveSessionIndicator position="inline" />
             {/* Navigation buttons removed - handled by dashboard tabs */}
           </div>
 

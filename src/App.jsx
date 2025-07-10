@@ -252,8 +252,8 @@ const AppContent = () => {
         {/* Live Session Notification - only for students */}
         {currentUser && role === 'student' && <LiveSessionNotification />}
         
-        {/* Global Live Session Indicator */}
-        {currentUser && (role === 'teacher' || role === 'student') && (
+        {/* Global Live Session Indicator - only for students */}
+        {currentUser && role === 'student' && (
           <LiveSessionIndicator position="top-right" />
         )}
         
