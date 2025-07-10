@@ -539,6 +539,111 @@ export const cleanupStaleSessions = async (teacherId) => {
 };
 
 /**
+ * Get teacher session history with student attendance
+ * @param {string} teacherId - Teacher ID
+ * @param {number} limit - Number of sessions to return (default: 20)
+ * @returns {Promise<Object>} Session history with attendance data
+ */
+export const getTeacherSessionHistory = async (teacherId, limit = 20) => {
+  try {
+    const sessionsRef = collection(db, 'sessions');
+    const q = query(
+      sessionsRef,
+      where('teacherId', '==', teacherId),
+      where('status', '==', 'ended')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const sessions = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      sessions.push({
+        id: doc.id,
+        ...data
+      });
+    });
+    
+    // Sort by end time (most recent first)
+    sessions.sort((a, b) => {
+      const timeA = a.endTime?.toDate?.() || new Date(a.endTime) || new Date(0);
+      const timeB = b.endTime?.toDate?.() || new Date(b.endTime) || new Date(0);
+      return timeB - timeA;
+    });
+    
+    // Limit results
+    const limitedSessions = sessions.slice(0, limit);
+    
+    // Calculate attendance statistics
+    const totalSessions = limitedSessions.length;
+    const totalAttendance = limitedSessions.reduce((sum, session) => {
+      return sum + (session.connectedStudents?.length || 0);
+    }, 0);
+    const averageAttendance = totalSessions > 0 ? Math.round(totalAttendance / totalSessions) : 0;
+    
+    // Build detailed sessions with student info
+    const detailedSessions = limitedSessions.map(session => {
+      const startTime = session.startTime?.toDate?.() || new Date(session.startTime);
+      const endTime = session.endTime?.toDate?.() || new Date(session.endTime);
+      const duration = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60)); // minutes
+      
+      return {
+        sessionId: session.id,
+        lessonId: session.lessonId,
+        lessonName: session.lessonName,
+        className: session.className,
+        date: startTime,
+        duration: duration,
+        attendance: session.connectedStudents?.length || 0,
+        students: session.connectedStudents || []
+      };
+    });
+    
+    // Build student attendance summary
+    const studentAttendance = {};
+    limitedSessions.forEach(session => {
+      if (session.connectedStudents) {
+        session.connectedStudents.forEach(student => {
+          if (!studentAttendance[student.id]) {
+            studentAttendance[student.id] = {
+              name: student.name,
+              sessionsAttended: 0,
+              totalTimeSpent: 0,
+              lastAttendance: null
+            };
+          }
+          studentAttendance[student.id].sessionsAttended++;
+          studentAttendance[student.id].totalTimeSpent += session.duration || 0;
+          
+          const sessionDate = session.startTime?.toDate?.() || new Date(session.startTime);
+          if (!studentAttendance[student.id].lastAttendance || 
+              sessionDate > studentAttendance[student.id].lastAttendance) {
+            studentAttendance[student.id].lastAttendance = sessionDate;
+          }
+        });
+      }
+    });
+    
+    // Calculate attendance percentages and average time
+    Object.values(studentAttendance).forEach(student => {
+      student.attendancePercentage = Math.round((student.sessionsAttended / totalSessions) * 100);
+      student.averageTimePerSession = Math.round(student.totalTimeSpent / student.sessionsAttended);
+    });
+    
+    return {
+      totalSessions,
+      averageAttendance,
+      totalAttendance,
+      detailedSessions,
+      studentAttendance
+    };
+  } catch (error) {
+    console.error('Error getting teacher session history:', error);
+    throw new Error('Failed to get session history');
+  }
+};
+
+/**
  * Get current active session for a student's class - OPTIMIZED
  * @param {string} studentId - Student ID
  * @returns {Promise<Object|null>} Current active session or null

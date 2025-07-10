@@ -4,7 +4,7 @@ import {
   getTeacherClasses, 
   getTeacherStudents
 } from '../../firebase/teacher-service.jsx';
-// Removed real-analytics-service import - using teacher-service instead
+import { getTeacherSessionHistory } from '../../firebase/session-service';
 import Card from '../ui/Card';
 
 const RealAnalytics = () => {
@@ -31,12 +31,13 @@ const RealAnalytics = () => {
       console.log('Loading real analytics data for teacher:', currentUser.uid);
       
       // Load all data in parallel
-      const [classesData, studentsData] = await Promise.all([
+      const [classesData, studentsData, sessionHistoryData] = await Promise.all([
         getTeacherClasses(currentUser.uid),
-        getTeacherStudents(currentUser.uid)
+        getTeacherStudents(currentUser.uid),
+        getTeacherSessionHistory(currentUser.uid, 20)
       ]);
       
-      // Create mock analytics data since real-analytics-service was removed
+      // Create analytics data from real data
       const analyticsData = {
         totalClasses: classesData.length,
         totalStudents: studentsData.length,
@@ -45,22 +46,18 @@ const RealAnalytics = () => {
         averageTimeSpent: Math.round(studentsData.reduce((acc, s) => acc + (s.totalTimeSpent || 0), 0) / Math.max(studentsData.length, 1) / 60)
       };
       
-      const attendanceData = {
-        totalSessions: 0,
-        averageAttendance: 0
-      };
-      
       console.log('Loaded data:', {
         classes: classesData.length,
         students: studentsData.length,
+        sessions: sessionHistoryData.totalSessions,
         hasAnalytics: !!analyticsData,
-        hasAttendance: !!attendanceData
+        hasAttendance: !!sessionHistoryData
       });
       
       setClasses(classesData);
       setStudents(studentsData);
       setTeacherAnalytics(analyticsData);
-      setSessionAttendance(attendanceData);
+      setSessionAttendance(sessionHistoryData);
       
       // Set first class as selected by default
       if (classesData.length > 0 && !selectedClass) {
