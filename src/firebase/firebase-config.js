@@ -30,18 +30,7 @@ import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
  * - Fallback: Hardcoded values (for GitHub Pages compatibility)
  */
 const getFirebaseConfig = () => {
-  // Debug: Log all environment variables
-  console.log('🔍 Environment Variables Debug:', {
-    VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY ? 'SET' : 'NOT SET',
-    VITE_FIREBASE_AUTH_DOMAIN: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ? 'SET' : 'NOT SET',
-    VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID ? 'SET' : 'NOT SET',
-    VITE_FIREBASE_STORAGE_BUCKET: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ? 'SET' : 'NOT SET',
-    VITE_FIREBASE_MESSAGING_SENDER_ID: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ? 'SET' : 'NOT SET',
-    VITE_FIREBASE_APP_ID: import.meta.env.VITE_FIREBASE_APP_ID ? 'SET' : 'NOT SET',
-    MODE: import.meta.env.MODE,
-    DEV: import.meta.env.DEV,
-    PROD: import.meta.env.PROD
-  });
+
 
   // Check if environment variables are available
   const hasEnvVars = import.meta.env.VITE_FIREBASE_API_KEY;
