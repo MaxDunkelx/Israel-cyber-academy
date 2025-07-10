@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://maxdunkelx.github.io/Israel-cyber-academy",
+  "homepage": "https://israel-cyber-academy.web.app",
   "scripts": {
     "dev": "vite",
     "build": "vite build --mode production",
