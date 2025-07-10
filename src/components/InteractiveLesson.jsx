@@ -91,10 +91,12 @@ const InteractiveLesson = () => {
     height: window.innerHeight
   });
   
-  // Timer reference for cleanup
+  // Timer references for cleanup - MEMORY LEAK FIX
   const timerRef = useRef(null);
   const statsTimerRef = useRef(null);
   const slideTimerRef = useRef(null);
+  const resizeListenerRef = useRef(null);
+  const firebaseListenersRef = useRef([]);
   
   // Prevent infinite loops with refs
   const isInitialized = useRef(false);
@@ -102,6 +104,45 @@ const InteractiveLesson = () => {
   const isCompletedLesson = useRef(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  /**
+   * Comprehensive cleanup function to prevent memory leaks
+   */
+  const cleanupAllTimersAndListeners = useCallback(() => {
+    console.log('🧹 Cleaning up InteractiveLesson timers and listeners');
+    
+    // Clear all timers
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    if (statsTimerRef.current) {
+      clearInterval(statsTimerRef.current);
+      statsTimerRef.current = null;
+    }
+    if (slideTimerRef.current) {
+      clearInterval(slideTimerRef.current);
+      slideTimerRef.current = null;
+    }
+
+    // Remove resize listener
+    if (resizeListenerRef.current) {
+      window.removeEventListener('resize', resizeListenerRef.current);
+      resizeListenerRef.current = null;
+    }
+
+    // Cleanup Firebase listeners
+    firebaseListenersRef.current.forEach(unsubscribe => {
+      if (typeof unsubscribe === 'function') {
+        try {
+          unsubscribe();
+        } catch (error) {
+          console.warn('Error cleaning up Firebase listener:', error);
+        }
+      }
+    });
+    firebaseListenersRef.current = [];
+  }, []);
 
   // Debug: Log current slide position
   useEffect(() => {
@@ -246,37 +287,31 @@ const InteractiveLesson = () => {
     if (!lesson || !userProfile || !isInitialized.current) return;
     
     const currentSlideData = lesson.slides ? lesson.slides[currentSlide] : null;
-    if (currentSlideData && currentSlideData.id) {
-      // Track this slide as engaged using lesson number from lesson object
-      const lessonNumber = lesson.originalId || parseInt(lessonId);
-      if (lessonNumber && !isNaN(lessonNumber)) {
-        trackSlideEngagement(lessonNumber, currentSlideData.id);
-      }
-      
-      // Log slide engagement for session monitoring
-      const timeSpent = Math.floor((Date.now() - slideStartTime) / 1000);
-      logSlideEngagement(currentSlideData.id, currentSlideData.type, timeSpent);
+    if (!currentSlideData) return;
+    
+    // Reset slide timer
+    setSlideStartTime(Date.now());
+    setSlideTimeSpent(0);
+    
+    // Track slide engagement
+    const lessonNumber = lesson.originalId || parseInt(lessonId);
+    if (lessonNumber && currentSlideData.id) {
+      trackSlideEngagement(lessonNumber, currentSlideData.id);
       
       // Add to pages watched set
       setPagesWatched(prev => new Set([...prev, currentSlideData.id]));
-      
-      // Save slide progress only if it changed and lesson is not completed
-      if (currentSlide !== lastSavedSlide.current && !isCompletedLesson.current) {
-        setLastLessonSlide(lessonNumber, currentSlide);
-        lastSavedSlide.current = currentSlide;
-      }
-      
-      // Reset slide timer and set new duration
-      setSlideStartTime(Date.now());
-      setSlideTimeSpent(0);
-      setTimeLeft(currentSlideData.content?.duration || 30);
-      
-      // Log slide progress
-      if (import.meta.env.DEV) {
-        console.log(`📖 SLIDE PROGRESS: ${currentSlide + 1}/${lesson.slides ? lesson.slides.length : 0} - ${currentSlideData.title}`);
-      }
     }
-  }, [currentSlide, lesson, userProfile, trackSlideEngagement, setLastLessonSlide, lessonId]);
+    
+    // Save current slide position
+    if (lessonNumber && !isNaN(lessonNumber)) {
+      setLastLessonSlide(lessonNumber, currentSlide);
+      lastSavedSlide.current = currentSlide;
+    }
+    
+    // Log slide navigation
+    logSlideNavigation(lastSavedSlide.current, currentSlide, currentSlide > lastSavedSlide.current ? 'forward' : 'backward');
+    
+  }, [currentSlide, lesson, userProfile, lessonId, trackSlideEngagement, setLastLessonSlide]);
 
   /**
    * Synchronize statistics with userProfile - FIXED to prevent loops
@@ -315,10 +350,15 @@ const InteractiveLesson = () => {
   }, [userProfile]);
 
   /**
-   * Slide timer - tracks time spent on current slide - FIXED
+   * Slide timer - tracks time spent on current slide - FIXED with proper cleanup
    */
   useEffect(() => {
     if (!lesson) return;
+    
+    // Clear previous timer to prevent memory leaks
+    if (slideTimerRef.current) {
+      clearInterval(slideTimerRef.current);
+    }
     
     slideTimerRef.current = setInterval(() => {
       const now = Date.now();
@@ -333,15 +373,17 @@ const InteractiveLesson = () => {
       }
     }, 1000);
 
+    // Cleanup function - CRITICAL for preventing memory leaks
     return () => {
       if (slideTimerRef.current) {
         clearInterval(slideTimerRef.current);
+        slideTimerRef.current = null;
       }
     };
   }, [slideStartTime, currentSlide, lesson]);
 
   /**
-   * Window resize handler for responsive design
+   * Window resize handler for responsive design - FIXED with proper cleanup
    */
   useEffect(() => {
     const handleResize = () => {
@@ -351,9 +393,81 @@ const InteractiveLesson = () => {
       });
     };
 
+    // Store reference for cleanup
+    resizeListenerRef.current = handleResize;
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+
+    return () => {
+      if (resizeListenerRef.current) {
+        window.removeEventListener('resize', resizeListenerRef.current);
+        resizeListenerRef.current = null;
+      }
+    };
   }, []);
+
+  /**
+   * Real-time user profile listener for live progress updates - FIXED with proper cleanup
+   */
+  useEffect(() => {
+    if (!currentUser) return;
+    
+    const setupListener = async () => {
+      try {
+        const { doc, onSnapshot } = await import('firebase/firestore');
+        const { db } = await import('../firebase/firebase-config');
+        
+        const userRef = doc(db, 'users', currentUser.uid);
+        const unsubscribe = onSnapshot(userRef, (doc) => {
+          if (doc.exists()) {
+            const freshUserData = doc.data();
+            console.log('🔄 Real-time user profile update received:', {
+              totalTimeSpent: freshUserData.totalTimeSpent,
+              totalPagesEngaged: freshUserData.totalPagesEngaged,
+              completedLessons: freshUserData.completedLessons?.length || 0
+            });
+            
+            // The AuthContext listener should handle this automatically
+            // This is just for logging and debugging
+          }
+        }, (error) => {
+          console.error('❌ Error listening to user profile updates:', error);
+        });
+
+        // Store listener for cleanup
+        firebaseListenersRef.current.push(unsubscribe);
+        
+        return unsubscribe;
+      } catch (error) {
+        console.error('❌ Error setting up Firebase listener:', error);
+      }
+    };
+
+    let unsubscribe;
+    setupListener().then(unsub => {
+      unsubscribe = unsub;
+    });
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+        // Remove from listeners array
+        firebaseListenersRef.current = firebaseListenersRef.current.filter(
+          listener => listener !== unsubscribe
+        );
+      }
+    };
+  }, [currentUser]);
+
+  /**
+   * Component unmount cleanup - CRITICAL for preventing memory leaks
+   */
+  useEffect(() => {
+    return () => {
+      console.log('🧹 Cleaning up InteractiveLesson component');
+      cleanupAllTimersAndListeners();
+      isInitialized.current = false;
+    };
+  }, [cleanupAllTimersAndListeners]);
 
   /**
    * Navigate to next slide - FIXED to prevent auto-advancement
@@ -618,46 +732,6 @@ const InteractiveLesson = () => {
         return <div className="text-white">סוג שקופית לא מוכר: {slide.type}</div>;
     }
   };
-
-  /**
-   * Real-time user profile listener for live progress updates
-   */
-  useEffect(() => {
-    if (!currentUser) return;
-    
-    const setupListener = async () => {
-      const { doc, onSnapshot } = await import('firebase/firestore');
-      const { db } = await import('../firebase/firebase-config');
-      
-      const userRef = doc(db, 'users', currentUser.uid);
-      const unsubscribe = onSnapshot(userRef, (doc) => {
-        if (doc.exists()) {
-          const freshUserData = doc.data();
-          console.log('🔄 Real-time user profile update received:', {
-            totalTimeSpent: freshUserData.totalTimeSpent,
-            totalPagesEngaged: freshUserData.totalPagesEngaged,
-            completedLessons: freshUserData.completedLessons?.length || 0
-          });
-          
-          // The AuthContext listener should handle this automatically
-          // This is just for logging and debugging
-        }
-      }, (error) => {
-        console.error('❌ Error listening to user profile updates:', error);
-      });
-      
-      return unsubscribe;
-    };
-    
-    let unsubscribe;
-    setupListener().then(unsub => {
-      unsubscribe = unsub;
-    });
-    
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, [currentUser]);
 
   // Loading state
   if (loading) {

@@ -139,7 +139,8 @@ const SessionHosting = () => {
       const notesData = await getTeacherNotesForLesson(currentUser.uid, sessionData.lessonId);
       const notesMap = {};
       notesData.forEach(note => {
-        notesMap[note.slideIndex] = note.content;
+        // Use slideId as key for consistency with other components
+        notesMap[note.slideId] = note.content;
       });
       
       setSession(sessionData);

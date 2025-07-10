@@ -1017,8 +1017,12 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     console.log('🔄 Setting up authentication listener...');
     
+    // Store listeners for cleanup
+    let unsubscribeAuth = null;
+    let unsubscribeProfile = null;
+    
     // Set up Firebase Auth state listener
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+    unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       console.log('🔄 Auth state changed:', user ? `User logged in: ${user.email} (${user.uid})` : 'User logged out');
       console.log('🔄 Previous currentUser:', currentUser?.uid);
       
@@ -1176,33 +1180,46 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     });
 
-    // Set up real-time listener for user profile updates (only if user exists)
-    let unsubscribeProfile = null;
-    if (currentUser) {
-      console.log('🔄 Setting up real-time listener for user:', currentUser.uid);
-      const userDocRef = doc(db, 'users', currentUser.uid);
-      unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-          console.log('🔄 Real-time profile update received for:', currentUser.uid);
-          setUserProfile(docSnap.data());
-        } else {
-          console.log('⚠️ Real-time listener: User document not found');
-        }
-      }, (error) => {
-        console.error('❌ Real-time listener error:', error);
-      });
-    }
-
-    // Cleanup function
+    // Cleanup function - CRITICAL for preventing memory leaks
     return () => {
       console.log('🔄 Cleaning up authentication listeners');
-      unsubscribeAuth();
+      if (unsubscribeAuth) {
+        unsubscribeAuth();
+        unsubscribeAuth = null;
+      }
       if (unsubscribeProfile) {
-        console.log('🔄 Cleaning up real-time profile listener');
+        unsubscribeProfile();
+        unsubscribeProfile = null;
+      }
+    };
+  }, []); // Only run once on mount - CRITICAL for preventing infinite loops
+
+  // Separate useEffect for real-time profile updates to prevent memory leaks
+  useEffect(() => {
+    if (!currentUser) return;
+    
+    console.log('🔄 Setting up real-time listener for user:', currentUser.uid);
+    const userDocRef = doc(db, 'users', currentUser.uid);
+    
+    const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        console.log('🔄 Real-time profile update received for:', currentUser.uid);
+        setUserProfile(docSnap.data());
+      } else {
+        console.log('⚠️ Real-time listener: User document not found');
+      }
+    }, (error) => {
+      console.error('❌ Real-time listener error:', error);
+    });
+
+    // Cleanup function for profile listener
+    return () => {
+      console.log('🔄 Cleaning up real-time profile listener');
+      if (unsubscribeProfile) {
         unsubscribeProfile();
       }
     };
-  }, []); // Only run once on mount
+  }, [currentUser?.uid]); // Only depend on user UID to prevent unnecessary re-subscriptions
 
   // Memoize functions to prevent infinite re-renders
   const memoizedSignup = useCallback(signup, []);
