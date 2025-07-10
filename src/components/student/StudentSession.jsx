@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
-import { getSession, joinSession, leaveSession, listenToSession } from '../../firebase/session-service';
+import { getSession, joinSession, leaveSession, listenToSession, updateSessionSlide } from '../../firebase/session-service';
 import { getLessonWithSlides } from '../../firebase/content-service';
 import { PresentationSlide, PollSlide, VideoSlide, InteractiveSlide, BreakSlide, ReflectionSlide, QuizSlide } from '../slides';
 import Card from '../ui/Card';

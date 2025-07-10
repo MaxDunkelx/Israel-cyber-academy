@@ -22,7 +22,7 @@ export const slide3CyberIntro = {
       },
       {
         type: "animation",
-        type: "bounce",
+        animationType: "bounce",
         element: "💻",
         style: { fontSize: "4rem", textAlign: "center", margin: "2rem" }
       }
