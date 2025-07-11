@@ -23,7 +23,7 @@
  * 5. Show progress statistics and achievements
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useUserProfile } from '../hooks/useAuth';
@@ -206,7 +206,7 @@ const Roadmap = () => {
     loadLessons();
   }, []);
 
-  // Simple refresh of currentLesson from database
+  // OPTIMIZATION: Reduce refresh frequency from 10 seconds to 30 seconds
   useEffect(() => {
     if (!currentUser || role !== 'student') return;
 
@@ -246,9 +246,9 @@ const Roadmap = () => {
       }
     };
 
-    // Refresh immediately and then every 10 seconds
+    // Refresh immediately and then every 30 seconds (instead of 10)
     refreshCurrentLesson();
-    const interval = setInterval(refreshCurrentLesson, 10000);
+    const interval = setInterval(refreshCurrentLesson, 30000);
     
     // Also refresh after 1 second to make sure we get fresh data
     const immediateRefresh = setTimeout(refreshCurrentLesson, 1000);
@@ -329,8 +329,8 @@ const Roadmap = () => {
     const completedLessons = activeProfile.completedLessons || [];
     const teacherAssignedLesson = activeProfile.currentLesson || 0;
     
-    // Debug logging for lesson status (development only)
-    if (import.meta.env.DEV && lessonNumber <= 3) {
+    // Debug logging for lesson status (development only) - reduced frequency
+    if (import.meta.env.DEV && lessonNumber <= 3 && Math.random() < 0.1) { // Only log 10% of the time
       // Ensure completedLessons is always an array for debug logging
       const completedLessonsArray = Array.isArray(completedLessons) ? completedLessons : [];
       console.log(`🔍 Lesson ${lessonNumber} (${lessonId}) status check:`, {
@@ -367,18 +367,24 @@ const Roadmap = () => {
                        );
     
     if (isCompleted) {
-      console.log(`✅ Lesson ${lessonNumber} (${lessonId}) is completed`);
+      if (import.meta.env.DEV) {
+        console.log(`✅ Lesson ${lessonNumber} (${lessonId}) is completed`);
+      }
       return 'completed';
     }
     
     // Check if teacher has unlocked this lesson
     if (lessonNumber <= teacherAssignedLesson) {
-      console.log(`🔓 Lesson ${lessonNumber} (${lessonId}) is available (teacher unlocked up to lesson ${teacherAssignedLesson})`);
+      if (import.meta.env.DEV) {
+        console.log(`🔓 Lesson ${lessonNumber} (${lessonId}) is available (teacher unlocked up to lesson ${teacherAssignedLesson})`);
+      }
       return 'available';
     }
     
     // Lesson is locked until teacher unlocks it
-    console.log(`🔒 Lesson ${lessonNumber} (${lessonId}) is locked (teacher only unlocked up to lesson ${teacherAssignedLesson})`);
+    if (import.meta.env.DEV) {
+      console.log(`🔒 Lesson ${lessonNumber} (${lessonId}) is locked (teacher only unlocked up to lesson ${teacherAssignedLesson})`);
+    }
     return 'locked';
   }, [userProfile, refreshedProfile, lessons]);
 
@@ -390,12 +396,18 @@ const Roadmap = () => {
   const getProgressPercentage = useCallback(() => {
     const activeProfile = refreshedProfile || userProfile;
     if (!activeProfile || !lessons || lessons.length === 0) {
-      console.log('❌ Cannot calculate progress percentage - missing data');
+      // Only log in development
+      if (import.meta.env.DEV) {
+        console.log('❌ Cannot calculate progress percentage - missing data');
+      }
       return 0;
     }
     const completedCount = Array.isArray(activeProfile.completedLessons) ? activeProfile.completedLessons.length : 0;
     const percentage = Math.round((completedCount / lessons.length) * 100);
-    console.log('📊 getProgressPercentage:', percentage + '%', `(${completedCount}/${lessons.length})`);
+    // Only log in development
+    if (import.meta.env.DEV) {
+      console.log('📊 getProgressPercentage:', percentage + '%', `(${completedCount}/${lessons.length})`);
+    }
     return percentage;
   }, [userProfile, refreshedProfile, lessons]);
 
@@ -407,11 +419,17 @@ const Roadmap = () => {
   const getTotalTimeSpent = useCallback(() => {
     const activeProfile = refreshedProfile || userProfile;
     if (!activeProfile) {
-      console.log('❌ No user profile available for totalTimeSpent');
+      // Only log in development
+      if (import.meta.env.DEV) {
+        console.log('❌ No user profile available for totalTimeSpent');
+      }
       return 0;
     }
     const minutes = Math.floor((activeProfile.totalTimeSpent || 0) / 60);
-    console.log('📊 getTotalTimeSpent:', minutes, 'from profile:', activeProfile.totalTimeSpent);
+    // Only log in development
+    if (import.meta.env.DEV) {
+      console.log('📊 getTotalTimeSpent:', minutes, 'from profile:', activeProfile.totalTimeSpent);
+    }
     return minutes;
   }, [userProfile, refreshedProfile]);
 
@@ -423,11 +441,17 @@ const Roadmap = () => {
   const getTotalPagesEngaged = useCallback(() => {
     const activeProfile = refreshedProfile || userProfile;
     if (!activeProfile) {
-      console.log('❌ No user profile available for totalPagesEngaged');
+      // Only log in development
+      if (import.meta.env.DEV) {
+        console.log('❌ No user profile available for totalPagesEngaged');
+      }
       return 0;
     }
     const total = activeProfile.totalPagesEngaged || 0;
-    console.log('📊 getTotalPagesEngaged:', total, 'from profile:', activeProfile.totalPagesEngaged);
+    // Only log in development
+    if (import.meta.env.DEV) {
+      console.log('📊 getTotalPagesEngaged:', total, 'from profile:', activeProfile.totalPagesEngaged);
+    }
     return total;
   }, [userProfile, refreshedProfile]);
 
@@ -450,11 +474,17 @@ const Roadmap = () => {
   const getCompletedLessonsCount = useCallback(() => {
     const activeProfile = refreshedProfile || userProfile;
     if (!activeProfile) {
-      console.log('❌ No user profile available for completedLessons');
+      // Only log in development
+      if (import.meta.env.DEV) {
+        console.log('❌ No user profile available for completedLessons');
+      }
       return 0;
     }
     const count = Array.isArray(activeProfile.completedLessons) ? activeProfile.completedLessons.length : 0;
-    console.log('📊 getCompletedLessonsCount:', count, 'from profile:', activeProfile.completedLessons);
+    // Only log in development
+    if (import.meta.env.DEV) {
+      console.log('📊 getCompletedLessonsCount:', count, 'from profile:', activeProfile.completedLessons);
+    }
     return count;
   }, [userProfile, refreshedProfile]);
 
@@ -542,13 +572,17 @@ const Roadmap = () => {
       // Only log for lessons that are actually available (not locked)
       const status = getLessonStatus(lessonId);
       if (status === 'available' || status === 'completed') {
-        console.log(`⚠️ No progress found for lesson ${lessonId} (tried: ${possibleLessonIds.join(', ')})`);
+        if (import.meta.env.DEV) {
+          console.log(`⚠️ No progress found for lesson ${lessonId} (tried: ${possibleLessonIds.join(', ')})`);
+        }
       }
       return 0;
     }
     
     const lastSlide = userProfile.progress[progressEntry].lastSlide || 0;
-    console.log(`📊 Last slide for lesson ${lessonId}: ${lastSlide} (found in: ${progressEntry})`);
+    if (import.meta.env.DEV) {
+      console.log(`📊 Last slide for lesson ${lessonId}: ${lastSlide} (found in: ${progressEntry})`);
+    }
     return lastSlide;
   }, [userProfile, lessons]);
 
@@ -558,6 +592,102 @@ const Roadmap = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // OPTIMIZATION: Memoize expensive calculations
+  const memoizedStats = useMemo(() => {
+    const activeProfile = refreshedProfile || userProfile;
+    if (!activeProfile || !lessons || lessons.length === 0) {
+      return {
+        completedCount: 0,
+        progressPercentage: 0,
+        totalTimeSpent: 0,
+        totalPagesEngaged: 0
+      };
+    }
+    
+    const completedCount = Array.isArray(activeProfile.completedLessons) ? activeProfile.completedLessons.length : 0;
+    const progressPercentage = Math.round((completedCount / lessons.length) * 100);
+    const totalTimeSpent = Math.floor((activeProfile.totalTimeSpent || 0) / 60);
+    const totalPagesEngaged = activeProfile.totalPagesEngaged || 0;
+    
+    return {
+      completedCount,
+      progressPercentage,
+      totalTimeSpent,
+      totalPagesEngaged
+    };
+  }, [userProfile, refreshedProfile, lessons]);
+
+  // OPTIMIZATION: Memoize lesson statuses to prevent recalculation
+  const lessonStatuses = useMemo(() => {
+    if (!lessons || !lessons.length) return {};
+    
+    const statuses = {};
+    lessons.forEach(lesson => {
+      if (lesson && lesson.id) {
+        statuses[lesson.id] = getLessonStatus(lesson.id);
+      }
+    });
+    
+    if (import.meta.env.DEV) {
+      console.log('🚀 Roadmap optimizations applied - memoized stats and lesson statuses');
+    }
+    
+    return statuses;
+  }, [lessons, userProfile, refreshedProfile, getLessonStatus]);
+
+  // OPTIMIZATION: Reduce refresh frequency from 10 seconds to 30 seconds
+  useEffect(() => {
+    if (!currentUser || role !== 'student') return;
+
+    const refreshCurrentLesson = async () => {
+      try {
+        if (import.meta.env.DEV) {
+          console.log('🔄 Refreshing currentLesson from database...');
+        }
+        const { doc, getDoc } = await import('firebase/firestore');
+        const { db } = await import('../firebase/firebase-config');
+        
+        const userRef = doc(db, 'users', currentUser.uid);
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists()) {
+          const freshUserData = userDoc.data();
+          if (import.meta.env.DEV) {
+            console.log('📥 Fresh user data:', {
+              currentLesson: freshUserData.currentLesson,
+              displayName: freshUserData.displayName
+            });
+          }
+          setRefreshedProfile(freshUserData);
+          
+          // Show notification if teacher unlocked new lessons
+          if (userProfile && freshUserData.currentLesson > userProfile.currentLesson) {
+            const newlyUnlocked = freshUserData.currentLesson - userProfile.currentLesson;
+            toast.success(`המורה פתח ${newlyUnlocked} שיעורים חדשים!`);
+          }
+        } else {
+          if (import.meta.env.DEV) {
+            console.log('❌ User document not found');
+          }
+        }
+      } catch (error) {
+        console.error('Error refreshing currentLesson:', error);
+      }
+    };
+
+    // Refresh immediately and then every 30 seconds (instead of 10)
+    refreshCurrentLesson();
+    const interval = setInterval(refreshCurrentLesson, 30000);
+    
+    // Also refresh after 1 second to make sure we get fresh data
+    const immediateRefresh = setTimeout(refreshCurrentLesson, 1000);
+    
+    return () => {
+      clearInterval(interval);
+      clearTimeout(immediateRefresh);
+    };
+  }, [currentUser, role]); // Removed userProfile dependency to prevent re-running
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden">
@@ -657,7 +787,7 @@ const Roadmap = () => {
                   <div className="relative flex flex-col items-center text-center">
                     <Trophy className="h-14 w-14 text-yellow-500 mb-4 group-hover:scale-110 transition-transform" />
                     <div className="text-4xl font-bold text-white mb-3">
-                      {getCompletedLessonsCount()}
+                      {memoizedStats.completedCount}
                     </div>
                     <div className="text-base text-green-400 font-mono">
                       שיעורים הושלמו
@@ -671,7 +801,7 @@ const Roadmap = () => {
                   <div className="relative flex flex-col items-center text-center">
                     <Star className="h-14 w-14 text-purple-400 mb-4 group-hover:scale-110 transition-transform" />
                     <div className="text-4xl font-bold text-white mb-3">
-                      {getProgressPercentage()}%
+                      {memoizedStats.progressPercentage}%
                     </div>
                     <div className="text-base text-purple-400 font-mono">
                       התקדמות
@@ -685,7 +815,7 @@ const Roadmap = () => {
                   <div className="relative flex flex-col items-center text-center">
                     <Eye className="h-14 w-14 text-blue-400 mb-4 group-hover:scale-110 transition-transform" />
                     <div className="text-4xl font-bold text-white mb-3">
-                      {getTotalPagesEngaged()}
+                      {memoizedStats.totalPagesEngaged}
                     </div>
                     <div className="text-base text-blue-400 font-mono">
                       עמודים נצפו
@@ -699,7 +829,7 @@ const Roadmap = () => {
                   <div className="relative flex flex-col items-center text-center">
                     <Timer className="h-14 w-14 text-orange-400 mb-4 group-hover:scale-110 transition-transform" />
                     <div className="text-4xl font-bold text-white mb-3">
-                      {getTotalTimeSpent()}
+                      {memoizedStats.totalTimeSpent}
                     </div>
                     <div className="text-base text-orange-400 font-mono">
                       דקות למידה
@@ -712,12 +842,12 @@ const Roadmap = () => {
               <div className="w-full bg-gray-800/50 rounded-full h-6 mb-6 border border-gray-700">
                 <div 
                   className="bg-gradient-to-r from-green-500 to-cyan-500 h-6 rounded-full transition-all duration-500 shadow-lg shadow-green-500/25"
-                  style={{ width: `${getProgressPercentage()}%` }}
+                  style={{ width: `${memoizedStats.progressPercentage}%` }}
                 />
               </div>
               
               <p className="text-center text-green-400 text-base font-mono">
-                {'>'} התקדמות כללית: {getProgressPercentage()}% ({getCompletedLessonsCount()} מתוך {lessons?.length || 0} שיעורים)
+                {'>'} התקדמות כללית: {memoizedStats.progressPercentage}% ({memoizedStats.completedCount} מתוך {lessons?.length || 0} שיעורים)
               </p>
             </motion.div>
           </div>
@@ -732,11 +862,13 @@ const Roadmap = () => {
             {lessons && Array.isArray(lessons) && lessons.length > 0 ? lessons.map((lesson, index) => {
               // Add null checks and debugging
               if (!lesson || !lesson.id) {
-                console.warn('⚠️ Invalid lesson data:', lesson);
+                if (import.meta.env.DEV) {
+                  console.warn('⚠️ Invalid lesson data:', lesson);
+                }
                 return null;
               }
               
-              const status = getLessonStatus(lesson.id);
+              const status = lessonStatuses[lesson.id] || getLessonStatus(lesson.id);
               const isNewlyUnlocked = newlyUnlockedLessons.has(lesson.id);
               const lastSlide = getLastSlide(lesson.id);
               const LessonIcon = getLessonIcon(lesson.id);
