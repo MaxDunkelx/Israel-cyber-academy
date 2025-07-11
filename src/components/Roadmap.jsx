@@ -160,6 +160,8 @@ const Roadmap = () => {
   const { displayName, role } = useUserProfile();
   const location = useLocation();
   
+
+  
   // Component state management
   const [lessons, setLessons] = useState([]);
   const [selectedLesson, setSelectedLesson] = useState(null);
@@ -190,18 +192,11 @@ const Roadmap = () => {
         });
         
         setLessons(sortedLessons);
-        console.log('📚 Roadmap: Lessons data loaded and sorted:', {
-          lessonsCount: sortedLessons?.length || 0,
-          lessons: sortedLessons?.slice(0, 3).map(l => ({ 
-            originalId: l.originalId, 
-            id: l.id, 
-            title: l.title, 
-            hasContent: !!l.content, 
-            hasSlides: !!l.content?.slides 
-          })) || [],
-          firstLesson: sortedLessons?.[0] || null,
-          order: sortedLessons?.map(l => l.originalId || l.id).join(', ') || 'none'
-        });
+        if (import.meta.env.DEV) {
+          console.log('📚 Roadmap: Lessons loaded:', {
+            lessonsCount: sortedLessons?.length || 0
+          });
+        }
       } catch (error) {
         console.error('Error loading lessons:', error);
         toast.error('שגיאה בטעינת השיעורים');
@@ -217,7 +212,9 @@ const Roadmap = () => {
 
     const refreshCurrentLesson = async () => {
       try {
-        console.log('🔄 Refreshing currentLesson from database...');
+        if (import.meta.env.DEV) {
+          console.log('🔄 Refreshing currentLesson from database...');
+        }
         const { doc, getDoc } = await import('firebase/firestore');
         const { db } = await import('../firebase/firebase-config');
         
@@ -226,10 +223,12 @@ const Roadmap = () => {
         
         if (userDoc.exists()) {
           const freshUserData = userDoc.data();
-          console.log('📥 Fresh user data:', {
-            currentLesson: freshUserData.currentLesson,
-            displayName: freshUserData.displayName
-          });
+          if (import.meta.env.DEV) {
+            console.log('📥 Fresh user data:', {
+              currentLesson: freshUserData.currentLesson,
+              displayName: freshUserData.displayName
+            });
+          }
           setRefreshedProfile(freshUserData);
           
           // Show notification if teacher unlocked new lessons
@@ -238,7 +237,9 @@ const Roadmap = () => {
             toast.success(`המורה פתח ${newlyUnlocked} שיעורים חדשים!`);
           }
         } else {
-          console.log('❌ User document not found');
+          if (import.meta.env.DEV) {
+            console.log('❌ User document not found');
+          }
         }
       } catch (error) {
         console.error('Error refreshing currentLesson:', error);

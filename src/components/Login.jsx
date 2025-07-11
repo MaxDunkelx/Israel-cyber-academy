@@ -751,6 +751,7 @@ const Login = () => {
                             : 'border-gray-600 focus:ring-blue-500/30 focus:border-blue-500'
                         }`}
                         placeholder="הכנס את הסיסמה שלך"
+                        autocomplete="current-password"
                       />
                       <motion.button
                         type="button"

@@ -355,7 +355,8 @@ const FormInput = ({
   required = false,
   min,
   max,
-  options = null
+  options = null,
+  autocomplete
 }) => (
   <div>
     <label className="block text-sm font-semibold text-gray-200 mb-2">
@@ -699,6 +700,7 @@ const EnhancedLogin = () => {
                         }`}
                         placeholder="הכנס את הסיסמה שלך"
                         required
+                        autocomplete="current-password"
                       />
                       <motion.button
                         type="button"

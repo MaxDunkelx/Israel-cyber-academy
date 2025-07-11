@@ -57,16 +57,10 @@ const getFirebaseConfig = () => {
 
     return config;
   } else {
-    // Fallback to hardcoded values (for GitHub Pages compatibility)
-    // This maintains functionality while providing security warnings
-    return {
-      apiKey: "AIzaSyC35sH38k9co_R0zBsbDT0S6RE1Cp-ksHE",
-      authDomain: "israel-cyber-academy.firebaseapp.com",
-      projectId: "israel-cyber-academy",
-      storageBucket: "israel-cyber-academy.appspot.com",
-      messagingSenderId: "750693821908",
-      appId: "1:750693821908:web:6518d1facad1d8095cfa41"
-    };
+    // No fallback - environment variables are required for production
+    console.error('❌ Firebase environment variables are required but not found!');
+    console.error('💡 Please ensure .env.production file exists with all required variables.');
+    throw new Error('Firebase environment variables are required but not found. Check .env.production file.');
   }
 };
 
@@ -88,17 +82,13 @@ console.log('🔥 Firebase Config Status:', {
   secure: usingEnvVars || isDevelopment
 });
 
-// Enhanced security warnings
-if (isProduction && !usingEnvVars) {
-  console.warn('⚠️ SECURITY WARNING: Using hardcoded Firebase config in production!');
-  console.warn('💡 For better security, set environment variables:');
-  console.warn('   VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN, etc.');
-  console.warn('💡 Your app will continue working, but consider upgrading security.');
-  console.warn('💡 See env.example file for required variables.');
-} else if (usingEnvVars) {
+// Security status logging
+if (usingEnvVars) {
   console.log('✅ Using secure environment variables for Firebase config');
-} else if (isGitHubPages) {
-  console.log('ℹ️ Using hardcoded config for GitHub Pages deployment');
+} else if (isDevelopment) {
+  console.log('ℹ️ Development mode - using local environment variables');
+} else {
+  console.error('❌ Production mode requires environment variables!');
 }
 
 // Initialize Firebase app with enhanced error handling

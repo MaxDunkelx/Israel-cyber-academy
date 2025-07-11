@@ -538,32 +538,17 @@ export const AuthProvider = ({ children }) => {
         }
         
         // Comprehensive console logging for session tracking
-        console.log('📊 USER SESSION DATA UPDATE:', {
-          userId: userToUse.uid,
-          lessonId: progressLessonId,
-          originalLessonId: lessonId,
-          action: completed ? 'LESSON_COMPLETED' : 'PROGRESS_UPDATED',
-          timestamp: new Date().toISOString(),
-          progress: {
+        // Log progress update (development only)
+        if (import.meta.env.DEV) {
+          console.log('📊 Progress update:', {
             lessonId: progressLessonId,
             completed,
             score,
-            lastSlide: finalLastSlide,
-            pagesEngaged: progress[progressLessonId].pagesEngaged?.length || 0,
-            temporary
-          },
-          statistics: {
             totalTimeSpent,
             totalPagesEngaged,
-            completedLessons: newCompletedLessons.length,
-            currentLesson: newCurrentLesson,
-            achievements: newAchievements.length
-          },
-          achievements: {
-            newlyUnlocked: newAchievements.filter(a => !achievements.includes(a)),
-            total: newAchievements.length
-          }
-        });
+            completedLessons: newCompletedLessons.length
+          });
+        }
         
         // Update Firestore with new progress data
         await setDoc(userRef, {
@@ -588,18 +573,19 @@ export const AuthProvider = ({ children }) => {
           achievements: newAchievements
         }));
         
-        // Log final state for verification
-        console.log('✅ Progress update completed successfully');
-        console.log('📊 Final user state:', {
-          userId: userToUse.uid,
-          lessonId: progressLessonId,
-          completed,
-          score,
-          totalTimeSpent,
-          totalPagesEngaged,
-          completedLessons: newCompletedLessons.length,
-          achievements: newAchievements.length
-        });
+        // Log completion (development only)
+        if (import.meta.env.DEV) {
+          console.log('✅ Progress update completed');
+        }
+        // Log final state (development only)
+        if (import.meta.env.DEV) {
+          console.log('📊 Final state:', {
+            completedLessons: newCompletedLessons.length,
+            currentLesson: newCurrentLesson,
+            totalTimeSpent,
+            totalPagesEngaged
+          });
+        }
         
         return { success: true, data: { progress, completedLessons: newCompletedLessons } };
       } else {
@@ -678,26 +664,14 @@ export const AuthProvider = ({ children }) => {
             }
           });
           
-          // Comprehensive console logging for slide engagement
-          console.log('👁️ SLIDE ENGAGEMENT TRACKED:', {
-            userId: currentUser.uid,
+                  // Log slide engagement (development only)
+        if (import.meta.env.DEV) {
+          console.log('👁️ Slide engagement tracked:', {
             lessonId,
-            progressLessonId,
             slideId,
-            timestamp: new Date().toISOString(),
-            engagement: {
-              lessonId,
-              progressLessonId,
-              slideId,
-              totalSlidesInLesson: progress[progressLessonId].pagesEngaged.length,
-              isNewEngagement: true
-            },
-            statistics: {
-              totalTimeSpent,
-              totalPagesEngaged,
-              lessonProgress: Math.round((progress[progressLessonId].pagesEngaged.length / 10) * 100) // Estimate total slides
-            }
+            totalSlidesInLesson: progress[progressLessonId].pagesEngaged.length
           });
+        }
           
           await setDoc(userRef, { 
             progress,
@@ -715,24 +689,23 @@ export const AuthProvider = ({ children }) => {
             lastActivityDate: new Date()
           }));
           
-          // Log engagement summary
-          console.log('📈 ENGAGEMENT SUMMARY:', {
-            lessonId,
-            progressLessonId,
-            slideId,
-            totalPagesEngaged,
-            totalTimeSpent,
-            lessonProgress: `${progress[progressLessonId].pagesEngaged.length} slides engaged`
-          });
+          // Log engagement summary (development only)
+          if (import.meta.env.DEV) {
+            console.log('📈 Engagement summary:', {
+              lessonId,
+              totalPagesEngaged,
+              lessonProgress: `${progress[progressLessonId].pagesEngaged.length} slides engaged`
+            });
+          }
         } else {
-          // Log duplicate engagement attempt
-          console.log('🔄 DUPLICATE SLIDE ENGAGEMENT:', {
-            userId: currentUser.uid,
-            lessonId,
-            slideId,
-            timestamp: new Date().toISOString(),
-            message: 'Slide already engaged, skipping duplicate tracking'
-          });
+          // Log duplicate engagement (development only)
+          if (import.meta.env.DEV) {
+            console.log('🔄 Duplicate slide engagement:', {
+              lessonId,
+              slideId,
+              message: 'Slide already engaged, skipping duplicate tracking'
+            });
+          }
         }
       }
     } catch (error) {

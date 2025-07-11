@@ -28,7 +28,9 @@ const RealAnalytics = () => {
       setLoading(true);
       setError(null);
       
-      console.log('Loading real analytics data for teacher:', currentUser.uid);
+      if (import.meta.env.DEV) {
+        console.log('Loading real analytics data for teacher:', currentUser.uid);
+      }
       
       // Load all data in parallel
       const [classesData, studentsData, sessionHistoryData] = await Promise.all([
@@ -46,13 +48,13 @@ const RealAnalytics = () => {
         averageTimeSpent: Math.round(studentsData.reduce((acc, s) => acc + (s.totalTimeSpent || 0), 0) / Math.max(studentsData.length, 1) / 60)
       };
       
-      console.log('Loaded data:', {
-        classes: classesData.length,
-        students: studentsData.length,
-        sessions: sessionHistoryData.totalSessions,
-        hasAnalytics: !!analyticsData,
-        hasAttendance: !!sessionHistoryData
-      });
+      if (import.meta.env.DEV) {
+        console.log('Loaded data:', {
+          classes: classesData.length,
+          students: studentsData.length,
+          sessions: sessionHistoryData.totalSessions
+        });
+      }
       
       setClasses(classesData);
       setStudents(studentsData);

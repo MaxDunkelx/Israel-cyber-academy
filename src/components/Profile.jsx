@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+
 import { getAllLessons } from '../firebase/content-service';
 import { 
   User, 
@@ -45,6 +46,7 @@ const emojiOptions = ['😀','😎','🤓','🦸‍♂️','🦸‍♀️','🧑
 
 const Profile = () => {
   const { userProfile, logout, currentUser, updateDisplayName, changePassword } = useAuth();
+
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedEmoji, setSelectedEmoji] = useState(userProfile?.emoji || '😀');
   

@@ -339,12 +339,11 @@ const InteractiveLesson = () => {
     // Update minutes learned (convert from total time spent)
     setMinutesLearned(Math.floor((userProfile.totalTimeSpent || 0) / 60));
     
-    // Log statistics update
+    // Log statistics update (development only)
     if (import.meta.env.DEV) {
-      console.log('📊 STATISTICS UPDATED:', {
+      console.log('📊 Statistics updated:', {
         totalTimeSpent: userProfile.totalTimeSpent || 0,
-        totalPagesEngaged: allPagesEngaged.size,
-        minutesLearned: Math.floor((userProfile.totalTimeSpent || 0) / 60)
+        totalPagesEngaged: allPagesEngaged.size
       });
     }
   }, [userProfile]);
