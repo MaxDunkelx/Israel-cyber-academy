@@ -123,7 +123,7 @@ const MatrixRain = () => {
     canvas.height = window.innerHeight;
     
     // Enhanced character set with Hebrew, English, and symbols
-    const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンאבגדהוזחטסעפצקרשת';
+    const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンאבגדהוזסעפצקרשת';
     const charArray = chars.split('');
     const fontSize = 18;
     const columns = canvas.width / fontSize;
@@ -198,33 +198,43 @@ const MatrixRain = () => {
 const FloatingIcons = () => {
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-      <div className="absolute top-10 left-10 text-blue-300 opacity-10">
-        <Database size={24} />
+      {/* Database Icon */}
+      <div className="absolute top-20 left-10 text-blue-400/20">
+        <Database className="w-8 h-8" />
       </div>
-      <div className="absolute top-20 right-20 text-blue-400 opacity-10">
-        <Network size={28} />
+      
+      {/* Network Icon */}
+      <div className="absolute top-40 right-20 text-green-400/20">
+        <Network className="w-6 h-6" />
       </div>
-      <div className="absolute bottom-20 left-20 text-blue-300 opacity-10">
-        <Code size={22} />
+      
+      {/* Code Icon */}
+      <div className="absolute bottom-40 left-20 text-purple-400/20">
+        <Code className="w-7 h-7" />
       </div>
-      <div className="absolute bottom-10 right-10 text-blue-400 opacity-10">
-        <Lock size={26} />
+      
+      {/* Bug Icon */}
+      <div className="absolute bottom-20 right-10 text-red-400/20">
+        <Bug className="w-6 h-6" />
       </div>
-      <div className="absolute top-1/2 left-1/4 text-blue-300 opacity-10">
-        <Bug size={24} />
+      
+      {/* Shield Icon */}
+      <div className="absolute top-60 left-1/4 text-yellow-400/20">
+        <Shield className="w-5 h-5" />
       </div>
-      <div className="absolute top-1/3 right-1/3 text-blue-400 opacity-10">
-        <ShieldCheck size={30} />
+      
+      {/* Lock Icon */}
+      <div className="absolute bottom-60 right-1/4 text-cyan-400/20">
+        <Lock className="w-6 h-6" />
       </div>
     </div>
   );
 };
 
 // ============================================================================
-// UI COMPONENTS
+// UTILITY FUNCTIONS
 // ============================================================================
 
-// Optimized border color calculation
 const getBorderColor = (color) => {
   if (color.includes('emerald')) return '#10b981';
   if (color.includes('purple')) return '#8b5cf6';
@@ -239,6 +249,10 @@ const getBorderColor = (color) => {
   if (color.includes('sky')) return '#0ea5e9';
   return '#3b82f6';
 };
+
+// ============================================================================
+// COMPONENTS
+// ============================================================================
 
 const StatisticsCard = memo(({ item, index, variants }) => (
   <motion.div 

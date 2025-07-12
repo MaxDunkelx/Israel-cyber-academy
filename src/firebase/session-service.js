@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase-config';
 import { logSecurityEvent } from '../utils/security';
+import { setUserInLiveSession, updateUserPresence } from './presence-service';
 
 /**
  * Session Management Service - OPTIMIZED FOR QUOTA REDUCTION
@@ -181,6 +182,8 @@ export const setSessionLock = async (sessionId, isLocked) => {
   }
 };
 
+
+
 /**
  * Student joins session (atomic array update)
  * @param {string} sessionId - Session ID
@@ -211,6 +214,9 @@ export const joinSession = async (sessionId, studentId, studentName) => {
     await updateDoc(sessionRef, { studentProgress });
   }
 
+  // Update user presence to show they're in a live session
+  await setUserInLiveSession(studentId, sessionId, sessionData.lessonName);
+
   logSecurityEvent('STUDENT_JOINED_SESSION', {
     sessionId,
     studentId,
@@ -232,6 +238,9 @@ export const leaveSession = async (sessionId, studentId, studentName) => {
     connectedStudents: arrayRemove({ id: studentId, name: studentName }),
     lastActivity: serverTimestamp()
   });
+
+  // Update user presence back to online
+  await updateUserPresence(studentId, 'online');
 
   logSecurityEvent('STUDENT_LEFT_SESSION', {
     sessionId,

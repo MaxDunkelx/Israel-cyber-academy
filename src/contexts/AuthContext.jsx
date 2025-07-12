@@ -33,6 +33,7 @@ import {
 import { doc, setDoc, getDoc, updateDoc, onSnapshot, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { auth, db, diagnoseFirestoreConnection } from '../firebase/firebase-config';
 import { grantTeacherLessonAccess } from '../firebase/teacher-service.jsx';
+import { initializePresenceTracking, setUserOffline } from '../firebase/presence-service';
 
 // Create React context for authentication
 const AuthContext = createContext();
@@ -69,6 +70,7 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null); // Firebase auth user
   const [userProfile, setUserProfile] = useState(null); // Extended user data
   const [loading, setLoading] = useState(true); // Loading state
+  const [presenceCleanup, setPresenceCleanup] = useState(null); // Presence tracking cleanup function
 
   /**
    * Helper to always get Firestore lesson ID
@@ -767,6 +769,11 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('🔄 Logging out user...');
       
+      // Set user as offline before logout
+      if (currentUser?.uid) {
+        await setUserOffline(currentUser.uid);
+      }
+      
       // Clean up temporary progress before logout
       await removeTemporaryProgress();
       
@@ -776,6 +783,13 @@ export const AuthProvider = ({ children }) => {
       // Clear local state
       setCurrentUser(null);
       setUserProfile(null);
+      
+      // Clean up presence tracking
+      if (presenceCleanup) {
+        console.log('🧹 Cleaning up presence tracking on logout');
+        presenceCleanup();
+        setPresenceCleanup(null);
+      }
       
       console.log('✅ User logged out successfully');
       
@@ -788,6 +802,13 @@ export const AuthProvider = ({ children }) => {
       // Even if there's an error, clear state and redirect
       setCurrentUser(null);
       setUserProfile(null);
+      
+      // Clean up presence tracking even on error
+      if (presenceCleanup) {
+        console.log('🧹 Cleaning up presence tracking on logout error');
+        presenceCleanup();
+        setPresenceCleanup(null);
+      }
       
       // Force redirect to login page
       window.location.href = '/Israel-cyber-academy/login';
@@ -1077,6 +1098,13 @@ export const AuthProvider = ({ children }) => {
             };
             
             setUserProfile(userProfileWithDefaults);
+            
+            // Initialize presence tracking for the user
+            if (userProfileWithDefaults.role) {
+              console.log('📡 Initializing presence tracking for user:', user.uid);
+              const cleanup = initializePresenceTracking(user.uid, userProfileWithDefaults.role);
+              setPresenceCleanup(() => cleanup);
+            }
           } else {
             console.log('⚠️ User profile not found in Firestore - creating new profile');
             // Create a new user profile if it doesn't exist
@@ -1116,6 +1144,11 @@ export const AuthProvider = ({ children }) => {
               await setDoc(userRef, newUserProfile);
               console.log('✅ New user profile created successfully');
               setUserProfile(newUserProfile);
+              
+              // Initialize presence tracking for new user
+              console.log('📡 Initializing presence tracking for new user:', user.uid);
+              const cleanup = initializePresenceTracking(user.uid, newUserProfile.role);
+              setPresenceCleanup(() => cleanup);
             } catch (createError) {
               console.error('❌ Error creating user profile:', createError);
               console.error('🔍 Create error details:', {
@@ -1148,6 +1181,13 @@ export const AuthProvider = ({ children }) => {
         console.log('👋 User signed out, clearing profile');
         // User is signed out, clear all state
         setUserProfile(null);
+        
+        // Clean up presence tracking
+        if (presenceCleanup) {
+          console.log('🧹 Cleaning up presence tracking');
+          presenceCleanup();
+          setPresenceCleanup(null);
+        }
       }
       
       setLoading(false);
@@ -1163,6 +1203,13 @@ export const AuthProvider = ({ children }) => {
       if (unsubscribeProfile) {
         unsubscribeProfile();
         unsubscribeProfile = null;
+      }
+      
+      // Clean up presence tracking
+      if (presenceCleanup) {
+        console.log('🧹 Cleaning up presence tracking');
+        presenceCleanup();
+        setPresenceCleanup(null);
       }
     };
   }, []); // Only run once on mount - CRITICAL for preventing infinite loops

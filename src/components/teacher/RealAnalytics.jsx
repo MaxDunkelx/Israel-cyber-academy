@@ -39,6 +39,14 @@ const RealAnalytics = () => {
         getTeacherSessionHistory(currentUser.uid, 20)
       ]);
       
+      // DEBUG: Log the actual data received
+      console.log('🔍 DEBUG - Real Analytics Data:', {
+        classesCount: classesData.length,
+        studentsCount: studentsData.length,
+        studentsData: studentsData.map(s => ({ id: s.uid, name: s.displayName, classId: s.classId })),
+        classesData: classesData.map(c => ({ id: c.id, name: c.name, studentIds: c.studentIds }))
+      });
+      
       // Create analytics data from real data
       const analyticsData = {
         totalClasses: classesData.length,
@@ -47,6 +55,8 @@ const RealAnalytics = () => {
         averageProgress: Math.round(studentsData.reduce((acc, s) => acc + (s.progress?.completedLessons?.length || 0), 0) / Math.max(studentsData.length, 1) * 10),
         averageTimeSpent: Math.round(studentsData.reduce((acc, s) => acc + (s.totalTimeSpent || 0), 0) / Math.max(studentsData.length, 1) / 60)
       };
+      
+      console.log('🔍 DEBUG - Analytics Data Created:', analyticsData);
       
       if (import.meta.env.DEV) {
         console.log('Loaded data:', {
@@ -172,9 +182,21 @@ const RealAnalytics = () => {
     <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">ניתוח נתונים אמיתיים</h1>
-          <p className="text-gray-400">נתונים מבוססים על פעילות אמיתית של תלמידים במסד הנתונים</p>
+        <div className="mb-8 flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">ניתוח נתונים אמיתיים</h1>
+            <p className="text-gray-400">נתונים מבוססים על פעילות אמיתית של תלמידים במסד הנתונים</p>
+          </div>
+          <button
+            onClick={loadData}
+            disabled={loading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>רענן נתונים</span>
+          </button>
         </div>
 
         {/* Teacher Overview */}

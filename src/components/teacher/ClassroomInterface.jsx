@@ -52,9 +52,11 @@ import {
 } from '../../firebase/teacher-service';
 import { getAllLessonsWithSlideCounts } from '../../firebase/content-service';
 import { listenToSession } from '../../firebase/session-service';
+import { listenToMultipleUsersPresence } from '../../firebase/presence-service';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 const ClassroomInterface = () => {
   const navigate = useNavigate();
@@ -66,6 +68,7 @@ const ClassroomInterface = () => {
   const [analytics, setAnalytics] = useState({});
   const [recentActivities, setRecentActivities] = useState([]);
   const [activeSessions, setActiveSessions] = useState({});
+  const [userPresence, setUserPresence] = useState({});
   const [selectedClass, setSelectedClass] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -162,15 +165,53 @@ const ClassroomInterface = () => {
     // Listen to active sessions
     const unsubscribeSessions = listenToActiveSessions();
     
+    // Listen to user presence for all students
+    const allStudentIds = Object.values(students).flat().map(student => student.uid);
+    const unsubscribePresence = listenToMultipleUsersPresence(allStudentIds, (presenceData) => {
+      console.log('📡 User presence updated:', presenceData);
+      setUserPresence(presenceData);
+    });
+    
     return () => {
       if (unsubscribeSessions) unsubscribeSessions();
+      if (unsubscribePresence) unsubscribePresence();
     };
   };
 
   const listenToActiveSessions = () => {
-    // Real session listening is implemented in the main useEffect
-    // This function is kept for future enhancements
-    setActiveSessions({});
+    if (!currentUser?.uid) return null;
+
+    console.log('🔍 Setting up active sessions listener for teacher:', currentUser.uid);
+    
+    // Get active sessions for this teacher
+    const sessionsRef = collection(db, 'sessions');
+    const q = query(
+      sessionsRef,
+      where('teacherId', '==', currentUser.uid),
+      where('status', '==', 'active')
+    );
+    
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const sessions = {};
+      
+      querySnapshot.forEach((doc) => {
+        const sessionData = doc.data();
+        // Group sessions by classId
+        if (sessionData.classId) {
+          sessions[sessionData.classId] = {
+            id: doc.id,
+            ...sessionData
+          };
+        }
+      });
+      
+      console.log('📡 Active sessions updated:', Object.keys(sessions).length, 'sessions');
+      setActiveSessions(sessions);
+    }, (error) => {
+      console.error('Error listening to active sessions:', error);
+    });
+
+    return unsubscribe;
   };
 
   const toggleClassExpansion = (classId) => {
@@ -184,15 +225,26 @@ const ClassroomInterface = () => {
   };
 
   const getStudentStatus = (student, classId) => {
+    // First check if student is in a live session
     const session = activeSessions[classId];
-    if (!session) return 'offline';
+    if (session) {
+      const isInLiveSession = session.connectedStudents && 
+        session.connectedStudents.some(connectedStudent => 
+          connectedStudent.id === student.uid || connectedStudent === student.uid
+        );
+      
+      if (isInLiveSession) {
+        return 'in_live_session';
+      }
+    }
     
-    const isConnected = session.connectedStudents.includes(student.uid);
-    const lastActivity = student.lastActivityAt;
-    const isActive = lastActivity && (Date.now() - new Date(lastActivity).getTime()) < 300000; // 5 minutes
+    // Check general presence status
+    const presence = userPresence[student.uid];
+    if (presence) {
+      return presence.status; // 'online', 'offline', or 'in_live_session'
+    }
     
-    if (isConnected && isActive) return 'online';
-    if (isConnected && !isActive) return 'idle';
+    // Default to offline if no presence data
     return 'offline';
   };
 
@@ -200,8 +252,8 @@ const ClassroomInterface = () => {
     switch (status) {
       case 'online':
         return <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />;
-      case 'idle':
-        return <div className="w-3 h-3 bg-yellow-500 rounded-full" />;
+      case 'in_live_session':
+        return <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse" />;
       case 'offline':
         return <div className="w-3 h-3 bg-gray-500 rounded-full" />;
       default:
@@ -213,8 +265,8 @@ const ClassroomInterface = () => {
     switch (status) {
       case 'online':
         return 'מחובר';
-      case 'idle':
-        return 'לא פעיל';
+      case 'in_live_session':
+        return 'בשיעור חי';
       case 'offline':
         return 'מנותק';
       default:
@@ -226,8 +278,8 @@ const ClassroomInterface = () => {
     switch (status) {
       case 'online':
         return 'text-green-400';
-      case 'idle':
-        return 'text-yellow-400';
+      case 'in_live_session':
+        return 'text-blue-400';
       case 'offline':
         return 'text-gray-400';
       default:
@@ -275,8 +327,8 @@ const ClassroomInterface = () => {
       getStudentStatus(student, classData.id) === 'online'
     ).length;
     
-    const idleCount = classStudents.filter(student => 
-      getStudentStatus(student, classData.id) === 'idle'
+    const inLiveSessionCount = classStudents.filter(student => 
+      getStudentStatus(student, classData.id) === 'in_live_session'
     ).length;
     
     const offlineCount = classStudents.filter(student => 
@@ -286,7 +338,7 @@ const ClassroomInterface = () => {
     return {
       total: classStudents.length,
       online: onlineCount,
-      idle: idleCount,
+      inLiveSession: inLiveSessionCount,
       offline: offlineCount,
       progress: getClassProgress(classData),
       hasActiveSession: !!session
@@ -519,7 +571,8 @@ const ClassroomInterface = () => {
               <p className="text-white text-2xl font-bold">
                 {Object.values(students).flat().filter(student => 
                   Object.keys(activeSessions).some(classId => 
-                    getStudentStatus(student, classId) === 'online'
+                    getStudentStatus(student, classId) === 'online' || 
+                    getStudentStatus(student, classId) === 'in_live_session'
                   )
                 ).length}
               </p>
@@ -581,8 +634,8 @@ const ClassroomInterface = () => {
                     <span className="text-green-400 text-sm">{stats.online} מחוברים</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-yellow-500 rounded-full" />
-                    <span className="text-yellow-400 text-sm">{stats.idle} לא פעילים</span>
+                    <div className="w-3 h-3 bg-blue-500 rounded-full" />
+                    <span className="text-blue-400 text-sm">{stats.inLiveSession} בשיעור חי</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="w-3 h-3 bg-gray-500 rounded-full" />

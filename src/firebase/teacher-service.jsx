@@ -499,30 +499,50 @@ export const getClassStudents = async (classId) => {
  */
 export const getTeacherStudents = async (teacherId) => {
   try {
-    const q = query(
-      collection(db, 'classStudents'),
-      where('teacherId', '==', teacherId),
-      where('isActive', '==', true)
-    );
+    // Get all classes for this teacher
+    const classes = await getTeacherClasses(teacherId);
     
-    const querySnapshot = await getDocs(q);
-    const studentIds = [...new Set(querySnapshot.docs.map(doc => doc.data().studentId))];
+    // Collect all unique student IDs from all classes
+    const allStudentIds = new Set();
+    classes.forEach(classData => {
+      if (classData.studentIds && Array.isArray(classData.studentIds)) {
+        classData.studentIds.forEach(studentId => allStudentIds.add(studentId));
+      }
+    });
     
-    // Fetch student details
+    // Fetch student details for all unique students
     const students = [];
-    for (const studentId of studentIds) {
+    for (const studentId of allStudentIds) {
       const studentRef = doc(db, 'users', studentId);
       const studentDoc = await getDoc(studentRef);
       if (studentDoc.exists()) {
+        const studentData = studentDoc.data();
         students.push({
           uid: studentDoc.id,
-          ...studentDoc.data()
+          displayName: studentData.displayName || studentData.email,
+          email: studentData.email,
+          role: studentData.role,
+          classId: studentData.classId,
+          teacherId: studentData.teacherId,
+          progress: studentData.progress || 0,
+          completedLessons: studentData.completedLessons || [],
+          totalTimeSpent: studentData.totalTimeSpent || 0,
+          lastActivityAt: studentData.lastActivityAt?.toDate?.()?.toISOString() || null,
+          createdAt: studentData.createdAt?.toDate?.()?.toISOString() || new Date().toISOString()
         });
       }
     }
     
+    // Sort students by name
+    students.sort((a, b) => {
+      const nameA = (a.displayName || '').toLowerCase();
+      const nameB = (b.displayName || '').toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+    
     return students;
   } catch (error) {
+    console.error('Error in getTeacherStudents:', error);
     throw error;
   }
 };
@@ -731,10 +751,25 @@ export const getClassAnalytics = async (classId) => {
       const completedLessons = student.completedLessons || [];
       const timeSpent = student.totalTimeSpent || 0;
       
-      // Count active students (those with recent activity)
-      const lastActivity = student.lastActivityDate;
+      // Count active students (those with recent activity) - FIXED
+      const lastActivity = student.lastActivityAt || student.lastActivityDate;
       if (lastActivity) {
-        const daysSinceActivity = (new Date() - new Date(lastActivity.toDate())) / (1000 * 60 * 60 * 24);
+        let lastActivityDate;
+        if (typeof lastActivity === 'object' && lastActivity.toDate) {
+          // Firestore timestamp
+          lastActivityDate = lastActivity.toDate();
+        } else if (typeof lastActivity === 'string') {
+          // ISO string
+          lastActivityDate = new Date(lastActivity);
+        } else if (lastActivity instanceof Date) {
+          // Date object
+          lastActivityDate = lastActivity;
+        } else {
+          // Invalid date, skip
+          return;
+        }
+        
+        const daysSinceActivity = (new Date() - lastActivityDate) / (1000 * 60 * 60 * 24);
         if (daysSinceActivity <= 7) {
           activeCount++;
         }
