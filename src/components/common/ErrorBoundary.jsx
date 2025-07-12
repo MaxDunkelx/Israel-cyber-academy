@@ -94,6 +94,15 @@ class ErrorBoundary extends React.Component {
    * Categorize error for better user experience
    */
   categorizeError = (error) => {
+    if (!error) {
+      return {
+        type: 'unknown',
+        title: 'שגיאה לא ידועה',
+        message: 'אירעה שגיאה לא ידועה. אנא נסה שוב.',
+        icon: '❓'
+      };
+    }
+    
     const message = error.message?.toLowerCase() || '';
     
     if (message.includes('network') || message.includes('fetch')) {
@@ -196,7 +205,7 @@ class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
-      const errorCategory = this.categorizeError(this.state.error);
+      const errorCategory = this.categorizeError(this.state.error || null);
       const { retryCount } = this.state;
 
       return (
@@ -216,7 +225,7 @@ class ErrorBoundary extends React.Component {
             </div>
 
             {/* Error Details (Development Only) */}
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {process.env.NODE_ENV === 'development' && (
               <details className="mb-6 text-left">
                 <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700 mb-2">
                   פרטי השגיאה (למפתחים)
@@ -226,11 +235,11 @@ class ErrorBoundary extends React.Component {
                     <strong>Error ID:</strong> {this.state.errorId}
                   </div>
                   <div className="mb-2">
-                    <strong>Message:</strong> {this.state.error.message}
+                    <strong>Message:</strong> {this.state.error?.message || 'No message'}
                   </div>
                   <div className="mb-2">
                     <strong>Stack:</strong>
-                    <pre className="whitespace-pre-wrap">{this.state.error.stack}</pre>
+                    <pre className="whitespace-pre-wrap">{this.state.error?.stack || 'No stack trace'}</pre>
                   </div>
                 </div>
               </details>

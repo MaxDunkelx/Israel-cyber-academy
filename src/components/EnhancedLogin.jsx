@@ -1,796 +1,1105 @@
-/**
- * Enhanced Login Component - Modern Landing Page with Interactive Elements
- * 
- * Features:
- * - Responsive design with optimized background effects
- * - Role-based authentication system
- * - Interactive statistics display
- * - Form validation and error handling
- * - Accessibility features
- * - Performance optimized
- */
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebase/firebase-config';
+import { toast } from 'react-hot-toast';
+import { getSystemStats } from '../firebase/system-manager-service';
 
-import React, { useState, useEffect, useRef, memo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Eye, EyeOff, GraduationCap, Zap, Target, Globe, Users, Award, 
-  Code, Lock, Star, TrendingUp, Clock, Brain, ShieldCheck, 
-  Database, Network, Bug, UserCheck, ArrowRight, Shield 
-} from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
-import toast from 'react-hot-toast';
-import cyberLogo from '../assets/cyber-logo.png';
-import './EnhancedLogin.css';
-
-// ============================================================================
-// CONSTANTS & CONFIGURATION
-// ============================================================================
-
-const ANIMATION_VARIANTS = {
-  container: {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        duration: 0.4,
-        staggerChildren: 0.05,
-      },
-    },
-  },
-  item: {
-    hidden: { opacity: 0, y: 15 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.3 },
-    },
-  },
-  card: {
-    hidden: { opacity: 0, scale: 0.95 },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      transition: { duration: 0.3 },
-    },
-  },
-  logo: {
-    hidden: { opacity: 0, scale: 0.9 },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      transition: {
-        duration: 0.5,
-        ease: "easeOut",
-      },
-    },
-  },
-};
-
-const STATISTICS_DATA = {
-  row1: [
-    { icon: Users, number: '5,000+', label: 'האקרים צעירים', color: 'from-emerald-500 to-teal-600' },
-    { icon: Award, number: '50+', label: 'מומחי סייבר', color: 'from-purple-500 to-indigo-600' },
-    { icon: Code, number: '100%', label: 'טכנולוגיה מתקדמת', color: 'from-orange-500 to-red-600' },
-    { icon: Lock, number: '24/7', label: 'אבטחה מתמדת', color: 'from-cyan-500 to-blue-600' },
-    { icon: Zap, text: 'למידה אינטראקטיבית', color: 'from-yellow-500 to-amber-600' },
-    { icon: Target, text: 'תרגול מעשי', color: 'from-green-500 to-emerald-600' },
-  ],
-  row2: [
-    { icon: Globe, text: 'תוכן עדכני', color: 'from-blue-500 to-indigo-600' },
-    { icon: Brain, text: 'AI מתקדם', color: 'from-pink-500 to-rose-600' },
-    { icon: Star, text: 'דירוג 4.9/5', color: 'from-yellow-400 to-orange-500' },
-    { icon: TrendingUp, text: '95% הצלחה', color: 'from-lime-500 to-green-600' },
-    { icon: Clock, text: 'זמין 24/7', color: 'from-violet-500 to-purple-600' },
-    { icon: ShieldCheck, text: 'אבטחה מתקדמת', color: 'from-sky-500 to-blue-500' },
-  ],
-};
-
-const ROLE_CONFIG = {
-  student: {
-    icon: GraduationCap,
-    title: 'תלמידים',
-    description: 'הצטרף עכשיו למסע הלמידה המתקדם ביותר בעולם הסייבר. התחל ללמוד עם אלפי תלמידים אחרים!',
-    buttonText: 'הצטרף עכשיו',
-  },
-  teacher: {
-    icon: UserCheck,
-    title: 'מורים',
-    description: 'הצטרף לצוות ההוראה המוביל שלנו. נהל כיתות, עקוב אחר התקדמות וצור חוויית למידה ייחודית.',
-    buttonText: 'הצטרף כמורה',
-  },
-  system_manager: {
-    icon: Shield,
-    title: 'מנהל מערכת',
-    description: 'גישה מלאה לניהול המערכת, משתמשים ותוכן. רק למנהלי המערכת המוסמכים.',
-    buttonText: 'התחבר כמנהל',
-  },
-};
-
-// ============================================================================
-// OPTIMIZED BACKGROUND EFFECTS
-// ============================================================================
-
-// Enhanced Matrix Rain - Optimized for smooth performance and visual impact
-const MatrixRain = () => {
+const EnhancedLogin = () => {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [selectedRole, setSelectedRole] = useState(null);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalStudents: 0,
+    totalTeachers: 0,
+    totalLessons: 0,
+    activeSessions: 0
+  });
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [terminalText, setTerminalText] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [showTerminal, setShowTerminal] = useState(true);
   const canvasRef = useRef(null);
-  
+  const matrixIntervalRef = useRef(null);
+  const terminalTimeoutRef = useRef(null);
+  const subtitleTimeoutRef = useRef(null);
+
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    loadRealStatistics();
+    setupMatrixRain();
+    startTerminalAnimation();
+    createFloatingOrbs();
+
+    // Cleanup function
+    return () => {
+      if (matrixIntervalRef.current) {
+        clearInterval(matrixIntervalRef.current);
+      }
+      if (terminalTimeoutRef.current) {
+        clearTimeout(terminalTimeoutRef.current);
+      }
+      if (subtitleTimeoutRef.current) {
+        clearTimeout(subtitleTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const createFloatingOrbs = () => {
+    const orbsContainer = document.getElementById('floating-orbs');
+    if (!orbsContainer) return;
+
+    // Create orbs more efficiently
+    const orbCount = 6; // Reduced for better performance
+    const fragment = document.createDocumentFragment();
     
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    for (let i = 0; i < orbCount; i++) {
+      const orb = document.createElement('div');
+      orb.className = 'floating-orb';
+      orb.style.left = `${Math.random() * 100}%`;
+      orb.style.animationDelay = `${Math.random() * 5}s`;
+      orb.style.animationDuration = `${Math.random() * 5 + 10}s`;
+      fragment.appendChild(orb);
+    }
     
-    // Enhanced character set with Hebrew, English, and symbols
-    const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンאבגדהוזסעפצקרשת';
-    const charArray = chars.split('');
-    const fontSize = 18;
-    const columns = canvas.width / fontSize;
-    const drops = new Array(Math.floor(columns)).fill(1);
-    const maxDrops = Math.min(columns, 35); // Increased for more impressive visual impact
+    orbsContainer.appendChild(fragment);
+  };
+
+  const terminalLines = [
+    'root@cyber:~$ systemctl start cyber-portal',
+    '● Starting Israel Cyber Campus Portal...',
+    '● Loading quantum encryption modules...',
+    '● Initializing neural network connections...',
+    '● Establishing secure communication channels...',
+    '● Authenticating system credentials...',
+    '● Validating cyber security protocols...',
+    '● Loading holographic interface...',
+    '● Activating matrix rain effect...',
+    '● Connecting to student database...',
+    '● Syncing lesson modules...',
+    '● Preparing interactive simulations...',
+    '● System ready for user authentication',
+    'root@cyber:~$ netstat -tuln | grep :443',
+    'tcp6       0      0 :::443                  :::*                    LISTEN',
+    'tcp6       0      0 :::8080                 :::*                    LISTEN',
+    'root@cyber:~$ tail -f /var/log/cyber-access.log',
+    '[INFO] System boot sequence completed',
+    '[INFO] Quantum encryption handshake successful',
+    '[INFO] Neural network fully operational',
+    '[INFO] Holographic interface initialized',
+    '[INFO] Matrix rain effect: LEFT_PANEL_ONLY',
+    '[INFO] Security protocols: MAXIMUM_LEVEL',
+    '[INFO] User authentication system ready',
+    '[INFO] Waiting for user connection...',
+    'root@cyber:~$ _'
+  ];
+
+  const startTerminalAnimation = () => {
+    setIsTyping(true);
+    let lineIndex = 0;
+    let charIndex = 0;
     
-    // Create gradient effect for matrix characters
-    const createGradient = (x, y) => {
-      const gradient = ctx.createLinearGradient(x, y, x, y + fontSize);
-      gradient.addColorStop(0, '#00ff41'); // Bright green at top
-      gradient.addColorStop(0.5, '#3B82F6'); // Blue in middle
-      gradient.addColorStop(1, '#1e40af'); // Dark blue at bottom
-      return gradient;
+    const typeNextChar = () => {
+      if (lineIndex >= terminalLines.length) {
+        setIsTyping(false);
+        return;
+      }
+      
+      const currentLineText = terminalLines[lineIndex];
+      
+      if (charIndex < currentLineText.length) {
+        setTerminalText(prev => prev + (currentLineText[charIndex] || ''));
+        charIndex++;
+        terminalTimeoutRef.current = setTimeout(typeNextChar, 30);
+      } else {
+        setTerminalText(prev => prev + '\n');
+        lineIndex++;
+        charIndex = 0;
+        terminalTimeoutRef.current = setTimeout(typeNextChar, 150);
+      }
     };
     
-    const draw = () => {
-      // Smoother fade effect
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    typeNextChar();
+  };
+
+
+
+  const loadRealStatistics = async () => {
+    try {
+      setStatsLoading(true);
+      const systemStats = await getSystemStats();
       
-      for (let i = 0; i < maxDrops; i++) {
-        const text = charArray[Math.floor(Math.random() * charArray.length)];
-        const x = i * fontSize;
-        const y = drops[i] * fontSize;
-        
-        // Apply gradient effect
-        ctx.fillStyle = createGradient(x, y);
-        ctx.font = `bold ${fontSize}px 'Courier New', monospace`;
-        ctx.fillText(text, x, y);
-        
-        // Add glow effect for some characters
-        if (Math.random() > 0.95) {
-          ctx.shadowColor = '#00ff41';
-          ctx.shadowBlur = 5;
-          ctx.fillText(text, x, y);
-          ctx.shadowBlur = 0;
-        }
-        
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.99) {
+      if (systemStats && typeof systemStats === 'object') {
+        setStats({
+          totalUsers: systemStats?.users?.total || 0,
+          totalStudents: systemStats?.users?.students || 0,
+          totalTeachers: systemStats?.users?.teachers || 0,
+          totalLessons: systemStats?.content?.totalLessons || 0,
+          activeSessions: systemStats?.sessions?.active || 0
+        });
+      } else {
+        throw new Error('Invalid statistics data received');
+      }
+    } catch (error) {
+      console.error('Error loading statistics:', error);
+      setStats({
+        totalUsers: 0,
+        totalStudents: 0,
+        totalTeachers: 0,
+        totalLessons: 0,
+        activeSessions: 0
+      });
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  const setupMatrixRain = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = window.innerWidth * 0.333;
+    canvas.height = window.innerHeight;
+
+    const characters = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+    const fontSize = 16;
+    const columns = Math.floor(canvas.width / fontSize);
+    const drops = new Array(columns).fill(1);
+
+    function draw() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#00ff88';
+      ctx.font = `${fontSize}px monospace`;
+
+      for (let i = 0; i < drops.length; i++) {
+        const text = characters.charAt(Math.floor(Math.random() * characters.length));
+        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.98) {
           drops[i] = 0;
         }
         drops[i]++;
       }
-    };
-    
-    // Smooth 60fps animation
-    const interval = setInterval(draw, 100);
-    
-    const handleResize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    
-    window.addEventListener('resize', handleResize);
-    
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
-  
-  return (
-    <canvas
-      ref={canvasRef}
-      className="fixed inset-0 z-0 opacity-30"
-      style={{ pointerEvents: 'none' }}
-    />
-  );
-};
-
-// Static floating icons - No animations for better performance
-const FloatingIcons = () => {
-  return (
-    <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-      {/* Database Icon */}
-      <div className="absolute top-20 left-10 text-blue-400/20">
-        <Database className="w-8 h-8" />
-      </div>
-      
-      {/* Network Icon */}
-      <div className="absolute top-40 right-20 text-green-400/20">
-        <Network className="w-6 h-6" />
-      </div>
-      
-      {/* Code Icon */}
-      <div className="absolute bottom-40 left-20 text-purple-400/20">
-        <Code className="w-7 h-7" />
-      </div>
-      
-      {/* Bug Icon */}
-      <div className="absolute bottom-20 right-10 text-red-400/20">
-        <Bug className="w-6 h-6" />
-      </div>
-      
-      {/* Shield Icon */}
-      <div className="absolute top-60 left-1/4 text-yellow-400/20">
-        <Shield className="w-5 h-5" />
-      </div>
-      
-      {/* Lock Icon */}
-      <div className="absolute bottom-60 right-1/4 text-cyan-400/20">
-        <Lock className="w-6 h-6" />
-      </div>
-    </div>
-  );
-};
-
-// ============================================================================
-// UTILITY FUNCTIONS
-// ============================================================================
-
-const getBorderColor = (color) => {
-  if (color.includes('emerald')) return '#10b981';
-  if (color.includes('purple')) return '#8b5cf6';
-  if (color.includes('orange')) return '#f97316';
-  if (color.includes('cyan')) return '#06b6d4';
-  if (color.includes('yellow')) return '#eab308';
-  if (color.includes('green')) return '#22c55e';
-  if (color.includes('blue')) return '#3b82f6';
-  if (color.includes('pink')) return '#ec4899';
-  if (color.includes('lime')) return '#84cc16';
-  if (color.includes('violet')) return '#8b5cf6';
-  if (color.includes('sky')) return '#0ea5e9';
-  return '#3b82f6';
-};
-
-// ============================================================================
-// COMPONENTS
-// ============================================================================
-
-const StatisticsCard = memo(({ item, index, variants }) => (
-  <motion.div 
-    className={`relative overflow-hidden rounded-xl p-4 bg-slate-800/50 backdrop-blur-xl border-2 hover:bg-slate-800/70 transition-all duration-300`}
-    style={{
-      borderColor: getBorderColor(item.color)
-    }}
-    variants={variants}
-  >
-    {/* Consistent background for all statistics cards */}
-    <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-600 opacity-10" />
-    
-    <div className="relative z-10 text-center">
-    {item.number ? (
-      <>
-          <div className={`w-12 h-12 bg-gradient-to-br ${item.color} rounded-lg flex items-center justify-center mx-auto mb-3 shadow-lg`}>
-            <item.icon className="w-6 h-6 text-white" />
-        </div>
-          <div className="text-2xl font-bold text-white mb-1">{item.number}</div>
-          <div className="text-xs text-gray-300">{item.label}</div>
-      </>
-    ) : (
-        <>
-          <div className={`w-12 h-12 bg-gradient-to-br ${item.color} rounded-lg flex items-center justify-center mx-auto mb-3 shadow-lg`}>
-            <item.icon className="w-6 h-6 text-white" />
-          </div>
-          <div className="text-sm text-gray-300 font-medium">{item.text}</div>
-        </>
-      )}
-    </div>
-  </motion.div>
-));
-
-const RoleCard = ({ role, icon: Icon, title, description, buttonText, onClick, isSelected }) => {
-  const getRoleColors = () => {
-    switch (role) {
-      case 'student':
-        return {
-          gradient: 'from-blue-500 to-cyan-600',
-          hover: 'hover:from-blue-400 hover:to-cyan-500',
-          border: 'border-blue-500/30',
-          glow: 'shadow-blue-500/25',
-        };
-      case 'teacher':
-        return {
-          gradient: 'from-green-500 to-emerald-600',
-          hover: 'hover:from-green-400 hover:to-emerald-500',
-          border: 'border-green-500/30',
-          glow: 'shadow-green-500/25',
-        };
-      case 'system_manager':
-        return {
-          gradient: 'from-purple-500 to-indigo-600',
-          hover: 'hover:from-purple-400 hover:to-indigo-500',
-          border: 'border-purple-500/30',
-          glow: 'shadow-purple-500/25',
-        };
-      default:
-        return {
-          gradient: 'from-gray-500 to-gray-600',
-          hover: 'hover:from-gray-400 hover:to-gray-500',
-          border: 'border-gray-500/30',
-          glow: 'shadow-gray-500/25',
-        };
     }
-  };
 
-  const colors = getRoleColors();
-
-  return (
-    <motion.div
-      className={`relative overflow-hidden rounded-2xl p-8 cursor-pointer transition-all duration-300 border-2 ${
-        isSelected 
-          ? 'bg-slate-800/95 backdrop-blur-2xl shadow-xl' 
-          : 'bg-slate-800/50 backdrop-blur-xl hover:bg-slate-800/70'
-      } ${colors.border}`}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      onClick={onClick}
-    >
-      {/* Removed infinite animation for better performance */}
-      <div className={`absolute inset-0 bg-gradient-to-br ${colors.gradient} opacity-5`} />
-      
-      <div className="relative z-10 text-center">
-        <div
-          className={`w-16 h-16 bg-gradient-to-br ${colors.gradient} rounded-xl flex items-center justify-center mx-auto mb-6 shadow-lg ${colors.glow}`}
-        >
-          <Icon className="w-8 h-8 text-white" />
-        </div>
-        
-        <h3 className="text-xl font-bold text-white mb-4">{title}</h3>
-        <p className="text-gray-300 text-sm leading-relaxed mb-6">{description}</p>
-        
-        <motion.button
-          className={`w-full py-3 px-6 bg-gradient-to-r ${colors.gradient} ${colors.hover} text-white rounded-xl font-semibold text-sm transition-all duration-300 shadow-lg ${colors.glow}`}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          {buttonText}
-        </motion.button>
-      </div>
-    </motion.div>
-  );
-};
-
-const FormInput = ({ 
-  label, 
-  type = 'text', 
-  name, 
-  value, 
-  onChange, 
-  error, 
-  placeholder, 
-  required = false,
-  min,
-  max,
-  options = null,
-  autocomplete
-}) => (
-  <div>
-    <label className="block text-sm font-semibold text-gray-200 mb-2">
-      {label}
-    </label>
-    {options ? (
-      <select
-        name={name}
-        value={value}
-        onChange={onChange}
-        className="w-full px-4 py-3 bg-slate-700/50 border-2 border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 text-sm backdrop-blur-sm"
-      >
-        {options.map(option => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    ) : (
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        min={min}
-        max={max}
-        required={required}
-        className={`w-full px-4 py-3 bg-slate-700/50 border-2 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-300 text-sm backdrop-blur-sm ${
-          error 
-            ? 'border-red-500 focus:ring-red-500/20' 
-            : 'border-slate-600 focus:ring-blue-500/20 focus:border-blue-500'
-        }`}
-        placeholder={placeholder}
-      />
-    )}
-    {error && (
-      <p className="text-red-400 text-xs mt-2">{error[0]}</p>
-    )}
-  </div>
-);
-
-// ============================================================================
-// MAIN COMPONENT
-// ============================================================================
-
-const EnhancedLogin = () => {
-  const { login, signup } = useAuth();
-  const [selectedRole, setSelectedRole] = useState('student');
-  const [showLoginForm, setShowLoginForm] = useState(false);
-  const [isLogin, setIsLogin] = useState(true);
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState({});
-  
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    age: '',
-    sex: 'male',
-    email: '',
-    password: '',
-  });
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: null
-      }));
-    }
+    matrixIntervalRef.current = setInterval(draw, 50);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('🔍 Login attempt started:', { email: formData.email, isLogin, selectedRole });
-    setIsLoading(true);
-    setErrors({});
+    
+    // Input validation
+    if (!email?.trim() || !password?.trim()) {
+      toast.error('נא למלא את כל השדות');
+      return;
+    }
 
+    if (!selectedRole) {
+      toast.error('נא לבחור תפקיד');
+      return;
+    }
+
+    setLoading(true);
     try {
-      // Simple validation for testing
-      if (!formData.email || !formData.password) {
-        setErrors({ 
-          email: formData.email ? null : ['Email is required'],
-          password: formData.password ? null : ['Password is required']
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      console.log('🔍 Attempting authentication with:', { email: formData.email, isLogin, selectedRole });
-
-      if (isLogin) {
-        console.log('🔐 Attempting login...');
-        const result = await login(formData.email, formData.password);
-        console.log('✅ Login successful:', result);
-        toast.success('התחברת בהצלחה!');
-      } else {
-        console.log('📝 Attempting signup...');
-        const displayName = `${formData.firstName} ${formData.lastName}`;
-        const result = await signup(formData.email, formData.password, displayName, selectedRole, formData);
-        console.log('✅ Signup successful:', result);
-        toast.success('נרשמת בהצלחה!');
-      }
+      await signInWithEmailAndPassword(auth, email.trim(), password);
+      toast.success('התחברת בהצלחה!');
+      navigate('/dashboard');
     } catch (error) {
-      console.error('❌ Authentication error:', error);
-      toast.error(error.message || 'שגיאה בהתחברות');
+      console.error('Login error:', error);
+      let errorMessage = 'אירעה שגיאה בהתחברות';
+      
+      if (error?.code) {
+        switch (error.code) {
+          case 'auth/user-not-found':
+            errorMessage = 'משתמש לא נמצא';
+            break;
+          case 'auth/wrong-password':
+            errorMessage = 'סיסמה שגויה';
+            break;
+          case 'auth/invalid-email':
+            errorMessage = 'כתובת אימייל לא תקינה';
+            break;
+          case 'auth/too-many-requests':
+            errorMessage = 'יותר מדי ניסיונות, נסה שוב מאוחר יותר';
+            break;
+          case 'auth/network-request-failed':
+            errorMessage = 'בעיית חיבור לאינטרנט';
+            break;
+          default:
+            errorMessage = 'אירעה שגיאה בהתחברות';
+        }
+      }
+      
+      toast.error(errorMessage);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleRoleSelect = (role) => {
-    setSelectedRole(role);
-    setShowLoginForm(true);
-  };
+
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden">
-      {/* Background Effects */}
-      <MatrixRain />
-      <FloatingIcons />
-      
-      {/* Background Logo - Optimized for smooth performance */}
-      <div className="fixed inset-0 flex items-center justify-center opacity-25 pointer-events-none z-0">
-        <img 
-          src={cyberLogo} 
-          alt="Background Logo" 
-          className="w-[2800px] h-[2800px] object-contain drop-shadow-[0_0_80px_rgba(59,130,246,0.5)] animate-smooth-spin"
-        />
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Animated Background */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-pink-500/10 animate-pulse"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,255,255,0.1),transparent_50%)]"></div>
       </div>
 
-      {/* Gradient Overlay */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-br from-black/30 via-blue-900/20 to-black/30 animate-gradient-move backdrop-blur-sm" />
+      {/* Matrix Rain Background - Only on left 1/3 */}
+      <canvas
+        ref={canvasRef}
+        className="absolute left-0 top-0 z-0 opacity-30"
+        style={{ 
+          background: 'transparent',
+          width: '33.333%',
+          height: '100%'
+        }}
+      />
+
+      {/* Optimized Background Effects */}
+      <div className="absolute inset-0 z-5 pointer-events-none">
+        <div className="cyber-grid"></div>
       </div>
+
+      {/* Floating Cyber Orbs - Reduced count */}
+      <div id="floating-orbs" className="absolute inset-0 z-5 pointer-events-none"></div>
 
       {/* Main Content */}
-      <motion.div 
-        className="relative z-10 min-h-screen flex flex-col pt-8"
-        variants={ANIMATION_VARIANTS.container}
-        initial="hidden"
-        animate="visible"
-      >
-        <section className="flex-1 flex flex-col justify-center items-center px-6 py-16 mt-4">
-          {/* Logo Section */}
-          <motion.div 
-            className="text-center mb-6 z-10 relative -mt-[200px]"
-            variants={ANIMATION_VARIANTS.logo}
-          >
-            <motion.div className="pt-0 pb-1 flex items-center justify-center mx-auto relative">
-              <motion.img 
-                src={cyberLogo} 
-                alt="Logo" 
-                className="w-[760px] h-[400px] object-contain animate-blink-glow"
-                whileHover={{ scale: 1.05 }}
-                transition={{ duration: 0.3 }}
-              />
-            </motion.div>
-          </motion.div>
-
-          {/* Statistics Section - Row 1 */}
-          <motion.div 
-            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-12 max-w-6xl mx-auto -mt-[100px]"
-            variants={ANIMATION_VARIANTS.item}
-          >
-            {STATISTICS_DATA.row1.map((item, index) => (
-              <StatisticsCard 
-                key={index} 
-                item={item} 
-                index={index} 
-                variants={ANIMATION_VARIANTS.item}
-              />
-            ))}
-          </motion.div>
-
-          {/* Statistics Section - Row 2 */}
-          <motion.div 
-            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-12 max-w-6xl mx-auto"
-            variants={ANIMATION_VARIANTS.item}
-          >
-            {STATISTICS_DATA.row2.map((item, index) => (
-              <StatisticsCard 
-                key={index} 
-                item={item} 
-                index={index} 
-                variants={ANIMATION_VARIANTS.item}
-              />
-            ))}
-          </motion.div>
-
-          {/* Role Selection Cards */}
-          <motion.div 
-            variants={ANIMATION_VARIANTS.container}
-            className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full max-w-6xl mx-auto mb-16"
-          >
-            {Object.entries(ROLE_CONFIG).map(([role, config]) => (
-              <div key={role} className="flex justify-center">
-                <RoleCard
-                  role={role}
-                  icon={config.icon}
-                  title={config.title}
-                  description={config.description}
-                  buttonText={config.buttonText}
-                  onClick={() => handleRoleSelect(role)}
-                  isSelected={selectedRole === role}
-                />
+      <div className="relative z-10 min-h-screen flex items-start justify-center p-4" style={{ paddingTop: '100px' }}>
+        <div className="w-full max-w-4xl mx-auto">
+          {/* Centered Main content */}
+          <div className="flex flex-col items-center">
+          {/* Enhanced Logo with Emitting Pulse */}
+          <div className="relative mb-2 flex justify-center" style={{ marginTop: '-200px' }}>
+            <div className="relative z-10">
+              {/* Emitting pulse rings */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div 
+                  className="w-144 h-144 rounded-full border border-cyan-400/30"
+                  style={{
+                    animation: 'emitPulse 2s ease-out infinite',
+                    transform: 'translateY(20px)'
+                  }}
+                ></div>
+                <div 
+                  className="absolute w-144 h-144 rounded-full border border-green-400/30"
+                  style={{
+                    animation: 'emitPulse 2s ease-out infinite 0.5s',
+                    transform: 'translateY(20px)'
+                  }}
+                ></div>
+                <div 
+                  className="absolute w-144 h-144 rounded-full border border-cyan-400/20"
+                  style={{
+                    animation: 'emitPulse 2s ease-out infinite 1s',
+                    transform: 'translateY(20px)'
+                  }}
+                ></div>
               </div>
-            ))}
-          </motion.div>
+              
+              {/* Core pulse glow */}
+              <div 
+                className="absolute inset-0 w-144 h-144 mx-auto rounded-full"
+                style={{
+                  background: 'radial-gradient(circle, rgba(0, 255, 255, 0.2) 0%, transparent 60%)',
+                  animation: 'corePulse 1.5s ease-in-out infinite',
+                  transform: 'translateY(20px)'
+                }}
+              ></div>
+              
+              {/* Main logo with enhanced glow */}
+              <img 
+                src="/cyber-logo.png" 
+                alt="Israel Cyber Campus" 
+                className="w-144 h-144 mx-auto relative"
+                style={{
+                  filter: 'brightness(1.3) contrast(1.2) drop-shadow(0 0 25px rgba(0, 255, 255, 0.8)) drop-shadow(0 0 50px rgba(0, 255, 136, 0.6))',
+                  transform: 'translateY(20px)',
+                  width: '576px',
+                  height: 'auto',
+                  maxWidth: '750px'
+                }}
+              />
+              
+              {/* Active corner indicators */}
+              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-144 h-144" style={{ transform: 'translateY(20px) translateX(-50%)' }}>
+                <div className="absolute top-2 left-2 w-3 h-3 bg-cyan-400 rounded-full animate-ping"></div>
+                <div className="absolute top-2 right-2 w-3 h-3 bg-green-400 rounded-full animate-ping" style={{ animationDelay: '0.5s' }}></div>
+                <div className="absolute bottom-2 left-2 w-3 h-3 bg-cyan-400 rounded-full animate-ping" style={{ animationDelay: '1s' }}></div>
+                <div className="absolute bottom-2 right-2 w-3 h-3 bg-green-400 rounded-full animate-ping" style={{ animationDelay: '1.5s' }}></div>
+              </div>
+            </div>
+          </div>
 
-          {/* System Manager Login Note */}
-          {selectedRole === 'system_manager' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center mb-8"
+          {/* Enhanced Statistics */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 w-full max-w-4xl mx-auto" style={{ marginTop: '-100px' }}>
+            <div className="relative bg-green-900/40 backdrop-blur-sm border border-green-500/50 rounded-lg p-6 text-center transform hover:scale-105 transition-all duration-300 hover:border-green-400 hover:shadow-lg hover:shadow-green-500/25 group overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+              <div className="relative z-10">
+                <div className="text-3xl font-bold text-green-300 mb-2 font-mono animate-pulse">{stats.totalStudents || 0}</div>
+                <div className="text-green-100 font-mono text-sm">[תלמידים_פעילים]</div>
+              </div>
+              <div className="absolute top-2 right-2 w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
+            </div>
+            <div className="relative bg-blue-900/40 backdrop-blur-sm border border-blue-500/50 rounded-lg p-6 text-center transform hover:scale-105 transition-all duration-300 hover:border-blue-400 hover:shadow-lg hover:shadow-blue-500/25 group overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+              <div className="relative z-10">
+                <div className="text-3xl font-bold text-blue-300 mb-2 font-mono animate-pulse">{stats.totalTeachers || 0}</div>
+                <div className="text-blue-100 font-mono text-sm">[מדריכים_מקצועיים]</div>
+              </div>
+              <div className="absolute top-2 right-2 w-2 h-2 bg-blue-400 rounded-full animate-ping"></div>
+            </div>
+            <div className="relative bg-purple-900/40 backdrop-blur-sm border border-purple-500/50 rounded-lg p-6 text-center transform hover:scale-105 transition-all duration-300 hover:border-purple-400 hover:shadow-lg hover:shadow-purple-500/25 group overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+              <div className="relative z-10">
+                <div className="text-3xl font-bold text-purple-300 mb-2 font-mono animate-pulse">{stats.totalLessons || 0}</div>
+                <div className="text-purple-100 font-mono text-sm">[מודולים_מתקדמים]</div>
+              </div>
+              <div className="absolute top-2 right-2 w-2 h-2 bg-purple-400 rounded-full animate-ping"></div>
+            </div>
+          </div>
+
+          {/* Cyber Status Indicators */}
+          <div className="flex justify-center items-center space-x-8 mb-8">
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="text-green-300 font-mono text-sm">[מערכת_פעילה]</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-cyan-400 rounded-full animate-ping"></div>
+              <span className="text-cyan-300 font-mono text-sm">[אבטחה_מקסימלית]</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-blue-400 rounded-full animate-bounce"></div>
+              <span className="text-blue-300 font-mono text-sm">[חיבור_קוונטי]</span>
+            </div>
+          </div>
+
+          {/* Enhanced Role Selection */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 w-full max-w-4xl mx-auto">
+            <div 
+              className={`relative p-6 rounded-lg border-2 cursor-pointer transition-all duration-300 transform hover:scale-105 group overflow-hidden ${
+                selectedRole === 'student' 
+                  ? 'border-blue-400 bg-blue-900/20 shadow-lg shadow-blue-500/25' 
+                  : 'border-blue-500/50 bg-black/20 hover:border-blue-400 hover:bg-blue-900/10'
+              }`}
+              onClick={() => setSelectedRole('student')}
             >
-              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 max-w-md mx-auto">
-                <p className="text-blue-300 text-sm">
-                  <Shield className="w-4 h-4 inline mr-2" />
-                  גישה למנהלי מערכת בלבד. השתמש באימייל המוסמך שלך.
-                </p>
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+              <div className="relative z-10 text-center">
+                <div className="text-5xl mb-3 transform group-hover:scale-110 transition-transform duration-300" style={{ filter: 'drop-shadow(0 0 10px #3b82f6)' }}>👨‍🎓</div>
+                <h3 className="text-xl font-semibold text-blue-300 mb-2 font-mono group-hover:text-blue-200 transition-colors">[גישה_לתלמיד]</h3>
+                <p className="text-blue-200 text-sm font-mono">[שיעורים_אינטראקטיביים] • [מעבדות_סייבר]</p>
               </div>
-            </motion.div>
+              {selectedRole === 'student' && (
+                <div className="absolute top-2 right-2 w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
+              )}
+              <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-cyan-400 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500"></div>
+            </div>
+
+            <div 
+              className={`relative p-6 rounded-lg border-2 cursor-pointer transition-all duration-300 transform hover:scale-105 group overflow-hidden ${
+                selectedRole === 'teacher' 
+                  ? 'border-green-400 bg-green-900/20 shadow-lg shadow-green-500/25' 
+                  : 'border-green-500/50 bg-black/20 hover:border-green-400 hover:bg-green-900/10'
+              }`}
+              onClick={() => setSelectedRole('teacher')}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+              <div className="relative z-10 text-center">
+                <div className="text-5xl mb-3 transform group-hover:scale-110 transition-transform duration-300" style={{ filter: 'drop-shadow(0 0 10px #22c55e)' }}>👨‍🏫</div>
+                <h3 className="text-xl font-semibold text-green-300 mb-2 font-mono group-hover:text-green-200 transition-colors">[גישה_למדריך]</h3>
+                <p className="text-green-200 text-sm font-mono">[ניהול_כיתות] • [שליטה_בזמן_אמת]</p>
+              </div>
+              {selectedRole === 'teacher' && (
+                <div className="absolute top-2 right-2 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+              )}
+              <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-emerald-400 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500"></div>
+            </div>
+
+            <div 
+              className={`relative p-6 rounded-lg border-2 cursor-pointer transition-all duration-300 transform hover:scale-105 group overflow-hidden ${
+                selectedRole === 'system-manager' 
+                  ? 'border-red-400 bg-red-900/20 shadow-lg shadow-red-500/25' 
+                  : 'border-red-500/50 bg-black/20 hover:border-red-400 hover:bg-red-900/10'
+              }`}
+              onClick={() => setSelectedRole('system-manager')}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+              <div className="relative z-10 text-center">
+                <div className="text-5xl mb-3 transform group-hover:scale-110 transition-transform duration-300" style={{ filter: 'drop-shadow(0 0 10px #ef4444)' }}>👨‍💼</div>
+                <h3 className="text-xl font-semibold text-red-300 mb-2 font-mono group-hover:text-red-200 transition-colors">[מנהל_מערכת]</h3>
+                <p className="text-red-200 text-sm font-mono">[ניהול_מתקדם] • [בקרת_תוכן]</p>
+              </div>
+              {selectedRole === 'system-manager' && (
+                <div className="absolute top-2 right-2 w-3 h-3 bg-red-400 rounded-full animate-pulse"></div>
+              )}
+              <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-red-400 to-pink-400 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500"></div>
+            </div>
+          </div>
+
+          {/* Enhanced Login Form - Only show after role selection */}
+          {selectedRole && (
+            <div className="w-full max-w-lg mx-auto">
+              <div className="bg-gradient-to-br from-black/80 to-slate-900/80 backdrop-blur-md border-2 border-cyan-500/60 rounded-xl p-8 mb-6 shadow-2xl shadow-cyan-500/20">
+                <div className="text-center mb-6">
+                  <div className="text-cyan-400 font-mono text-lg mb-2 font-bold tracking-wider">[התחברות_מערכת]</div>
+                  <div className="text-cyan-300 font-mono text-sm">גישה אושרה עבור: {selectedRole === 'student' ? 'תלמיד' : selectedRole === 'teacher' ? 'מדריך' : 'מנהל_מערכת'}</div>
+                </div>
+                
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-mono text-cyan-400 mb-2 font-semibold tracking-wide">
+                      [כתובת_אימייל]
+                    </label>
+                    <input
+                      type="email"
+                      id="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full px-4 py-3 bg-black/90 border-2 border-cyan-500/40 rounded-lg text-green-300 font-mono text-base placeholder-green-600/50 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/50 transition-all duration-300 shadow-lg shadow-cyan-500/10"
+                      placeholder="user@domain.com"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="password" className="block text-sm font-mono text-cyan-400 mb-2 font-semibold tracking-wide">
+                      [סיסמה]
+                    </label>
+                    <input
+                      type="password"
+                      id="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full px-4 py-3 bg-black/90 border-2 border-cyan-500/40 rounded-lg text-green-300 font-mono text-base placeholder-green-600/50 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/50 transition-all duration-300 shadow-lg shadow-cyan-500/10"
+                      placeholder="••••••••"
+                      required
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-4 px-6 bg-gradient-to-r from-cyan-600 via-green-600 to-cyan-700 text-white font-mono font-bold text-lg rounded-lg border-2 border-cyan-400/50 hover:from-cyan-500 hover:via-green-500 hover:to-cyan-600 focus:outline-none focus:ring-4 focus:ring-cyan-400/30 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-cyan-500/20 hover:shadow-2xl hover:shadow-cyan-500/30"
+                  >
+                    {loading ? '[מתחבר...]' : '[התחבר]'}
+                  </button>
+                </form>
+                
+                <div className="text-center mt-6">
+                  <div className="text-cyan-400 font-mono text-sm font-semibold">[רמת_אבטחה: מקסימלית]</div>
+                  <div className="flex justify-center items-center mt-2 space-x-2">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" style={{ animationDelay: '0.6s' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
-          {/* Login Form */}
-          <AnimatePresence>
-            {showLoginForm && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 30 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 30 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-                className="bg-slate-800/95 backdrop-blur-2xl rounded-2xl p-8 shadow-xl border-2 border-blue-500/50 max-w-md w-full relative overflow-hidden"
+          {/* Enhanced Footer */}
+          <div className="mt-12 text-center">
+            <p className="text-cyan-300/70 text-sm mb-2">
+              <span 
+                className="inline-flex items-center font-mono"
               >
-                <motion.div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-blue-600/5" />
-                
-                <div className="text-center mb-8 relative z-10">
-                  <motion.button
-                    onClick={() => setShowLoginForm(false)}
-                    className="text-gray-300 hover:text-white transition-colors mb-6 text-lg font-medium"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    ← חזור לבחירת תפקיד
-                  </motion.button>
-                  <motion.h2 
-                    className="text-2xl font-bold text-white mb-4 text-center"
-                    initial={{ opacity: 0, y: -15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4 }}
-                  >
-                    {isLogin ? 'ברוך שובך!' : 'התחבר למערכת'}
-                  </motion.h2>
-                </div>
-
-                <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
-                  {!isLogin && (
-                    <>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormInput
-                          label="שם פרטי"
-                          name="firstName"
-                          value={formData.firstName}
-                          onChange={handleInputChange}
-                          error={errors.firstName}
-                          placeholder="שם פרטי"
-                          required
-                        />
-                        <FormInput
-                          label="שם משפחה"
-                          name="lastName"
-                          value={formData.lastName}
-                          onChange={handleInputChange}
-                          error={errors.lastName}
-                          placeholder="שם משפחה"
-                          required
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormInput
-                          label="גיל"
-                          type="number"
-                          name="age"
-                          value={formData.age}
-                          onChange={handleInputChange}
-                          error={errors.age}
-                          placeholder="גיל"
-                          min="1"
-                          max="120"
-                          required
-                        />
-                        <FormInput
-                          label="מגדר"
-                          name="sex"
-                          value={formData.sex}
-                          onChange={handleInputChange}
-                          options={[
-                            { value: 'male', label: 'זכר' },
-                            { value: 'female', label: 'נקבה' }
-                          ]}
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  <FormInput
-                    label="אימייל"
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    error={errors.email}
-                    placeholder="הכנס את האימייל שלך"
-                    required
-                  />
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-200 mb-2">
-                      סיסמה
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        name="password"
-                        value={formData.password}
-                        onChange={handleInputChange}
-                        className={`w-full px-4 py-3 pr-12 bg-slate-700/50 border-2 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-300 text-sm backdrop-blur-sm ${
-                          errors.password 
-                            ? 'border-red-500 focus:ring-red-500/20' 
-                            : 'border-slate-600 focus:ring-blue-500/20 focus:border-blue-500'
-                        }`}
-                        placeholder="הכנס את הסיסמה שלך"
-                        required
-                        autocomplete="current-password"
-                      />
-                      <motion.button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                      >
-                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </motion.button>
-                    </div>
-                    {errors.password && (
-                      <p className="text-red-400 text-xs mt-2">{errors.password[0]}</p>
-                    )}
-                  </div>
-
-                  <motion.button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full py-4 px-8 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-semibold text-base hover:from-blue-500 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-blue-500/25"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    {isLoading ? (
-                      <div className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                        {isLogin ? 'מתחבר...' : 'נרשם...'}
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center">
-                        {isLogin ? 'התחבר' : 'הרשם'}
-                        <ArrowRight className="w-5 h-5 mr-2" />
-                      </div>
-                    )}
-                  </motion.button>
-
-                  <div className="text-center">
-                    <button
-                      type="button"
-                      onClick={() => setIsLogin(!isLogin)}
-                      className="text-gray-300 hover:text-white transition-colors text-sm font-medium"
-                    >
-                      {isLogin ? 'אין לך חשבון? הרשם עכשיו' : 'יש לך חשבון? התחבר עכשיו'}
-                    </button>
-                  </div>
-                </form>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <span 
+                  className="w-3 h-3 bg-magenta-400 rounded-full mr-2"
+                  style={{
+                    animation: 'beaconDot 3s ease-in-out infinite',
+                    boxShadow: '0 0 10px #ff00ff, 0 0 20px #ff00ff'
+                  }}
+                ></span>
+                [גרסת_פורטל_2025]
+              </span>
+            </p>
+            <p className="text-cyan-200/50 text-xs font-mono">
+              [מערכת_למידה_מתקדמת] | [טכנולוגיות_עתידיות]
+            </p>
+          </div>
 
           {/* Footer */}
-          <motion.footer 
-            className="mt-16 mb-6 text-center"
-            variants={ANIMATION_VARIANTS.item}
+          <div className="text-center mt-16">
+            <p className="text-gray-300 text-base">
+              © {new Date().getFullYear()} Israel Cyber Campus • כל הזכויות שמורות
+            </p>
+            <p className="text-cyan-400 text-sm mt-3 font-mono">
+              System Status: Online • Security Level: Maximum • Quantum Ready
+            </p>
+          </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Upper Left Terminal */}
+      {showTerminal && (
+        <div className="fixed top-4 left-4 z-20">
+          <div 
+            className="bg-black/80 backdrop-blur-sm border border-green-500/50 rounded-lg p-2 w-64 transition-all duration-500 ease-in-out"
+            style={{
+              minHeight: '12rem',
+              height: isTyping ? 'fit-content' : '12rem'
+            }}
           >
-            <div className="bg-slate-800/40 backdrop-blur-xl rounded-xl p-5 border border-slate-700/50 max-w-2xl mx-auto">
-              <motion.div 
-                className="text-gray-300 text-lg font-medium"
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6, duration: 0.4 }}
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center space-x-1">
+                <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>
+                <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full"></div>
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+              </div>
+              <div className="text-green-400 font-mono text-xs">[מסוף]</div>
+              <button
+                onClick={() => setShowTerminal(false)}
+                className="text-green-400 hover:text-green-300 font-mono text-xs transition-colors duration-200"
               >
-                כל הזכויות שמורות
-              </motion.div>
-              <motion.div 
-                className="text-gray-400 text-sm mt-1"
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8, duration: 0.4 }}
-              >
-                Israel Cyber Campus - All Rights Reserved
-              </motion.div>
+                סגור
+              </button>
             </div>
-          </motion.footer>
-        </section>
-      </motion.div>
+            
+            <div className="font-mono text-xs bg-black/80">
+              <pre className="text-green-300 whitespace-pre-wrap leading-tight">
+                {terminalText || ''}
+                {isTyping && <span className="text-green-400 animate-pulse">█</span>}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        .floating-particles {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background-image: 
+            radial-gradient(2px 2px at 20px 30px, #00ffff, transparent),
+            radial-gradient(2px 2px at 40px 70px, #ff00ff, transparent),
+            radial-gradient(1px 1px at 90px 40px, #ffff00, transparent),
+            radial-gradient(1px 1px at 130px 80px, #00ff88, transparent),
+            radial-gradient(2px 2px at 160px 30px, #ff0080, transparent);
+          background-repeat: repeat;
+          background-size: 200px 100px;
+          animation: float 20s linear infinite;
+        }
+
+        @keyframes float {
+          0% { transform: translateY(0px); }
+          100% { transform: translateY(-100px); }
+        }
+
+        .cyber-grid {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background-image: 
+            linear-gradient(rgba(0, 255, 255, 0.15) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 255, 255, 0.15) 1px, transparent 1px);
+          background-size: 60px 60px;
+          animation: grid-move 25s linear infinite;
+        }
+
+        @keyframes grid-move {
+          0% { transform: translate(0, 0); }
+          100% { transform: translate(60px, 60px); }
+        }
+
+        .logo-container {
+          position: relative;
+          display: inline-block;
+        }
+
+        .spinning-logo {
+          height: 150px;
+          width: auto;
+          filter: drop-shadow(0 0 50px rgba(0, 255, 255, 1)) drop-shadow(0 0 100px rgba(255, 0, 255, 0.8));
+          animation: logo-spin 8s linear infinite;
+        }
+
+        .floating-orb {
+          position: absolute;
+          width: 6px;
+          height: 6px;
+          background: radial-gradient(circle, #00ffff, #0080ff);
+          border-radius: 50%;
+          box-shadow: 0 0 15px #00ffff;
+          animation: float-orb linear infinite;
+          opacity: 0.6;
+        }
+
+        .floating-orb:nth-child(even) {
+          background: radial-gradient(circle, #00ff88, #008844);
+          box-shadow: 0 0 15px #00ff88;
+        }
+
+        @keyframes float-orb {
+          0% { 
+            transform: translateY(100vh); 
+            opacity: 0;
+          }
+          10% { opacity: 0.6; }
+          90% { opacity: 0.6; }
+          100% { 
+            transform: translateY(-100px); 
+            opacity: 0;
+          }
+        }
+
+        @keyframes emitPulse {
+          0% { 
+            transform: translateY(20px) scale(1);
+            opacity: 0.8;
+          }
+          100% { 
+            transform: translateY(20px) scale(1.5);
+            opacity: 0;
+          }
+        }
+
+        @keyframes corePulse {
+          0%, 100% { 
+            transform: translateY(20px) scale(1);
+            opacity: 0.2;
+          }
+          50% { 
+            transform: translateY(20px) scale(1.05);
+            opacity: 0.4;
+          }
+        }
+
+        @keyframes logo-spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        .logo-glow {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 200px;
+          height: 200px;
+          background: radial-gradient(circle, rgba(0, 255, 255, 0.4) 0%, transparent 70%);
+          border-radius: 50%;
+          animation: glow-pulse 2s ease-in-out infinite alternate;
+        }
+
+        .logo-pulse {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 250px;
+          height: 250px;
+          border: 3px solid rgba(0, 255, 255, 0.6);
+          border-radius: 50%;
+          animation: pulse-ring 3s ease-in-out infinite;
+        }
+
+        .logo-rings {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 300px;
+          height: 300px;
+          border: 2px solid rgba(255, 0, 255, 0.4);
+          border-radius: 50%;
+          animation: ring-rotate 10s linear infinite;
+        }
+
+        @keyframes glow-pulse {
+          0% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+          100% { opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
+        }
+
+        @keyframes pulse-ring {
+          0% { transform: translate(-50%, -50%) scale(0.8); opacity: 1; }
+          100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+        }
+
+        @keyframes ring-rotate {
+          0% { transform: translate(-50%, -50%) rotate(0deg); }
+          100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        .stat-card {
+          background: rgba(0, 0, 0, 0.6);
+          border: 2px solid rgba(0, 255, 255, 0.4);
+          border-radius: 16px;
+          padding: 1.8rem;
+          text-align: center;
+          position: relative;
+          overflow: hidden;
+          backdrop-filter: blur(15px);
+          transition: all 0.4s ease;
+          box-shadow: 0 8px 32px rgba(0, 255, 255, 0.2);
+          transform: scale(0.85);
+        }
+
+        .stat-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.3), transparent);
+          transition: left 0.6s ease;
+        }
+
+        .stat-card:hover::before {
+          left: 100%;
+        }
+
+        .stat-card:hover {
+          border-color: rgba(0, 255, 255, 0.8);
+          transform: translateY(-4px) scale(0.9);
+          box-shadow: 0 12px 40px rgba(0, 255, 255, 0.4);
+        }
+
+        .stat-icon {
+          margin-bottom: 0.8rem;
+        }
+
+        .stat-number {
+          font-size: 2.2rem;
+          font-weight: bold;
+          color: #ffffff;
+          text-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
+        }
+
+        .stat-label {
+          font-size: 1rem;
+          color: #b0b0b0;
+          margin-top: 0.5rem;
+        }
+
+        .role-card {
+          background: rgba(0, 0, 0, 0.5);
+          border: 3px solid;
+          border-radius: 25px;
+          padding: 3rem 2rem;
+          text-align: center;
+          cursor: pointer;
+          transition: all 0.4s ease;
+          backdrop-filter: blur(20px);
+          position: relative;
+          overflow: hidden;
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .role-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+          transition: left 0.6s ease;
+        }
+
+        .role-card:hover::before {
+          left: 100%;
+        }
+
+        .role-card:hover {
+          transform: translateY(-8px) scale(1.05);
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .role-card.selected {
+          border-width: 4px;
+          transform: translateY(-8px) scale(1.05);
+          box-shadow: 0 20px 60px rgba(0, 255, 255, 0.5);
+        }
+
+        .role-icon {
+          margin-bottom: 1.5rem;
+          display: inline-flex;
+          padding: 1.5rem;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.1);
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .cyber-portal-container {
+          background: rgba(0, 0, 0, 0.9);
+          border: 2px solid rgba(0, 255, 255, 0.5);
+          border-radius: 20px;
+          padding: 2.5rem;
+          position: relative;
+          overflow: hidden;
+          backdrop-filter: blur(20px);
+          box-shadow: 0 15px 50px rgba(0, 255, 255, 0.2);
+        }
+
+        .portal-glow {
+          position: absolute;
+          top: -2px;
+          left: -2px;
+          right: -2px;
+          bottom: -2px;
+          background: linear-gradient(45deg, #00ffff, #0080ff);
+          border-radius: 20px;
+          z-index: -1;
+          animation: portal-glow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes portal-glow {
+          0% { opacity: 0.2; }
+          100% { opacity: 0.4; }
+        }
+
+        .portal-content {
+          position: relative;
+          z-index: 1;
+        }
+
+        .cyber-input-group {
+          margin-bottom: 1.5rem;
+        }
+
+        .cyber-label {
+          display: block;
+          color: #00ffff;
+          font-size: 0.9rem;
+          font-weight: 500;
+          margin-bottom: 0.5rem;
+          text-shadow: 0 0 5px rgba(0, 255, 255, 0.3);
+        }
+
+        .cyber-input-container {
+          position: relative;
+        }
+
+        .cyber-input {
+          width: 100%;
+          background: rgba(0, 0, 0, 0.8);
+          border: 1px solid rgba(0, 255, 255, 0.3);
+          border-radius: 8px;
+          padding: 0.875rem 1rem;
+          color: #ffffff;
+          font-size: 1rem;
+          transition: all 0.3s ease;
+          backdrop-filter: blur(5px);
+        }
+
+        .cyber-input:focus {
+          outline: none;
+          border-color: rgba(0, 255, 255, 0.8);
+          box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+          background: rgba(0, 0, 0, 0.9);
+        }
+
+        .cyber-input::placeholder {
+          color: rgba(156, 163, 175, 0.7);
+        }
+
+        .input-glow {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          border-radius: 8px;
+          pointer-events: none;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        }
+
+        .cyber-input:focus + .input-glow {
+          opacity: 1;
+          box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+        }
+
+        .cyber-submit-btn {
+          width: 100%;
+          background: linear-gradient(45deg, #00ffff, #0080ff);
+          border: none;
+          border-radius: 12px;
+          padding: 1rem;
+          color: #000000;
+          font-size: 1.1rem;
+          font-weight: bold;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          position: relative;
+          overflow: hidden;
+          text-shadow: none;
+          box-shadow: 0 5px 20px rgba(0, 255, 255, 0.3);
+        }
+
+        .cyber-submit-btn::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+          transition: left 0.5s ease;
+        }
+
+        .cyber-submit-btn:hover::before {
+          left: 100%;
+        }
+
+        .cyber-submit-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(0, 255, 255, 0.5);
+        }
+
+        .cyber-submit-btn:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+          transform: none;
+        }
+
+        .cyber-spinner {
+          width: 24px;
+          height: 24px;
+          border: 3px solid transparent;
+          border-top: 3px solid #000000;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        .cyber-subtitle {
+          text-shadow: 0 0 20px rgba(0, 255, 255, 0.6);
+          animation: subtitle-glow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes subtitle-glow {
+          0% { text-shadow: 0 0 20px rgba(0, 255, 255, 0.6); }
+          100% { text-shadow: 0 0 30px rgba(0, 255, 255, 0.9), 0 0 40px rgba(0, 255, 255, 0.4); }
+        }
+
+        .beacon-text {
+          position: relative;
+          text-shadow: 0 0 10px rgba(255, 0, 255, 0.8);
+          animation: beacon-pulse 2s ease-in-out infinite;
+        }
+
+        .beacon-text::before {
+          content: '';
+          position: absolute;
+          top: 50%;
+          left: -20px;
+          width: 8px;
+          height: 8px;
+          background: #ff00ff;
+          border-radius: 50%;
+          transform: translateY(-50%);
+          animation: beacon-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes beacon-pulse {
+          0% { opacity: 0.8; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.05); }
+          100% { opacity: 0.8; transform: scale(1); }
+        }
+
+        @keyframes beacon-dot {
+          0% { opacity: 0.5; box-shadow: 0 0 5px #ff00ff; }
+          50% { opacity: 1; box-shadow: 0 0 15px #ff00ff, 0 0 25px #ff00ff; }
+          100% { opacity: 0.5; box-shadow: 0 0 5px #ff00ff; }
+        }
+
+        @keyframes textPulse {
+          0% { text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff; }
+          100% { text-shadow: 0 0 15px #00ffff, 0 0 25px #00ffff, 0 0 35px #00ffff; }
+        }
+
+        @keyframes textGlow {
+          0%, 100% { text-shadow: 0 0 5px #00ffff; }
+          50% { text-shadow: 0 0 10px #00ffff, 0 0 15px #00ffff; }
+        }
+
+        @keyframes textFade {
+          0%, 100% { opacity: 0.7; text-shadow: 0 0 3px #00ffff; }
+          50% { opacity: 1; text-shadow: 0 0 5px #00ffff, 0 0 8px #00ffff; }
+        }
+
+        @keyframes beaconPulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.15); }
+        }
+
+        @keyframes beaconDot {
+          0%, 100% { 
+            opacity: 0.6; 
+            transform: scale(1);
+            box-shadow: 0 0 10px #ff00ff, 0 0 20px #ff00ff;
+          }
+          50% { 
+            opacity: 1; 
+            transform: scale(1.2);
+            box-shadow: 0 0 15px #ff00ff, 0 0 30px #ff00ff, 0 0 45px #ff00ff;
+          }
+        }
+
+        @keyframes textShimmer {
+          0%, 100% { 
+            opacity: 0.7; 
+            text-shadow: 0 0 3px #00ffff;
+          }
+          50% { 
+            opacity: 1; 
+            text-shadow: 0 0 5px #00ffff, 0 0 8px #00ffff, 0 0 12px #00ffff;
+          }
+        }
+
+        @keyframes colorRotate {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        @keyframes logoGlow {
+          0% { filter: drop-shadow(0 0 50px #00ffff) drop-shadow(0 0 100px #00ffff) drop-shadow(0 0 150px #00ffff) drop-shadow(0 0 200px #00ffff); }
+          100% { filter: drop-shadow(0 0 60px #00ffff) drop-shadow(0 0 120px #00ffff) drop-shadow(0 0 180px #00ffff) drop-shadow(0 0 240px #00ffff); }
+        }
+
+        @media (max-width: 768px) {
+          .spinning-logo {
+            height: 100px;
+          }
+          
+          .stat-card {
+            padding: 1.2rem;
+            transform: scale(0.7);
+          }
+          
+          .stat-number {
+            font-size: 1.8rem;
+          }
+          
+          .role-card {
+            padding: 2rem 1.5rem;
+          }
+          
+          .cyber-portal-container {
+            padding: 2rem;
+          }
+        }
+      `}</style>
     </div>
   );
 };
