@@ -184,8 +184,8 @@ const RealAnalytics = () => {
         {/* Header */}
         <div className="mb-8 flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">ניתוח נתונים אמיתיים</h1>
-            <p className="text-gray-400">נתונים מבוססים על פעילות אמיתית של תלמידים במסד הנתונים</p>
+          <h1 className="text-3xl font-bold text-white mb-2">ניתוח נתונים אמיתיים</h1>
+          <p className="text-gray-400">נתונים מבוססים על פעילות אמיתית של תלמידים במסד הנתונים</p>
           </div>
           <button
             onClick={loadData}
