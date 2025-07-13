@@ -21,13 +21,18 @@ import {
   Volume2,
   VolumeX,
   Lock,
-  AlertTriangle
+  AlertTriangle,
+  Circle,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { isTeacher, validateTeacherAccess, logSecurityEvent } from '../../utils/security';
 import { getSession, updateSessionSlide, endSession, listenToSession } from '../../firebase/session-service';
 import { getLessonWithSlides } from '../../firebase/content-service';
+import { getClassStudents } from '../../firebase/teacher-service';
+import { listenToMultipleUsersPresence } from '../../firebase/presence-service';
 // Removed local data import - using only Firebase database
 import { PresentationSlide, PollSlide, VideoSlide, InteractiveSlide, BreakSlide, ReflectionSlide, QuizSlide } from '../slides';
 import Card from '../ui/Card';
@@ -51,6 +56,8 @@ const SessionHosting = () => {
   const [showNotes, setShowNotes] = useState(false);
   const [teacherNotes, setTeacherNotes] = useState({});
   const [error, setError] = useState(null);
+  const [allStudents, setAllStudents] = useState([]);
+  const [userPresence, setUserPresence] = useState({});
 
   useEffect(() => {
     // Security check - ensure only teachers can access this component
@@ -90,6 +97,24 @@ const SessionHosting = () => {
       return () => unsubscribe();
     }
   }, [sessionId, navigate]);
+
+  // Listen to user presence for all students
+  useEffect(() => {
+    if (allStudents.length > 0) {
+      const studentIds = allStudents.map(student => student.uid || student.id);
+      console.log('📡 Setting up presence tracking for', studentIds.length, 'students');
+      
+      const unsubscribe = listenToMultipleUsersPresence(studentIds, (presenceData) => {
+        console.log('📡 User presence updated:', presenceData);
+        setUserPresence(presenceData);
+      });
+      
+      return () => {
+        console.log('🔇 Cleaning up presence listeners');
+        unsubscribe();
+      };
+    }
+  }, [allStudents]);
 
   // Security check - if not a teacher, show access denied
   if (!isTeacher({ role: 'teacher' })) {
@@ -143,10 +168,21 @@ const SessionHosting = () => {
         notesMap[note.slideId] = note.content;
       });
       
+      // Load all students in the class
+      let studentsData = [];
+      try {
+        studentsData = await getClassStudents(sessionData.classId);
+        console.log('✅ Students data loaded:', studentsData.length, 'students');
+      } catch (error) {
+        console.error('Error loading students:', error);
+        studentsData = [];
+      }
+      
       setSession(sessionData);
       setLesson(lessonData);
       setTeacherNotes(notesMap);
       setCurrentSlide(sessionData.currentSlide || 0);
+      setAllStudents(studentsData);
       setLoading(false);
       
       console.log('✅ Session data loaded successfully');
@@ -218,6 +254,70 @@ const SessionHosting = () => {
         console.error('Error ending session:', error);
         toast.error('אירעה שגיאה בסיום השיעור');
       }
+    }
+  };
+
+  // Helper function to get student status
+  const getStudentStatus = (student) => {
+    const studentId = student.uid || student.id;
+    
+    // Check if student is connected to this session
+    const isConnected = session?.connectedStudents?.some(connectedStudent => 
+      connectedStudent.id === studentId || connectedStudent === studentId
+    );
+    
+    if (isConnected) {
+      return 'connected';
+    }
+    
+    // Check presence status
+    const presence = userPresence[studentId];
+    if (presence) {
+      if (presence.status === 'in_live_session') {
+        return 'in_other_session';
+      }
+      return presence.status; // 'online' or 'offline'
+    }
+    
+    // Check last activity for more accurate status
+    const lastActivity = student.lastActivityAt || student.lastActivityDate;
+    if (lastActivity) {
+      let lastActivityDate;
+      if (typeof lastActivity === 'object' && lastActivity.toDate) {
+        lastActivityDate = lastActivity.toDate();
+      } else if (typeof lastActivity === 'string') {
+        lastActivityDate = new Date(lastActivity);
+      } else if (lastActivity instanceof Date) {
+        lastActivityDate = lastActivity;
+      } else {
+        return 'offline';
+      }
+      
+      const minutesSinceActivity = (new Date() - lastActivityDate) / (1000 * 60);
+      if (minutesSinceActivity <= 5) {
+        return 'online';
+      } else if (minutesSinceActivity <= 30) {
+        return 'recently_active';
+      }
+    }
+    
+    return 'offline';
+  };
+
+  // Helper function to get status icon and color
+  const getStatusIndicator = (status) => {
+    switch (status) {
+      case 'connected':
+        return { icon: <Circle className="w-3 h-3" />, color: 'text-green-500', bgColor: 'bg-green-500' };
+      case 'online':
+        return { icon: <Wifi className="w-3 h-3" />, color: 'text-green-400', bgColor: 'bg-green-400' };
+      case 'in_other_session':
+        return { icon: <Wifi className="w-3 h-3" />, color: 'text-yellow-400', bgColor: 'bg-yellow-400' };
+      case 'recently_active':
+        return { icon: <Wifi className="w-3 h-3" />, color: 'text-gray-400', bgColor: 'bg-gray-400' };
+      case 'offline':
+      default:
+        return { icon: <WifiOff className="w-3 h-3" />, color: 'text-gray-500', bgColor: 'bg-gray-500' };
     }
   };
 
@@ -463,32 +563,87 @@ const SessionHosting = () => {
           showStudentList ? 'block' : 'hidden'
         }`}>
           <div className="p-4">
-            <h3 className="text-lg font-bold text-white mb-4">תלמידים מחוברים</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-white">תלמידי הכיתה</h3>
+              <div className="flex items-center space-x-2 text-sm text-gray-400">
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <span>מחובר</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 rounded-full bg-gray-500"></div>
+                  <span>לא מחובר</span>
+                </div>
+              </div>
+            </div>
+            
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {session.connectedStudents && session.connectedStudents.length > 0 ? (
-                session.connectedStudents.map((student) => (
-                  <div
-                    key={student.id}
-                    className="p-3 rounded-lg border border-gray-600 bg-gray-700/50"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-white font-medium">{student.name}</p>
-                        <p className="text-sm text-gray-400">
-                          שקופית {student.currentSlide + 1}
-                        </p>
+              {allStudents && allStudents.length > 0 ? (
+                allStudents.map((student) => {
+                  const status = getStudentStatus(student);
+                  const statusIndicator = getStatusIndicator(status);
+                  const studentName = student.displayName || student.name || student.email || 'תלמיד ללא שם';
+                  
+                  return (
+                    <div
+                      key={student.uid || student.id}
+                      className={`p-3 rounded-lg border transition-colors ${
+                        status === 'connected' 
+                          ? 'border-green-500 bg-green-900/20' 
+                          : 'border-gray-600 bg-gray-700/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white font-medium truncate">{studentName}</p>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <div className={`flex items-center space-x-1 ${statusIndicator.color}`}>
+                              {statusIndicator.icon}
+                              <span className="text-xs">
+                                {status === 'connected' && 'מחובר לשיעור'}
+                                {status === 'online' && 'מחובר'}
+                                {status === 'in_other_session' && 'בשיעור אחר'}
+                                {status === 'recently_active' && 'פעיל לאחרונה'}
+                                {status === 'offline' && 'לא מחובר'}
+                              </span>
+                            </div>
+                            {status === 'connected' && (
+                              <span className="text-xs text-green-400">
+                                שקופית {session?.currentSlide + 1 || 1}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className={`w-3 h-3 rounded-full ${statusIndicator.bgColor} ml-2 flex-shrink-0`}></div>
                       </div>
-                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="text-center py-8">
                   <Users className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                  <p className="text-gray-400">אין תלמידים מחוברים</p>
+                  <p className="text-gray-400">אין תלמידים בכיתה</p>
                 </div>
               )}
             </div>
+            
+            {/* Summary */}
+            {allStudents && allStudents.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-600">
+                <div className="flex justify-between text-sm text-gray-400">
+                  <span>סה"כ תלמידים:</span>
+                  <span>{allStudents.length}</span>
+                </div>
+                <div className="flex justify-between text-sm text-green-400">
+                  <span>מחוברים לשיעור:</span>
+                  <span>{allStudents.filter(s => getStudentStatus(s) === 'connected').length}</span>
+                </div>
+                <div className="flex justify-between text-sm text-gray-400">
+                  <span>מחוברים למערכת:</span>
+                  <span>{allStudents.filter(s => ['connected', 'online', 'in_other_session'].includes(getStudentStatus(s))).length}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
