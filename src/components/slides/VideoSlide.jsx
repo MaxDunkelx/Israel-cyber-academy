@@ -30,7 +30,7 @@ const VideoSlide = ({ slide, onAnswer, answers }) => {
       const youtubeRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
       const match = url.match(youtubeRegex);
       
-      if (match) {
+      if (match && match[1]) {
         const videoId = match[1];
         // Add more parameters to prevent blob errors and improve compatibility
         const params = new URLSearchParams({
@@ -52,29 +52,34 @@ const VideoSlide = ({ slide, onAnswer, answers }) => {
         return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
       }
       
-      // If it's already an embed URL, just add our parameters
+      // If it's already an embed URL, extract video ID and rebuild with our parameters
       if (url.includes('youtube.com/embed/')) {
-        const baseUrl = url.split('?')[0];
-        const params = new URLSearchParams({
-          rel: '0',
-          modestbranding: '1',
-          showinfo: '0',
-          autoplay: '0',
-          enablejsapi: '1',
-          origin: window.location.origin,
-          widget_referrer: window.location.origin,
-          hl: 'he',
-          cc_load_policy: '1',
-          iv_load_policy: '3',
-          fs: '1',
-          disablekb: '1',
-          controls: '1'
-        });
-        
-        return `${baseUrl}?${params.toString()}`;
+        const embedMatch = url.match(/youtube\.com\/embed\/([^"&?\/\s]{11})/);
+        if (embedMatch && embedMatch[1]) {
+          const videoId = embedMatch[1];
+          const params = new URLSearchParams({
+            rel: '0',
+            modestbranding: '1',
+            showinfo: '0',
+            autoplay: '0',
+            enablejsapi: '1',
+            origin: window.location.origin,
+            widget_referrer: window.location.origin,
+            hl: 'he',
+            cc_load_policy: '1',
+            iv_load_policy: '3',
+            fs: '1',
+            disablekb: '1',
+            controls: '1'
+          });
+          
+          return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+        }
       }
       
-      return url;
+      // If we can't parse it, return null to trigger error handling
+      console.warn('Could not parse YouTube URL:', url);
+      return null;
     } catch (error) {
       console.error('Error processing YouTube URL:', error);
       return null;
@@ -96,6 +101,18 @@ const VideoSlide = ({ slide, onAnswer, answers }) => {
   };
 
   const embedUrl = getYouTubeEmbedUrl(content?.videoUrl);
+  
+  // Debug logging
+  useEffect(() => {
+    if (content?.videoUrl) {
+      console.log('🎥 Video URL Debug:', {
+        originalUrl: content.videoUrl,
+        processedUrl: embedUrl,
+        slideId: slide.id,
+        slideTitle: slide.title
+      });
+    }
+  }, [content?.videoUrl, embedUrl, slide.id, slide.title]);
 
   useEffect(() => {
     // Reset states when slide changes
@@ -192,7 +209,7 @@ const VideoSlide = ({ slide, onAnswer, answers }) => {
           {/* Video Container */}
           <div className="relative bg-gray-900 rounded-xl overflow-hidden shadow-2xl flex-1 flex flex-col justify-center">
             <div className="aspect-video">
-              {!videoError && embedUrl ? (
+              {!videoError && embedUrl && embedUrl.startsWith('http') ? (
                 <iframe
                   key={`${slide.id}-${iframeKey}`} // Force reload on retry
                   src={embedUrl}
@@ -213,7 +230,9 @@ const VideoSlide = ({ slide, onAnswer, answers }) => {
                   <div className="text-center">
                     <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-400" />
                     <h3 className="text-xl font-bold text-white mb-2">שגיאה בטעינת הווידאו</h3>
-                    <p className="text-gray-400 mb-4">לא ניתן לטעון את הווידאו כרגע</p>
+                    <p className="text-gray-400 mb-4">
+                      {!embedUrl ? 'URL וידאו לא תקין' : 'לא ניתן לטעון את הווידאו כרגע'}
+                    </p>
                     <button
                       onClick={handleRetry}
                       className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
