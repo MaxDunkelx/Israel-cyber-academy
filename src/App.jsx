@@ -22,8 +22,8 @@ import React, { useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import LoadingSpinner from './components/common/LoadingSpinner';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import { StudentRoute, TeacherRoute, SystemManagerRoute } from './components/common/RouteProtection';
 
 // Student Components
 import EnhancedLogin from './components/EnhancedLogin';
@@ -58,15 +58,9 @@ import ExcelImport from './components/system-manager/ExcelImport';
 // import './App.css';
 
 /**
- * Protected Route Component
+ * Protected Route Component (Legacy - for backward compatibility)
  * 
- * Wraps routes that require authentication and optionally specific roles.
- * Redirects to login if not authenticated or to appropriate dashboard if wrong role.
- * 
- * @param {Object} props - Component props
- * @param {React.ReactNode} props.children - Child components to render
- * @param {string} props.requiredRole - Required role for access (optional)
- * @returns {JSX.Element} Protected route component
+ * @deprecated Use StudentRoute, TeacherRoute, or SystemManagerRoute instead
  */
 const ProtectedRoute = ({ children, requiredRole = null }) => {
   const { currentUser, loading, role } = useAuth();
@@ -85,119 +79,6 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
 
   if (requiredRole && role !== requiredRole) {
     return <Navigate to="/" replace />;
-  }
-
-  return <>{children}</>;
-};
-
-/**
- * Teacher Route Component
- * 
- * Wraps routes that require teacher role authentication.
- * Redirects to login if not authenticated or to appropriate dashboard if wrong role.
- * 
- * @param {Object} props - Component props
- * @param {React.ReactNode} props.children - Child components to render
- * @returns {JSX.Element} Teacher route component
- */
-const TeacherRoute = ({ children }) => {
-  const { currentUser, loading, role } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (!currentUser) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (role !== 'teacher') {
-    // Redirect to appropriate dashboard based on role
-    if (role === 'system_manager') {
-      return <Navigate to="/system-manager/dashboard" replace />;
-    } else {
-      return <Navigate to="/student/roadmap" replace />;
-    }
-  }
-
-  return <>{children}</>;
-};
-
-/**
- * Student Route Component
- * 
- * Wraps routes that require student role authentication.
- * Redirects to login if not authenticated or to appropriate dashboard if wrong role.
- * 
- * @param {Object} props - Component props
- * @param {React.ReactNode} props.children - Child components to render
- * @returns {JSX.Element} Student route component
- */
-const StudentRoute = ({ children }) => {
-  const { currentUser, loading, role } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (!currentUser) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (role !== 'student') {
-    // Redirect to appropriate dashboard based on role
-    if (role === 'system_manager') {
-      return <Navigate to="/system-manager/dashboard" replace />;
-    } else if (role === 'teacher') {
-      return <Navigate to="/teacher/dashboard" replace />;
-    } else {
-      return <Navigate to="/student/roadmap" replace />;
-    }
-  }
-
-  return <>{children}</>;
-};
-
-/**
- * System Manager Route Component
- * 
- * Wraps routes that require system manager role authentication.
- * Redirects to login if not authenticated or to appropriate dashboard if wrong role.
- * 
- * @param {Object} props - Component props
- * @param {React.ReactNode} props.children - Child components to render
- * @returns {JSX.Element} System manager route component
- */
-const SystemManagerRoute = ({ children }) => {
-  const { currentUser, loading, role } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (!currentUser) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (role !== 'system_manager') {
-    // Redirect to appropriate dashboard based on role
-    if (role === 'teacher') {
-      return <Navigate to="/teacher/dashboard" replace />;
-    } else {
-      return <Navigate to="/student/roadmap" replace />;
-    }
   }
 
   return <>{children}</>;

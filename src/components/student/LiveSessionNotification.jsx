@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Play, 
   Clock, 
@@ -15,6 +15,7 @@ import Button from '../ui/Button';
 
 const LiveSessionNotification = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentUser } = useAuth();
   
   const [currentSession, setCurrentSession] = useState(null);
@@ -71,9 +72,17 @@ const LiveSessionNotification = () => {
             
             // Validate if session is actually active and teacher is online
             const isValid = validateSession(session);
+            
+            // Check if student is already connected to this session
+            const isAlreadyConnected = session.connectedStudents?.some(
+              student => student.id === currentUser.uid
+            );
+            
             setCurrentSession(session);
             setIsSessionValid(isValid);
-            setIsVisible(isValid);
+            
+            // Only show popup if session is valid AND student is not already connected
+            setIsVisible(isValid && !isAlreadyConnected);
             setIsLoading(false);
           } else {
             console.log('📡 No active session found');
@@ -152,24 +161,51 @@ const LiveSessionNotification = () => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  // Don't show anything if loading or no session
-  if (isLoading || !isVisible || !currentSession) {
+  // Check if student is already in a live session
+  const isAlreadyInLiveSession = location.pathname.startsWith('/student/session/');
+  
+  // Check if student is already connected to this specific session
+  const isAlreadyConnectedToSession = currentSession?.connectedStudents?.some(
+    student => student.id === currentUser?.uid
+  );
+  
+  // Debug logging for popup visibility
+  if (import.meta.env.DEV && currentSession) {
+    console.log('🔍 LiveSessionNotification visibility check:', {
+      isLoading,
+      isVisible,
+      hasSession: !!currentSession,
+      isAlreadyInLiveSession,
+      isAlreadyConnectedToSession,
+      currentPath: location.pathname,
+      connectedStudents: currentSession.connectedStudents?.map(s => s.id) || [],
+      currentUserId: currentUser?.uid
+    });
+  }
+  
+  // Don't show anything if:
+  // 1. Loading
+  // 2. No session
+  // 3. Not visible
+  // 4. Student is already in a live session (to avoid confusion)
+  // 5. Student is already connected to this specific session
+  if (isLoading || !isVisible || !currentSession || isAlreadyInLiveSession || isAlreadyConnectedToSession) {
     return null;
   }
 
   return (
     <div className="fixed top-4 right-4 z-50 max-w-md w-full">
-      <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg shadow-2xl border border-green-500/30 backdrop-blur-sm">
+      <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg shadow-2xl border border-gray-600 backdrop-blur-sm">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-green-500/30">
+        <div className="flex items-center justify-between p-4 border-b border-gray-600">
           <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+            <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
             <Radio className="w-4 h-4 text-white" />
             <span className="text-white font-semibold text-sm">שיעור חי פעיל</span>
           </div>
           <button
             onClick={handleDismiss}
-            className="text-white/80 hover:text-white transition-colors"
+            className="text-gray-300 hover:text-white transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -183,29 +219,29 @@ const LiveSessionNotification = () => {
               <h3 className="text-white font-bold text-lg mb-1">
                 {currentSession.lessonName}
               </h3>
-              <p className="text-green-100 text-sm">
+              <p className="text-gray-300 text-sm">
                 {currentSession.className}
               </p>
             </div>
 
             {/* Session Stats */}
             <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center space-x-2 text-green-100">
+              <div className="flex items-center space-x-2 text-gray-300">
                 <Clock className="w-4 h-4" />
                 <span>{formatDuration(sessionDuration)}</span>
               </div>
-              <div className="flex items-center space-x-2 text-green-100">
+              <div className="flex items-center space-x-2 text-gray-300">
                 <Users className="w-4 h-4" />
                 <span>{currentSession.connectedStudents?.length || 0} מחוברים</span>
               </div>
             </div>
 
             {/* Current Slide Info */}
-            <div className="bg-green-500/20 rounded-lg p-3 border border-green-500/30">
-              <p className="text-green-100 text-sm">
+            <div className="bg-gray-700/50 rounded-lg p-3 border border-gray-600">
+              <p className="text-white text-sm">
                 המורה נמצא בשקופית {currentSession.currentSlide + 1}
               </p>
-              <p className="text-green-200 text-xs mt-1">
+              <p className="text-gray-300 text-xs mt-1">
                 לחץ להצטרף ולעקוב אחרי המורה בזמן אמת
               </p>
             </div>
@@ -215,7 +251,7 @@ const LiveSessionNotification = () => {
               onClick={handleJoinSession}
               variant="primary"
               size="lg"
-              className="w-full bg-white text-green-600 hover:bg-green-50 transition-colors flex items-center justify-center space-x-2 font-semibold"
+              className="w-full bg-green-600 hover:bg-green-700 text-white transition-colors flex items-center justify-center space-x-2 font-semibold"
             >
               <Play className="w-4 h-4" />
               <span>הצטרף לשיעור החי</span>
@@ -223,8 +259,8 @@ const LiveSessionNotification = () => {
 
             {/* Session Status Warning */}
             {!isSessionValid && (
-              <div className="bg-yellow-500/20 rounded-lg p-3 border border-yellow-500/30">
-                <div className="flex items-center space-x-2 text-yellow-200">
+              <div className="bg-yellow-600/20 rounded-lg p-3 border border-yellow-600/30">
+                <div className="flex items-center space-x-2 text-yellow-300">
                   <AlertCircle className="w-4 h-4" />
                   <span className="text-sm">השיעור עשוי להיות לא פעיל</span>
                 </div>

@@ -244,6 +244,28 @@ const ClassroomInterface = () => {
       return presence.status; // 'online', 'offline', or 'in_live_session'
     }
     
+    // Check last activity for more accurate status
+    const lastActivity = student.lastActivityAt || student.lastActivityDate;
+    if (lastActivity) {
+      let lastActivityDate;
+      if (typeof lastActivity === 'object' && lastActivity.toDate) {
+        lastActivityDate = lastActivity.toDate();
+      } else if (typeof lastActivity === 'string') {
+        lastActivityDate = new Date(lastActivity);
+      } else if (lastActivity instanceof Date) {
+        lastActivityDate = lastActivity;
+      } else {
+        return 'offline';
+      }
+      
+      const minutesSinceActivity = (new Date() - lastActivityDate) / (1000 * 60);
+      if (minutesSinceActivity <= 5) {
+        return 'online';
+      } else if (minutesSinceActivity <= 30) {
+        return 'recently_active';
+      }
+    }
+    
     // Default to offline if no presence data
     return 'offline';
   };
@@ -252,6 +274,8 @@ const ClassroomInterface = () => {
     switch (status) {
       case 'online':
         return <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />;
+      case 'recently_active':
+        return <div className="w-3 h-3 bg-yellow-500 rounded-full" />;
       case 'in_live_session':
         return <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse" />;
       case 'offline':
@@ -264,7 +288,9 @@ const ClassroomInterface = () => {
   const getStatusText = (status) => {
     switch (status) {
       case 'online':
-        return 'מחובר';
+        return 'מחובר עכשיו';
+      case 'recently_active':
+        return 'פעיל לאחרונה';
       case 'in_live_session':
         return 'בשיעור חי';
       case 'offline':
@@ -278,6 +304,8 @@ const ClassroomInterface = () => {
     switch (status) {
       case 'online':
         return 'text-green-400';
+      case 'recently_active':
+        return 'text-yellow-400';
       case 'in_live_session':
         return 'text-blue-400';
       case 'offline':
@@ -327,6 +355,10 @@ const ClassroomInterface = () => {
       getStudentStatus(student, classData.id) === 'online'
     ).length;
     
+    const recentlyActiveCount = classStudents.filter(student => 
+      getStudentStatus(student, classData.id) === 'recently_active'
+    ).length;
+    
     const inLiveSessionCount = classStudents.filter(student => 
       getStudentStatus(student, classData.id) === 'in_live_session'
     ).length;
@@ -338,8 +370,10 @@ const ClassroomInterface = () => {
     return {
       total: classStudents.length,
       online: onlineCount,
+      recentlyActive: recentlyActiveCount,
       inLiveSession: inLiveSessionCount,
       offline: offlineCount,
+      active: onlineCount + recentlyActiveCount + inLiveSessionCount,
       progress: getClassProgress(classData),
       hasActiveSession: !!session
     };
@@ -876,6 +910,11 @@ const ClassroomInterface = () => {
                                   <p className={`text-xs ${getStatusColor(status)}`}>
                                     {getStatusText(status)}
                                   </p>
+                                  {student.lastActivityAt && (
+                                    <p className="text-xs text-gray-500">
+                                      פעילות אחרונה: {formatTimestamp(student.lastActivityAt)}
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                             </div>

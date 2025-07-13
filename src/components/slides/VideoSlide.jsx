@@ -16,35 +16,86 @@ const VideoSlide = ({ slide, onAnswer, answers }) => {
   const [videoEnded, setVideoEnded] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [iframeKey, setIframeKey] = useState(0);
 
-  // Enhanced YouTube URL processing
+  // Enhanced YouTube URL processing with better error handling
   const getYouTubeEmbedUrl = (url) => {
-    if (!url) return null;
-    
-    // Handle different YouTube URL formats
-    const youtubeRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
-    const match = url.match(youtubeRegex);
-    
-    if (match) {
-      const videoId = match[1];
-      // Add more parameters to prevent blob errors
-      return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&showinfo=0&autoplay=0&enablejsapi=1&origin=${window.location.origin}&widget_referrer=${window.location.origin}&hl=he&cc_load_policy=1`;
+    if (!url || typeof url !== 'string') {
+      console.warn('Invalid video URL:', url);
+      return null;
     }
     
-    return url;
+    try {
+      // Handle different YouTube URL formats
+      const youtubeRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+      const match = url.match(youtubeRegex);
+      
+      if (match) {
+        const videoId = match[1];
+        // Add more parameters to prevent blob errors and improve compatibility
+        const params = new URLSearchParams({
+          rel: '0',
+          modestbranding: '1',
+          showinfo: '0',
+          autoplay: '0',
+          enablejsapi: '1',
+          origin: window.location.origin,
+          widget_referrer: window.location.origin,
+          hl: 'he',
+          cc_load_policy: '1',
+          iv_load_policy: '3',
+          fs: '1',
+          disablekb: '1',
+          controls: '1'
+        });
+        
+        return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+      }
+      
+      // If it's already an embed URL, just add our parameters
+      if (url.includes('youtube.com/embed/')) {
+        const baseUrl = url.split('?')[0];
+        const params = new URLSearchParams({
+          rel: '0',
+          modestbranding: '1',
+          showinfo: '0',
+          autoplay: '0',
+          enablejsapi: '1',
+          origin: window.location.origin,
+          widget_referrer: window.location.origin,
+          hl: 'he',
+          cc_load_policy: '1',
+          iv_load_policy: '3',
+          fs: '1',
+          disablekb: '1',
+          controls: '1'
+        });
+        
+        return `${baseUrl}?${params.toString()}`;
+      }
+      
+      return url;
+    } catch (error) {
+      console.error('Error processing YouTube URL:', error);
+      return null;
+    }
   };
 
   // Alternative: Use YouTube Player API
   const useYouTubeAPI = () => {
     if (typeof window !== 'undefined' && !window.YT) {
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      const firstScriptTag = document.getElementsByTagName('script')[0];
-      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+      try {
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+      } catch (error) {
+        console.error('Error loading YouTube API:', error);
+      }
     }
   };
 
-  const embedUrl = getYouTubeEmbedUrl(content.videoUrl);
+  const embedUrl = getYouTubeEmbedUrl(content?.videoUrl);
 
   useEffect(() => {
     // Reset states when slide changes
@@ -52,6 +103,7 @@ const VideoSlide = ({ slide, onAnswer, answers }) => {
     setVideoEnded(false);
     setVideoError(false);
     setIsLoading(true);
+    setIframeKey(prev => prev + 1); // Force iframe reload
   }, [slide.id]);
 
   useEffect(() => {
@@ -65,24 +117,30 @@ const VideoSlide = ({ slide, onAnswer, answers }) => {
     setIsLoading(false);
     setVideoStarted(true);
     setVideoError(false);
-    onAnswer(slide.id, { started: true, isCorrect: true });
+    if (onAnswer) {
+      onAnswer(slide.id, { started: true, isCorrect: true });
+    }
   };
 
   const handleVideoEnd = () => {
     setVideoEnded(true);
-    onAnswer(slide.id, { completed: true, isCorrect: true });
+    if (onAnswer) {
+      onAnswer(slide.id, { completed: true, isCorrect: true });
+    }
   };
 
-  const handleVideoError = () => {
+  const handleVideoError = (error) => {
+    console.error('Video error:', error);
     setIsLoading(false);
     setVideoError(true);
-    console.warn('Video failed to load:', content.videoUrl);
+    console.warn('Video failed to load:', content?.videoUrl);
   };
 
   const handleRetry = () => {
     setVideoError(false);
     setIsLoading(true);
     // Force iframe reload by changing key
+    setIframeKey(prev => prev + 1);
     setVideoStarted(false);
   };
 
@@ -90,6 +148,31 @@ const VideoSlide = ({ slide, onAnswer, answers }) => {
     setIsLoading(false);
     setVideoError(false);
   };
+
+  // Error boundary for the entire component
+  if (!content?.videoUrl) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-8">
+        <div className="max-w-5xl w-full h-full flex flex-col">
+          <div className="text-center mb-8">
+            <h2 className="text-4xl font-bold text-white mb-4" style={{ textShadow: '0 4px 8px rgba(0,0,0,0.3)' }}>
+              {slide.title}
+            </h2>
+            <p className="text-xl text-gray-200" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+              {content?.description || 'תיאור הווידאו'}
+            </p>
+          </div>
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-8 border border-gray-700/50 shadow-2xl flex-1 flex flex-col justify-center">
+            <div className="text-center">
+              <AlertCircle className="w-16 h-16 mx-auto mb-4 text-yellow-400" />
+              <h3 className="text-xl font-bold text-white mb-2">אין URL וידאו</h3>
+              <p className="text-gray-400">לא הוגדר URL וידאו עבור שקופית זו</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-8">
@@ -111,9 +194,9 @@ const VideoSlide = ({ slide, onAnswer, answers }) => {
             <div className="aspect-video">
               {!videoError && embedUrl ? (
                 <iframe
-                  key={`${slide.id}-${videoStarted}`} // Force reload on retry
+                  key={`${slide.id}-${iframeKey}`} // Force reload on retry
                   src={embedUrl}
-                  title={slide.title}
+                  title={slide.title || 'Video Content'}
                   className="w-full h-full"
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -122,6 +205,8 @@ const VideoSlide = ({ slide, onAnswer, answers }) => {
                   onError={handleVideoError}
                   sandbox="allow-same-origin allow-scripts allow-presentation allow-popups allow-popups-to-escape-sandbox"
                   loading="lazy"
+                  referrerPolicy="no-referrer"
+                  importance="high"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gray-800">

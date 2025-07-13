@@ -15,6 +15,20 @@ const QuizSlide = ({ slide, onAnswer, answers }) => {
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
+  const [error, setError] = useState(null);
+
+  // Validate slide data
+  if (!content || !content.questions || !Array.isArray(content.questions)) {
+    console.error('Invalid quiz slide data:', slide);
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-white mb-4">שגיאה בשקופית</h2>
+          <p className="text-gray-300">השקופית לא מכילה שאלות תקינות</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleAnswerSelect = (questionId, answerId) => {
     if (submitted) return;
@@ -41,11 +55,18 @@ const QuizSlide = ({ slide, onAnswer, answers }) => {
       const finalScore = Math.round((correctCount / content.questions.length) * 100);
       setScore(finalScore);
       setSubmitted(true);
-      onAnswer(slide.id, { 
-        answers: selectedAnswers, 
-        score: finalScore, 
-        isCorrect: finalScore >= 70 
-      });
+      
+      // Ensure onAnswer is called with proper error handling
+      try {
+        onAnswer(slide.id, { 
+          answers: selectedAnswers, 
+          score: finalScore, 
+          isCorrect: finalScore >= 70 
+        });
+      } catch (error) {
+        console.error('Error submitting quiz answer:', error);
+        // Still show the results even if there's an error with the callback
+      }
     }
   };
 
@@ -72,11 +93,25 @@ const QuizSlide = ({ slide, onAnswer, answers }) => {
         <div className="bg-black/60 backdrop-blur-xl rounded-2xl p-8 border border-blue-500/30 shadow-2xl flex-1 flex flex-col">
           {/* Questions */}
           <div className="space-y-8 flex-1 overflow-y-auto">
-            {content.questions?.map((question, questionIndex) => (
-              <div key={`question-${questionIndex}`} className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
-                <h3 className="text-xl md:text-2xl font-bold text-white mb-4 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                  שאלה {questionIndex + 1}: {question.question}
-                </h3>
+            {content.questions?.map((question, questionIndex) => {
+              // Validate question data
+              if (!question || !question.question || !Array.isArray(question.options)) {
+                console.error('Invalid question data:', question);
+                return (
+                  <div key={`question-${questionIndex}`} className="bg-red-900/20 backdrop-blur-sm rounded-xl p-6 border border-red-500/30">
+                    <h3 className="text-xl font-bold text-red-300 mb-4">
+                      שגיאה בשאלה {questionIndex + 1}
+                    </h3>
+                    <p className="text-red-200">השאלה לא מכילה נתונים תקינים</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div key={`question-${questionIndex}`} className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
+                  <h3 className="text-xl md:text-2xl font-bold text-white mb-4 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                    שאלה {questionIndex + 1}: {question.question}
+                  </h3>
                 
                 <div className="space-y-3">
                   {question.options?.map((option, optionIndex) => {
@@ -128,7 +163,8 @@ const QuizSlide = ({ slide, onAnswer, answers }) => {
                   })}
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
 
           {/* Submit Button */}

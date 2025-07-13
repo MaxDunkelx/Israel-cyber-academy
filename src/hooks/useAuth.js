@@ -25,7 +25,12 @@ export const useAuth = () => {
     currentLesson: authContext.userProfile?.currentLesson || 1,
     totalTimeSpent: authContext.userProfile?.totalTimeSpent || 0,
     totalPagesEngaged: authContext.userProfile?.totalPagesEngaged || 0,
-    achievements: authContext.userProfile?.achievements || []
+    achievements: authContext.userProfile?.achievements || [],
+    // Explicitly include updateUserProgress to ensure it's available
+    updateUserProgress: authContext.updateUserProgress,
+    trackSlideEngagement: authContext.trackSlideEngagement,
+    setLastLessonSlide: authContext.setLastLessonSlide,
+    getLastLessonSlide: authContext.getLastLessonSlide
   };
 };
 

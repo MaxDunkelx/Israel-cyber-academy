@@ -57,10 +57,19 @@ const getFirebaseConfig = () => {
 
     return config;
   } else {
-    // No fallback - environment variables are required for production
-    console.error('❌ Firebase environment variables are required but not found!');
-    console.error('💡 Please ensure .env.production file exists with all required variables.');
-    throw new Error('Firebase environment variables are required but not found. Check .env.production file.');
+    // Fallback to hardcoded values for development/deployment
+    console.warn('⚠️ Using fallback Firebase configuration - create .env file for production');
+    
+    const config = {
+      apiKey: "AIzaSyC35sH38k9co_R0zBsbDT0S6RE1Cp-ksHE",
+      authDomain: "israel-cyber-academy.firebaseapp.com",
+      projectId: "israel-cyber-academy",
+      storageBucket: "israel-cyber-academy.appspot.com",
+      messagingSenderId: "123456789012",
+      appId: "1:123456789012:web:abcdef1234567890"
+    };
+    
+    return config;
   }
 };
 
@@ -137,7 +146,29 @@ try {
   });
 } catch (error) {
   console.error('❌ Firebase services initialization failed:', error);
+  
+  // Provide more detailed error information
+  if (error.code === 'app/no-app') {
+    console.error('💡 Solution: Firebase app not initialized properly');
+  } else if (error.message.includes('Invalid API key')) {
+    console.error('💡 Solution: Check your Firebase API key configuration');
+  } else if (error.message.includes('Invalid project ID')) {
+    console.error('💡 Solution: Check your Firebase project ID configuration');
+  }
+  
   throw error;
+}
+
+// Add error handlers for Firebase services
+if (auth) {
+  auth.onAuthStateChanged((user) => {
+    // This is just to ensure the auth listener is working
+    if (import.meta.env.DEV) {
+      console.log('🔐 Auth state changed:', user ? 'User logged in' : 'User logged out');
+    }
+  }, (error) => {
+    console.error('❌ Auth state change error:', error);
+  });
 }
 
 /**

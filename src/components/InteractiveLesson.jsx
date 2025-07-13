@@ -27,6 +27,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getLessonWithSlides, getNextLesson } from '../firebase/content-service';
+import { useErrorHandler } from '../hooks/useErrorHandler';
+import { useSafeListener } from '../hooks/useSafeListener';
+import { useCleanup } from '../hooks/useCleanup';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -65,6 +68,10 @@ const InteractiveLesson = () => {
   const { currentUser, userProfile, updateUserProgress, trackSlideEngagement, setLastLessonSlide, getLastLessonSlide } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Error handling and cleanup hooks
+  const { handleError, handleFirebaseError } = useErrorHandler();
+  const { addCleanup } = useCleanup();
   
   // Extract lesson ID from URL parameters
   const { lessonId } = useParams();
@@ -143,6 +150,11 @@ const InteractiveLesson = () => {
     });
     firebaseListenersRef.current = [];
   }, []);
+
+  // Register cleanup function
+  useEffect(() => {
+    addCleanup(cleanupAllTimersAndListeners);
+  }, [addCleanup, cleanupAllTimersAndListeners]);
 
   // Debug: Log current slide position
   useEffect(() => {
@@ -570,7 +582,13 @@ const InteractiveLesson = () => {
       // Still navigate to roadmap but don't save again
       setTimeout(async () => {
         try {
-          const nextLesson = await getNextLesson(lessonNumber);
+          let nextLesson = null;
+          try {
+            nextLesson = await getNextLesson(lessonNumber);
+          } catch (nextLessonError) {
+            console.error('❌ Error getting next lesson for already completed:', nextLessonError);
+            nextLesson = null;
+          }
           const navigateUrl = nextLesson ? `/student/roadmap?unlocked=${nextLesson.originalId}` : '/student/roadmap';
           navigate(navigateUrl, { replace: true });
         } catch (error) {
@@ -646,8 +664,15 @@ const InteractiveLesson = () => {
       console.log('🔍 Debug: updateUserProgress result:', result);
       
       // Find next lesson before showing animation
-      const nextLesson = await getNextLesson(lesson.id);
-      console.log('📚 Next lesson found:', nextLesson);
+      let nextLesson = null;
+      try {
+        nextLesson = await getNextLesson(lessonNumber);
+        console.log('📚 Next lesson found:', nextLesson);
+      } catch (nextLessonError) {
+        console.error('❌ Error getting next lesson:', nextLessonError);
+        // Continue without next lesson - user will just go to roadmap
+        nextLesson = null;
+      }
       
       // Show celebration animation
       setShowConfetti(true);
@@ -679,9 +704,20 @@ const InteractiveLesson = () => {
       
       // Still try to navigate even if save failed
       setTimeout(async () => {
-        const nextLesson = await getNextLesson(lessonNumber);
-        const navigateUrl = nextLesson ? `/student/roadmap?unlocked=${nextLesson.originalId}` : '/student/roadmap';
-        navigate(navigateUrl, { replace: true });
+        try {
+          let nextLesson = null;
+          try {
+            nextLesson = await getNextLesson(lessonNumber);
+          } catch (nextLessonError) {
+            console.error('❌ Error getting next lesson in fallback:', nextLessonError);
+            nextLesson = null;
+          }
+          const navigateUrl = nextLesson ? `/student/roadmap?unlocked=${nextLesson.originalId}` : '/student/roadmap';
+          navigate(navigateUrl, { replace: true });
+        } catch (navError) {
+          console.error('❌ Error in fallback navigation:', navError);
+          navigate('/student/roadmap', { replace: true });
+        }
       }, 1000);
     }
   }, [lesson, userProfile, slideStartTime, totalTimeStudied, currentSlide, trackSlideEngagement, updateUserProgress, navigate, lessonId]);

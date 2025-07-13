@@ -215,7 +215,8 @@ export const joinSession = async (sessionId, studentId, studentName) => {
   }
 
   // Update user presence to show they're in a live session
-  await setUserInLiveSession(studentId, sessionId, sessionData.lessonName);
+  const sessionDocData = sessionDoc.data();
+  await setUserInLiveSession(studentId, sessionId, sessionDocData.lessonName);
 
   logSecurityEvent('STUDENT_JOINED_SESSION', {
     sessionId,
@@ -233,20 +234,47 @@ export const joinSession = async (sessionId, studentId, studentName) => {
  * @returns {Promise<void>}
  */
 export const leaveSession = async (sessionId, studentId, studentName) => {
-  const sessionRef = doc(db, 'sessions', sessionId);
-  await updateDoc(sessionRef, {
-    connectedStudents: arrayRemove({ id: studentId, name: studentName }),
-    lastActivity: serverTimestamp()
-  });
+  try {
+    const sessionRef = doc(db, 'sessions', sessionId);
+    
+    // First, get the current session data to check if student is actually connected
+    const sessionDoc = await getDoc(sessionRef);
+    if (!sessionDoc.exists()) {
+      throw new Error('Session not found');
+    }
+    
+    const sessionData = sessionDoc.data();
+    const connectedStudents = sessionData.connectedStudents || [];
+    
+    // Check if student is actually in the connectedStudents array
+    const isConnected = connectedStudents.some(student => 
+      student.id === studentId || student === studentId
+    );
+    
+    if (isConnected) {
+      // Remove student from connectedStudents array
+      await updateDoc(sessionRef, {
+        connectedStudents: arrayRemove({ id: studentId, name: studentName }),
+        lastActivity: serverTimestamp()
+      });
+    }
+    
+    // Update user presence back to online
+    await updateUserPresence(studentId, 'online');
 
-  // Update user presence back to online
-  await updateUserPresence(studentId, 'online');
-
-  logSecurityEvent('STUDENT_LEFT_SESSION', {
-    sessionId,
-    studentId,
-    timestamp: new Date().toISOString()
-  });
+    logSecurityEvent('STUDENT_LEFT_SESSION', {
+      sessionId,
+      studentId,
+      studentName,
+      wasConnected: isConnected,
+      timestamp: new Date().toISOString()
+    });
+    
+    console.log(`✅ Student ${studentName} (${studentId}) left session ${sessionId}`);
+  } catch (error) {
+    console.error('Error in leaveSession:', error);
+    throw error;
+  }
 };
 
 /**
@@ -287,26 +315,70 @@ export const updateStudentProgress = async (sessionId, studentId, slideIndex, pr
 };
 
 /**
- * End session
+ * End session with comprehensive attendance tracking
  * @param {string} sessionId - Session ID
  * @returns {Promise<void>}
  */
 export const endSession = async (sessionId) => {
   try {
     const sessionRef = doc(db, 'sessions', sessionId);
+    
+    // Get current session data before ending
+    const sessionDoc = await getDoc(sessionRef);
+    if (!sessionDoc.exists()) {
+      throw new Error('Session not found');
+    }
+    
+    const sessionData = sessionDoc.data();
+    
+    // Calculate session duration and attendance statistics
+    const startTime = sessionData.startTime?.toDate?.() || new Date(sessionData.startTime);
+    const endTime = new Date();
+    const duration = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60)); // minutes
+    
+    // Process attendance data
+    const connectedStudents = sessionData.connectedStudents || [];
+    const attendanceRecords = connectedStudents.map(student => ({
+      studentId: student.id,
+      studentName: student.name,
+      joinedAt: student.joinedAt || startTime,
+      lastActivity: student.lastActivity || endTime,
+      timeSpent: duration, // Approximate time spent
+      slidesEngaged: student.slidesEngaged || 0,
+      status: 'completed'
+    }));
+    
+    // Update session with comprehensive end data
     await updateDoc(sessionRef, {
       status: 'ended',
       endTime: serverTimestamp(),
-      lastActivity: serverTimestamp()
+      lastActivity: serverTimestamp(),
+      duration: duration,
+      finalAttendance: attendanceRecords,
+      attendanceCount: connectedStudents.length,
+      completionRate: connectedStudents.length > 0 ? 
+        (connectedStudents.filter(s => s.status === 'completed').length / connectedStudents.length) * 100 : 0
     });
 
     // Clear cache
     sessionCache.delete(sessionId);
 
-    logSecurityEvent('SESSION_ENDED', {
+    // Log comprehensive session end event
+    logSecurityEvent('SESSION_ENDED_WITH_ATTENDANCE', {
       sessionId,
+      teacherId: sessionData.teacherId,
+      lessonId: sessionData.lessonId,
+      duration: duration,
+      attendanceCount: connectedStudents.length,
+      attendanceRecords: attendanceRecords.map(r => ({ 
+        studentId: r.studentId, 
+        studentName: r.studentName,
+        timeSpent: r.timeSpent 
+      })),
       timestamp: new Date().toISOString()
     });
+    
+    console.log(`✅ Session ${sessionId} ended with ${connectedStudents.length} students in attendance`);
   } catch (error) {
     console.error('Error ending session:', error);
     throw new Error('Failed to end session');

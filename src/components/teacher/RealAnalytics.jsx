@@ -147,6 +147,45 @@ const RealAnalytics = () => {
     return `${mins} דקות`;
   };
 
+  // Helper functions for student status
+  const getStudentStatus = (student) => {
+    // Check if student has recent activity
+    const lastActivity = student.lastActivityAt || student.lastActivityDate;
+    if (lastActivity) {
+      let lastActivityDate;
+      if (typeof lastActivity === 'object' && lastActivity.toDate) {
+        lastActivityDate = lastActivity.toDate();
+      } else if (typeof lastActivity === 'string') {
+        lastActivityDate = new Date(lastActivity);
+      } else if (lastActivity instanceof Date) {
+        lastActivityDate = lastActivity;
+      } else {
+        return 'offline';
+      }
+      
+      const minutesSinceActivity = (new Date() - lastActivityDate) / (1000 * 60);
+      if (minutesSinceActivity <= 5) {
+        return 'online';
+      } else if (minutesSinceActivity <= 30) {
+        return 'recently_active';
+      }
+    }
+    return 'offline';
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'online':
+        return 'מחובר עכשיו';
+      case 'recently_active':
+        return 'פעיל לאחרונה';
+      case 'offline':
+        return 'מנותק';
+      default:
+        return 'לא ידוע';
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black text-white p-6">
@@ -352,6 +391,43 @@ const RealAnalytics = () => {
                   <p className="text-3xl font-bold text-orange-400">{Object.keys(sessionAttendance.studentAttendance || {}).length}</p>
                 </div>
               </Card>
+            </div>
+            
+            {/* Real-time Student Status */}
+            <div className="mb-6">
+              <h3 className="text-lg font-bold text-white mb-4">סטטוס תלמידים בזמן אמת</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {students.map((student) => {
+                  const attendance = sessionAttendance.studentAttendance?.[student.uid];
+                  const status = getStudentStatus(student);
+                  
+                  return (
+                    <Card key={student.uid} className="bg-gray-800 border-gray-600">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-3 h-3 rounded-full ${
+                            status === 'online' ? 'bg-green-500 animate-pulse' :
+                            status === 'in_live_session' ? 'bg-blue-500 animate-pulse' :
+                            'bg-gray-500'
+                          }`}></div>
+                          <div>
+                            <h4 className="text-white font-medium">{student.displayName || 'תלמיד ללא שם'}</h4>
+                            <p className="text-sm text-gray-400">{getStatusText(status)}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          {attendance && (
+                            <div className="text-xs text-gray-300">
+                              <div>נוכח ב-{attendance.sessionsAttended} שיעורים</div>
+                              <div>{attendance.attendancePercentage}% נוכחות</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
             </div>
             
             {/* Detailed Session History with Student Attendance */}

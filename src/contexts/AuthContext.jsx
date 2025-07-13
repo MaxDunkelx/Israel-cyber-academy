@@ -1017,10 +1017,11 @@ export const AuthProvider = ({ children }) => {
     
     // Set up Firebase Auth state listener
     unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      console.log('🔄 Auth state changed:', user ? `User logged in: ${user.email} (${user.uid})` : 'User logged out');
-      console.log('🔄 Previous currentUser:', currentUser?.uid);
-      
-      setCurrentUser(user);
+      try {
+        console.log('🔄 Auth state changed:', user ? `User logged in: ${user.email} (${user.uid})` : 'User logged out');
+        console.log('🔄 Previous currentUser:', currentUser?.uid);
+        
+        setCurrentUser(user);
       
       if (user) {
         console.log('📥 Fetching user profile for:', user.email);
@@ -1191,6 +1192,11 @@ export const AuthProvider = ({ children }) => {
       }
       
       setLoading(false);
+      } catch (error) {
+        console.error('❌ Error in auth state change handler:', error);
+        setLoading(false);
+        setUserProfile(null);
+      }
     });
 
     // Cleanup function - CRITICAL for preventing memory leaks
