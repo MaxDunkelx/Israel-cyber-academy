@@ -45,11 +45,16 @@ export const createSession = async (sessionData) => {
       unlockedSlides: [0],
       startTime: serverTimestamp(),
       lastActivity: serverTimestamp(),
-      connectedStudents: [],
-      studentProgress: {},
+      connectedStudents: [], // Ensure this is always an array
+      studentProgress: {}, // Ensure this is always an object
       teacherNotes: {},
-      isLocked: false
+      isLocked: false,
+      chatMessages: [], // Initialize chat messages array
+      attendanceCount: 0,
+      completionRate: 0
     });
+
+    console.log('✅ Session created successfully:', sessionDoc.id);
 
     logSecurityEvent('SESSION_CREATED', {
       sessionId: sessionDoc.id,
@@ -59,7 +64,7 @@ export const createSession = async (sessionData) => {
 
     return sessionDoc.id;
   } catch (error) {
-    console.error('Error creating session:', error);
+    console.error('❌ Error creating session:', error);
     throw new Error('Failed to create session');
   }
 };
@@ -192,38 +197,44 @@ export const setSessionLock = async (sessionId, isLocked) => {
  * @returns {Promise<void>}
  */
 export const joinSession = async (sessionId, studentId, studentName) => {
-  const sessionRef = doc(db, 'sessions', sessionId);
+  try {
+    const sessionRef = doc(db, 'sessions', sessionId);
 
-  // Step 1: Add to connectedStudents (atomic, simple object only)
-  await updateDoc(sessionRef, {
-    connectedStudents: arrayUnion({ id: studentId, name: studentName }),
-    lastActivity: serverTimestamp()
-  });
+    // Step 1: Add to connectedStudents (atomic, simple object only)
+    await updateDoc(sessionRef, {
+      connectedStudents: arrayUnion({ id: studentId, name: studentName }),
+      lastActivity: serverTimestamp()
+    });
 
-  // Step 2: Set student progress (with joinedAt/lastActivity as serverTimestamp)
-  const sessionDoc = await getDoc(sessionRef);
-  if (sessionDoc.exists()) {
-    const sessionData = sessionDoc.data();
-    const studentProgress = sessionData.studentProgress || {};
-    studentProgress[studentId] = {
-      ...(studentProgress[studentId] || {}),
-      joinedAt: serverTimestamp(),
-      lastActivity: serverTimestamp(),
-      currentSlide: 0
-    };
-    await updateDoc(sessionRef, { studentProgress });
+    // Step 2: Set student progress (with joinedAt/lastActivity as serverTimestamp)
+    const sessionDoc = await getDoc(sessionRef);
+    if (sessionDoc.exists()) {
+      const sessionData = sessionDoc.data();
+      const studentProgress = sessionData.studentProgress || {};
+      studentProgress[studentId] = {
+        ...(studentProgress[studentId] || {}),
+        joinedAt: serverTimestamp(),
+        lastActivity: serverTimestamp(),
+        currentSlide: 0
+      };
+      await updateDoc(sessionRef, { studentProgress });
+      
+      // Update user presence to show they're in a live session
+      await setUserInLiveSession(studentId, sessionId, sessionData.lessonName);
+    }
+
+    logSecurityEvent('STUDENT_JOINED_SESSION', {
+      sessionId,
+      studentId,
+      studentName,
+      timestamp: new Date().toISOString()
+    });
+    
+    console.log(`✅ Student ${studentName} (${studentId}) joined session ${sessionId}`);
+  } catch (error) {
+    console.error('Error in joinSession:', error);
+    throw error;
   }
-
-  // Update user presence to show they're in a live session
-  const sessionDocData = sessionDoc.data();
-  await setUserInLiveSession(studentId, sessionId, sessionDocData.lessonName);
-
-  logSecurityEvent('STUDENT_JOINED_SESSION', {
-    sessionId,
-    studentId,
-    studentName,
-    timestamp: new Date().toISOString()
-  });
 };
 
 /**
@@ -490,6 +501,18 @@ export const listenToSession = (sessionId, callback) => {
         ...doc.data()
       };
       
+      // Ensure connectedStudents is always an array
+      if (!Array.isArray(sessionData.connectedStudents)) {
+        console.warn('⚠️ connectedStudents is not an array, fixing:', sessionData.connectedStudents);
+        sessionData.connectedStudents = [];
+      }
+      
+      // Ensure studentProgress is always an object
+      if (typeof sessionData.studentProgress !== 'object' || sessionData.studentProgress === null) {
+        console.warn('⚠️ studentProgress is not an object, fixing:', sessionData.studentProgress);
+        sessionData.studentProgress = {};
+      }
+      
       // Update cache with new data
       sessionCache.set(sessionId, {
         data: sessionData,
@@ -498,6 +521,12 @@ export const listenToSession = (sessionId, callback) => {
       
       // Call callback with session data
       try {
+        console.log('📡 Session data updated:', {
+          sessionId,
+          connectedStudentsCount: sessionData.connectedStudents?.length || 0,
+          currentSlide: sessionData.currentSlide,
+          status: sessionData.status
+        });
         callback(sessionData);
       } catch (error) {
         console.error('Error in session listener callback:', error);
@@ -505,10 +534,11 @@ export const listenToSession = (sessionId, callback) => {
     } else {
       // Session doesn't exist or was deleted
       sessionCache.delete(sessionId);
+      console.log('📡 Session not found:', sessionId);
       callback(null);
     }
   }, (error) => {
-    console.error('Error listening to session:', error);
+    console.error('❌ Error listening to session:', error);
     // Don't call callback on error to avoid breaking the UI
   });
 };

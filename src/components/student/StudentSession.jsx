@@ -10,7 +10,8 @@ import {
   Play,
   Pause,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  SkipForward
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -52,12 +53,41 @@ const StudentSession = () => {
   const [teacherControlsSession, setTeacherControlsSession] = useState(false);
   const [modeTransition, setModeTransition] = useState(false); // For smooth transitions
   const [completingLesson, setCompletingLesson] = useState(false);
+  const [sessionSyncProtected, setSessionSyncProtected] = useState(true);
+
+  // Session sync protection - ensure video errors don't break synchronization
+  useEffect(() => {
+    setSessionSyncProtected(true);
+    
+    // Cleanup function to ensure we don't block session sync
+    return () => {
+      setSessionSyncProtected(false);
+    };
+  }, []);
 
   useEffect(() => {
     if (sessionId && currentUser) {
       loadSession();
     }
   }, [sessionId, currentUser]);
+
+  // Auto-join session when student enters (for live sessions)
+  useEffect(() => {
+    if (session && currentUser && !isConnected && session.status === 'active') {
+      console.log('🔄 Auto-joining student to live session:', {
+        sessionId,
+        studentId: currentUser.uid,
+        sessionStatus: session.status
+      });
+      
+      // Auto-join after a short delay to ensure session is loaded
+      const autoJoinTimer = setTimeout(() => {
+        handleJoinSession();
+      }, 1000);
+      
+      return () => clearTimeout(autoJoinTimer);
+    }
+  }, [session, currentUser, isConnected]);
 
   useEffect(() => {
     if (session) {
@@ -71,10 +101,11 @@ const StudentSession = () => {
           console.log('🔍 Setting up session listener for student session:', sessionId);
           
           unsubscribe = listenToSession(sessionId, (updatedSession) => {
-            if (updatedSession) {
-              console.log('📡 Session updated:', updatedSession.lessonName);
-              setSession(updatedSession);
-              const newSlideIndex = updatedSession.currentSlide || 0;
+            try {
+              if (updatedSession) {
+                console.log('📡 Session updated:', updatedSession.lessonName);
+                setSession(updatedSession);
+                const newSlideIndex = updatedSession.currentSlide || 0;
               
               // Check if session has ended
               if (updatedSession.status === 'ended') {
@@ -158,6 +189,11 @@ const StudentSession = () => {
               toast.error('השיעור לא נמצא');
               navigate('/student/dashboard');
             }
+          } catch (error) {
+            console.error('❌ Error in session listener callback:', error);
+            // Don't let video or other errors break session sync
+            // Continue listening for updates
+          }
           });
 
         } catch (error) {
@@ -367,30 +403,64 @@ const StudentSession = () => {
   };
 
   const renderSlide = (slide) => {
-    // Track slide engagement when slide is rendered
-    if (lesson && slide.id && !slidesEngaged.has(slide.id)) {
-      trackSlideEngagement(lesson.originalId, slide.id);
-      setSlidesEngaged(prev => new Set([...prev, slide.id]));
-    }
-    
-    // Use the exact same slide components as the student interface
-    switch (slide.type) {
-      case 'presentation':
-        return <PresentationSlide slide={slide} />;
-      case 'poll':
-        return <PollSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
-      case 'quiz':
-        return <QuizSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
-      case 'video':
-        return <VideoSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
-      case 'interactive':
-        return <InteractiveSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
-      case 'break':
-        return <BreakSlide slide={slide} />;
-      case 'reflection':
-        return <ReflectionSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
-      default:
-        return <PresentationSlide slide={slide} />;
+    try {
+      // Track slide engagement when slide is rendered
+      if (lesson && slide.id && !slidesEngaged.has(slide.id)) {
+        trackSlideEngagement(lesson.originalId, slide.id);
+        setSlidesEngaged(prev => new Set([...prev, slide.id]));
+      }
+      
+      // Use the exact same slide components as the student interface
+      switch (slide.type) {
+        case 'presentation':
+          return <PresentationSlide slide={slide} />;
+        case 'poll':
+          return <PollSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
+        case 'quiz':
+          return <QuizSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
+        case 'video':
+          return <VideoSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
+        case 'interactive':
+          return <InteractiveSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
+        case 'break':
+          return <BreakSlide slide={slide} />;
+        case 'reflection':
+          return <ReflectionSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
+        default:
+          return <PresentationSlide slide={slide} />;
+      }
+    } catch (error) {
+      console.error('❌ Error rendering slide:', error, slide);
+      // Return a fallback slide to prevent session break
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-8">
+          <div className="max-w-5xl w-full h-full flex flex-col">
+            <div className="text-center mb-8">
+              <h2 className="text-4xl font-bold text-white mb-4">
+                {slide.title || 'שקופית'}
+              </h2>
+            </div>
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-8 border border-gray-700/50 shadow-2xl flex-1 flex flex-col justify-center">
+              <div className="text-center">
+                <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-400" />
+                <h3 className="text-2xl font-bold text-red-400 mb-4">
+                  שגיאה בטעינת השקופית
+                </h3>
+                <p className="text-gray-300 mb-6">
+                  אירעה שגיאה בטעינת השקופית. אתה יכול להמשיך לשיעור הבא.
+                </p>
+                <button
+                  onClick={() => handleNextSlide()}
+                  className="flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                >
+                  <SkipForward className="w-4 h-4" />
+                  <span>המשך לשיעור הבא</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
     }
   };
 

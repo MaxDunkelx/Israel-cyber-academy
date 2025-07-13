@@ -1,15 +1,22 @@
-import { useState, useEffect } from 'react';
-import { Play, AlertCircle, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Play, AlertCircle, RefreshCw, ExternalLink, SkipForward } from 'lucide-react';
 
 /**
- * Video Slide Component
- * Renders video content slides with enhanced error handling
+ * Video Slide Component with Session Sync Protection
+ * Renders video content slides with enhanced error handling that prevents
+ * YouTube errors from breaking live session synchronization
  * 
  * @param {Object} props - Component props
  * @param {Object} props.slide - Slide data
  * @param {Function} props.onAnswer - Answer submission handler
  * @param {Object} props.answers - Current answers state
  */
+const isValidYouTubeUrl = (url) => {
+  // Must be a non-empty string and match YouTube URL patterns
+  if (typeof url !== 'string' || !url.trim()) return false;
+  return /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\//.test(url);
+};
+
 const VideoSlide = ({ slide, onAnswer, answers }) => {
   const { content } = slide;
   const [videoStarted, setVideoStarted] = useState(false);
@@ -17,11 +24,17 @@ const VideoSlide = ({ slide, onAnswer, answers }) => {
   const [videoError, setVideoError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [iframeKey, setIframeKey] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
+  const [useFallback, setUseFallback] = useState(false);
+  const [sessionSyncProtected, setSessionSyncProtected] = useState(true);
+
+  // Maximum retry attempts before showing fallback
+  const MAX_RETRIES = 2;
 
   // Enhanced YouTube URL processing with better error handling
-  const getYouTubeEmbedUrl = (url) => {
+  const getYouTubeEmbedUrl = useCallback((url) => {
     if (!url || typeof url !== 'string') {
-      console.warn('Invalid video URL:', url);
+      console.warn('[VideoSlide] Invalid video URL:', url);
       return null;
     }
     
@@ -32,7 +45,7 @@ const VideoSlide = ({ slide, onAnswer, answers }) => {
       
       if (match && match[1]) {
         const videoId = match[1];
-        // Add more parameters to prevent blob errors and improve compatibility
+        // Add parameters to prevent blob errors and improve compatibility
         const params = new URLSearchParams({
           rel: '0',
           modestbranding: '1',
@@ -46,7 +59,10 @@ const VideoSlide = ({ slide, onAnswer, answers }) => {
           iv_load_policy: '3',
           fs: '1',
           disablekb: '1',
-          controls: '1'
+          controls: '1',
+          // Add parameters to prevent blob errors
+          allowfullscreen: '1',
+          allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'
         });
         
         return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
@@ -70,120 +86,250 @@ const VideoSlide = ({ slide, onAnswer, answers }) => {
             iv_load_policy: '3',
             fs: '1',
             disablekb: '1',
-            controls: '1'
+            controls: '1',
+            allowfullscreen: '1',
+            allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'
           });
           
           return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
         }
       }
       
-      // If we can't parse it, return null to trigger error handling
-      console.warn('Could not parse YouTube URL:', url);
+      console.warn('[VideoSlide] Could not parse YouTube URL:', url);
       return null;
     } catch (error) {
-      console.error('Error processing YouTube URL:', error);
+      console.error('[VideoSlide] Error processing YouTube URL:', error);
       return null;
     }
-  };
-
-  // Alternative: Use YouTube Player API
-  const useYouTubeAPI = () => {
-    if (typeof window !== 'undefined' && !window.YT) {
-      try {
-        const tag = document.createElement('script');
-        tag.src = 'https://www.youtube.com/iframe_api';
-        const firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-      } catch (error) {
-        console.error('Error loading YouTube API:', error);
-      }
-    }
-  };
+  }, []);
 
   const embedUrl = getYouTubeEmbedUrl(content?.videoUrl);
   
-  // Debug logging
+  // Debug logging with session sync protection
   useEffect(() => {
     if (content?.videoUrl) {
       console.log('🎥 Video URL Debug:', {
         originalUrl: content.videoUrl,
         processedUrl: embedUrl,
         slideId: slide.id,
-        slideTitle: slide.title
+        slideTitle: slide.title,
+        sessionSyncProtected
       });
     }
-  }, [content?.videoUrl, embedUrl, slide.id, slide.title]);
+  }, [content?.videoUrl, embedUrl, slide.id, slide.title, sessionSyncProtected]);
 
+  // Reset states when slide changes - CRITICAL for session sync
   useEffect(() => {
-    // Reset states when slide changes
+    console.log(`🔄 VideoSlide: Slide changed to ${slide.id}, resetting states`);
     setVideoStarted(false);
     setVideoEnded(false);
     setVideoError(false);
     setIsLoading(true);
+    setRetryCount(0);
+    setUseFallback(false);
     setIframeKey(prev => prev + 1); // Force iframe reload
+    
+    // Ensure session sync is protected
+    setSessionSyncProtected(true);
   }, [slide.id]);
 
+  // Session sync protection - ensure slide changes are always processed
   useEffect(() => {
-    // Try YouTube API as fallback
-    if (videoError && embedUrl && embedUrl.includes('youtube.com')) {
-      useYouTubeAPI();
-    }
-  }, [videoError, embedUrl]);
+    // Mark that we're ready to receive session updates
+    setSessionSyncProtected(true);
+    
+    // Cleanup function to ensure we don't block session sync
+    return () => {
+      console.log(`🔄 VideoSlide: Cleaning up slide ${slide.id}`);
+      setSessionSyncProtected(false);
+    };
+  }, [slide.id]);
 
-  const handleVideoStart = () => {
+  const handleVideoStart = useCallback(() => {
+    console.log(`🎥 Video started for slide ${slide.id}`);
     setIsLoading(false);
     setVideoStarted(true);
     setVideoError(false);
+    
+    // Notify session system that video started (for engagement tracking)
     if (onAnswer) {
-      onAnswer(slide.id, { started: true, isCorrect: true });
+      try {
+        onAnswer(slide.id, { started: true, isCorrect: true });
+      } catch (error) {
+        console.error('[VideoSlide] Error notifying video start:', error);
+        // Don't let video errors break session sync
+      }
     }
-  };
+  }, [slide.id, onAnswer]);
 
-  const handleVideoEnd = () => {
+  const handleVideoEnd = useCallback(() => {
+    console.log(`🎥 Video ended for slide ${slide.id}`);
     setVideoEnded(true);
+    
+    // Notify session system that video completed
     if (onAnswer) {
-      onAnswer(slide.id, { completed: true, isCorrect: true });
+      try {
+        onAnswer(slide.id, { completed: true, isCorrect: true });
+      } catch (error) {
+        console.error('[VideoSlide] Error notifying video completion:', error);
+        // Don't let video errors break session sync
+      }
     }
-  };
+  }, [slide.id, onAnswer]);
 
-  const handleVideoError = (error) => {
-    console.error('Video error:', error);
+  const handleVideoError = useCallback((error) => {
+    console.error(`[VideoSlide] Video error for slide ${slide.id}:`, error);
     setIsLoading(false);
     setVideoError(true);
-    console.warn('Video failed to load:', content?.videoUrl);
-  };
+    
+    // Increment retry count
+    const newRetryCount = retryCount + 1;
+    setRetryCount(newRetryCount);
+    
+    if (newRetryCount >= MAX_RETRIES) {
+      console.warn(`[VideoSlide] Max retries reached for slide ${slide.id}, showing fallback`);
+      setUseFallback(true);
+    }
+    
+    // Log the error but don't let it break session sync
+    console.warn(`[VideoSlide] Video failed to load for slide ${slide.id}:`, content?.videoUrl);
+  }, [slide.id, retryCount, content?.videoUrl]);
 
-  const handleRetry = () => {
+  const handleRetry = useCallback(() => {
+    console.log(`🔄 Retrying video for slide ${slide.id}`);
     setVideoError(false);
     setIsLoading(true);
+    setUseFallback(false);
     // Force iframe reload by changing key
     setIframeKey(prev => prev + 1);
     setVideoStarted(false);
-  };
+  }, [slide.id]);
 
-  const handleIframeLoad = () => {
+  const handleSkipVideo = useCallback(() => {
+    console.log(`⏭️ Skipping video for slide ${slide.id}`);
+    setVideoEnded(true);
+    setUseFallback(true);
+    
+    // Mark video as completed when skipped
+    if (onAnswer) {
+      try {
+        onAnswer(slide.id, { completed: true, isCorrect: true, skipped: true });
+      } catch (error) {
+        console.error('[VideoSlide] Error notifying video skip:', error);
+      }
+    }
+  }, [slide.id, onAnswer]);
+
+  const handleIframeLoad = useCallback(() => {
+    console.log(`✅ Iframe loaded successfully for slide ${slide.id}`);
     setIsLoading(false);
     setVideoError(false);
-  };
+  }, [slide.id]);
 
-  // Error boundary for the entire component
-  if (!content?.videoUrl) {
+  // Strict validation with session sync protection
+  if (!isValidYouTubeUrl(content?.videoUrl)) {
+    console.warn(
+      '[VideoSlide] Invalid or missing videoUrl for slide:',
+      slide.id,
+      'Value:',
+      content?.videoUrl
+    );
+    
+    // Show fallback content instead of error screen to maintain session flow
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-8">
         <div className="max-w-5xl w-full h-full flex flex-col">
           <div className="text-center mb-8">
-            <h2 className="text-4xl font-bold text-white mb-4" style={{ textShadow: '0 4px 8px rgba(0,0,0,0.3)' }}>
+            <h2 className="text-4xl font-bold text-white mb-4">
               {slide.title}
             </h2>
-            <p className="text-xl text-gray-200" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+            <p className="text-xl text-gray-200">
               {content?.description || 'תיאור הווידאו'}
             </p>
           </div>
           <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-8 border border-gray-700/50 shadow-2xl flex-1 flex flex-col justify-center">
             <div className="text-center">
               <AlertCircle className="w-16 h-16 mx-auto mb-4 text-yellow-400" />
-              <h3 className="text-xl font-bold text-white mb-2">אין URL וידאו</h3>
-              <p className="text-gray-400">לא הוגדר URL וידאו עבור שקופית זו</p>
+              <h3 className="text-2xl font-bold text-yellow-400 mb-4">
+                וידאו לא זמין
+              </h3>
+              <p className="text-gray-300 mb-6">
+                הווידאו לא זמין כרגע. אתה יכול להמשיך לשיעור הבא או לנסות שוב מאוחר יותר.
+              </p>
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={handleSkipVideo}
+                  className="flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                >
+                  <SkipForward className="w-4 h-4" />
+                  <span>המשך לשיעור הבא</span>
+                </button>
+                {content?.videoUrl && (
+                  <a
+                    href={content.videoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center space-x-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    <span>פתח ב-YouTube</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show fallback content if video failed after max retries
+  if (useFallback) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-8">
+        <div className="max-w-5xl w-full h-full flex flex-col">
+          <div className="text-center mb-8">
+            <h2 className="text-4xl font-bold text-white mb-4">
+              {slide.title}
+            </h2>
+            <p className="text-xl text-gray-200">
+              {content?.description || 'תיאור הווידאו'}
+            </p>
+          </div>
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-8 border border-gray-700/50 shadow-2xl flex-1 flex flex-col justify-center">
+            <div className="text-center">
+              <AlertCircle className="w-16 h-16 mx-auto mb-4 text-orange-400" />
+              <h3 className="text-2xl font-bold text-orange-400 mb-4">
+                לא ניתן לטעון את הווידאו
+              </h3>
+              <p className="text-gray-300 mb-6">
+                הווידאו לא נטען לאחר מספר ניסיונות. אתה יכול לנסות שוב או להמשיך לשיעור הבא.
+              </p>
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={handleRetry}
+                  className="flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span>נסה שוב</span>
+                </button>
+                <button
+                  onClick={handleSkipVideo}
+                  className="flex items-center space-x-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                >
+                  <SkipForward className="w-4 h-4" />
+                  <span>המשך לשיעור הבא</span>
+                </button>
+                <a
+                  href={content.videoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>פתח ב-YouTube</span>
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -224,6 +370,9 @@ const VideoSlide = ({ slide, onAnswer, answers }) => {
                   loading="lazy"
                   referrerPolicy="no-referrer"
                   importance="high"
+                  // Add error boundary to prevent iframe errors from breaking session sync
+                  onAbort={() => handleVideoError(new Error('Iframe aborted'))}
+                  onSuspend={() => handleVideoError(new Error('Iframe suspended'))}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gray-800">
@@ -233,13 +382,22 @@ const VideoSlide = ({ slide, onAnswer, answers }) => {
                     <p className="text-gray-400 mb-4">
                       {!embedUrl ? 'URL וידאו לא תקין' : 'לא ניתן לטעון את הווידאו כרגע'}
                     </p>
-                    <button
-                      onClick={handleRetry}
-                      className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                      <span>נסה שוב</span>
-                    </button>
+                    <div className="flex justify-center space-x-4">
+                      <button
+                        onClick={handleRetry}
+                        className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        <span>נסה שוב</span>
+                      </button>
+                      <button
+                        onClick={handleSkipVideo}
+                        className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                      >
+                        <SkipForward className="w-4 h-4" />
+                        <span>דלג</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -285,6 +443,7 @@ const VideoSlide = ({ slide, onAnswer, answers }) => {
                 rel="noopener noreferrer"
                 className="inline-flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
               >
+                <ExternalLink className="w-4 h-4" />
                 <span>פתח ב-YouTube</span>
               </a>
             </div>

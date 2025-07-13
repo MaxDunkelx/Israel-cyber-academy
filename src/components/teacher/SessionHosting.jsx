@@ -261,10 +261,16 @@ const SessionHosting = () => {
   const getStudentStatus = (student) => {
     const studentId = student.uid || student.id;
     
+    // Ensure connectedStudents is an array
+    const connectedStudents = session?.connectedStudents || [];
+    
     // Check if student is connected to this session
-    const isConnected = session?.connectedStudents?.some(connectedStudent => 
-      connectedStudent.id === studentId || connectedStudent === studentId
-    );
+    const isConnected = connectedStudents.some(connectedStudent => {
+      if (typeof connectedStudent === 'string') {
+        return connectedStudent === studentId;
+      }
+      return connectedStudent.id === studentId;
+    });
     
     if (isConnected) {
       return 'connected';
@@ -427,6 +433,10 @@ const SessionHosting = () => {
               <h1 className="text-xl font-bold text-white">{session.lessonName}</h1>
               <p className="text-gray-300 text-sm">
                 {session.className} • {session.connectedStudents?.length || 0}/{session.studentIds?.length || 0} תלמידים מחוברים
+              </p>
+              {/* Debug info */}
+              <p className="text-xs text-gray-500 mt-1">
+                Session ID: {sessionId} • Status: {session.status} • Last Activity: {session.lastActivity?.toDate?.()?.toLocaleTimeString() || 'N/A'}
               </p>
             </div>
           </div>
@@ -641,6 +651,14 @@ const SessionHosting = () => {
                 <div className="flex justify-between text-sm text-gray-400">
                   <span>מחוברים למערכת:</span>
                   <span>{allStudents.filter(s => ['connected', 'online', 'in_other_session'].includes(getStudentStatus(s))).length}</span>
+                </div>
+                {/* Debug info */}
+                <div className="mt-2 pt-2 border-t border-gray-700">
+                  <div className="text-xs text-gray-500">
+                    <div>Connected Students: {JSON.stringify(session?.connectedStudents?.map(s => s.id || s) || [])}</div>
+                    <div>Session Status: {session?.status}</div>
+                    <div>Presence Data: {Object.keys(userPresence).length} users</div>
+                  </div>
                 </div>
               </div>
             )}
