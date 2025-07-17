@@ -45,12 +45,12 @@ export const getSystemStats = async (forceRefresh = false) => {
       return statsCache;
     }
 
-    // Get all collections in parallel
+    // Get all collections in parallel with error handling
     const [usersSnapshot, lessonsSnapshot, sessionsSnapshot, securityLogsSnapshot] = await Promise.all([
-      getDocs(collection(db, 'users')),
-      getDocs(collection(db, 'lessons')),
-      getDocs(collection(db, 'sessions')),
-      getDocs(query(collection(db, 'security_logs'), orderBy('timestamp', 'desc'), limit(100)))
+      getDocs(collection(db, 'users')).catch(() => ({ docs: [] })),
+      getDocs(collection(db, 'lessons')).catch(() => ({ docs: [] })),
+      getDocs(collection(db, 'sessions')).catch(() => ({ docs: [] })),
+      getDocs(query(collection(db, 'security_logs'), orderBy('timestamp', 'desc'), limit(100))).catch(() => ({ docs: [] }))
     ]);
 
     // Process user statistics
@@ -62,7 +62,7 @@ export const getSystemStats = async (forceRefresh = false) => {
     let newUsersThisWeek = 0;
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    usersSnapshot.forEach((doc) => {
+    usersSnapshot.docs?.forEach((doc) => {
       const userData = doc.data();
       totalUsers++;
       
@@ -94,17 +94,17 @@ export const getSystemStats = async (forceRefresh = false) => {
     });
 
     // Process lesson statistics
-    const totalLessons = lessonsSnapshot.size;
+    const totalLessons = lessonsSnapshot.docs?.length || 0;
     let totalSlides = 0;
     const lessonStats = [];
 
     console.log(`📊 Processing ${totalLessons} lessons for analytics...`);
 
-    for (const lessonDoc of lessonsSnapshot.docs) {
+    for (const lessonDoc of (lessonsSnapshot.docs || [])) {
       const lessonData = lessonDoc.data();
       // Get slides from the lesson's subcollection
-      const slidesSnapshot = await getDocs(collection(db, 'lessons', lessonDoc.id, 'slides'));
-      const lessonSlides = slidesSnapshot.docs;
+      const slidesSnapshot = await getDocs(collection(db, 'lessons', lessonDoc.id, 'slides')).catch(() => ({ docs: [] }));
+      const lessonSlides = slidesSnapshot.docs || [];
       totalSlides += lessonSlides.length;
       
       console.log(`📖 Lesson ${lessonDoc.id}: ${lessonSlides.length} slides`);
@@ -121,11 +121,11 @@ export const getSystemStats = async (forceRefresh = false) => {
     console.log(`📊 Total slides found: ${totalSlides}`);
 
     // Process session statistics
-    const totalSessions = sessionsSnapshot.size;
+    const totalSessions = sessionsSnapshot.docs?.length || 0;
     let activeSessions = 0;
     let completedSessions = 0;
 
-    sessionsSnapshot.forEach((doc) => {
+    sessionsSnapshot.docs?.forEach((doc) => {
       const sessionData = doc.data();
       if (sessionData.status === 'active') {
         activeSessions++;
@@ -135,7 +135,7 @@ export const getSystemStats = async (forceRefresh = false) => {
     });
 
     // Process activity statistics from security logs and user data
-    const recentActivities = securityLogsSnapshot.docs.slice(0, 10).map(doc => {
+    const recentActivities = (securityLogsSnapshot.docs || []).slice(0, 10).map(doc => {
       const data = doc.data();
       return {
         id: doc.id,

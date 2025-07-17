@@ -124,7 +124,7 @@ try {
 let auth, db;
 try {
   auth = getAuth(app);
-  db = getFirestore(app);
+  db = getFirestore(app, 'cyber-campus'); // Use custom database name
   
   // Connect to emulators in development (optional)
   if (isDevelopment && import.meta.env.VITE_ENABLE_FIREBASE_EMULATORS === 'true') {
@@ -140,6 +140,7 @@ try {
   console.log('✅ Firebase services initialized:', {
     auth: !!auth,
     firestore: !!db,
+    database: 'cyber-campus',
     mode: isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION',
     secure: usingEnvVars || isDevelopment,
     emulators: isDevelopment && import.meta.env.VITE_ENABLE_FIREBASE_EMULATORS === 'true'

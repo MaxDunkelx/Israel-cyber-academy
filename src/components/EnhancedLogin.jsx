@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase/firebase-config';
 import { toast } from 'react-hot-toast';
-import { getSystemStats } from '../firebase/system-manager-service';
+import { getLoginAnalytics } from '../firebase/login-analytics-service';
 
 const EnhancedLogin = () => {
   const navigate = useNavigate();
@@ -129,21 +129,29 @@ const EnhancedLogin = () => {
   const loadRealStatistics = async () => {
     try {
       setStatsLoading(true);
-      const systemStats = await getSystemStats();
+      console.log('🎯 Starting analytics load...');
       
-      if (systemStats && typeof systemStats === 'object') {
-        setStats({
-          totalUsers: systemStats?.users?.total || 0,
-          totalStudents: systemStats?.users?.students || 0,
-          totalTeachers: systemStats?.users?.teachers || 0,
-          totalLessons: systemStats?.content?.totalLessons || 0,
-          activeSessions: systemStats?.sessions?.active || 0
-        });
+      const loginAnalytics = await getLoginAnalytics();
+      console.log('🎯 Analytics received:', loginAnalytics);
+      
+      if (loginAnalytics && typeof loginAnalytics === 'object') {
+        const newStats = {
+          totalUsers: (loginAnalytics.totalStudents || 0) + (loginAnalytics.totalTeachers || 0),
+          totalStudents: loginAnalytics.totalStudents || 0,
+          totalTeachers: loginAnalytics.totalTeachers || 0,
+          totalLessons: loginAnalytics.totalLessons || 0,
+          activeSessions: 0 // Not used in the 3 main containers
+        };
+        
+        console.log('🎯 Setting stats to:', newStats);
+        setStats(newStats);
+        console.log('✅ Login analytics loaded successfully!');
       } else {
-        throw new Error('Invalid statistics data received');
+        console.error('🎯 Invalid analytics data type:', typeof loginAnalytics, loginAnalytics);
+        throw new Error('Invalid analytics data received from login-analytics collection');
       }
     } catch (error) {
-      console.error('Error loading statistics:', error);
+      console.error('❌ Error loading login analytics:', error.message);
       setStats({
         totalUsers: 0,
         totalStudents: 0,
@@ -153,6 +161,7 @@ const EnhancedLogin = () => {
       });
     } finally {
       setStatsLoading(false);
+      console.log('🎯 Stats loading finished');
     }
   };
 
@@ -574,7 +583,7 @@ const EnhancedLogin = () => {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         .floating-particles {
           position: absolute;
           top: 0;

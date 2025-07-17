@@ -1,10 +1,17 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Login analytics collection - publicly readable for login page
+    match /login-analytics/{document} {
+      allow read: if true; // Public read access for login page statistics
+      allow write: if true; // Temporary write access to create initial data
+    }
+    
     // Users collection for role lookup
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+    
     // Sessions collection
     match /sessions/{sessionId} {
       // Only authenticated users can read sessions
