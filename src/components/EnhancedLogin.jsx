@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebase/firebase-config';
 import { toast } from 'react-hot-toast';
 import { getLoginAnalytics } from '../firebase/login-analytics-service';
+import { usePureAuth } from '../contexts/PureAuthContext';
+
+// Frontend script removed - using admin script instead: scripts/create-all-auth-users.cjs
 
 const EnhancedLogin = () => {
   const navigate = useNavigate();
+  const { currentUser, userProfile, login, logout } = usePureAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,6 +30,16 @@ const EnhancedLogin = () => {
   const subtitleTimeoutRef = useRef(null);
 
   useEffect(() => {
+    console.log('🚪 LOGIN PAGE: Page loaded with auth state:', {
+      hasCurrentUser: !!currentUser,
+      currentUserEmail: currentUser?.email,
+      hasUserProfile: !!userProfile,
+      userProfileRole: userProfile?.role
+    });
+
+    // Note: User redirect logic is handled by LoginRoute in App.jsx
+    // This component should only handle the login UI, not redirects
+
     loadRealStatistics();
     setupMatrixRain();
     startTerminalAnimation();
@@ -45,7 +57,7 @@ const EnhancedLogin = () => {
         clearTimeout(subtitleTimeoutRef.current);
       }
     };
-  }, []);
+  }, [currentUser, userProfile, navigate]);
 
   const createFloatingOrbs = () => {
     const orbsContainer = document.getElementById('floating-orbs');
@@ -204,55 +216,89 @@ const EnhancedLogin = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    console.log('🏁 PURE LOGIN FORM STEP 1: Form submitted with data:', {
+      email: email?.trim() || 'Empty',
+      passwordLength: password?.length || 0,
+      selectedRole: selectedRole || 'None',
+      timestamp: new Date().toISOString()
+    });
+    
     // Input validation
     if (!email?.trim() || !password?.trim()) {
+      console.log('🏁 PURE LOGIN FORM STEP 2: ❌ Validation failed - missing email/password');
       toast.error('נא למלא את כל השדות');
       return;
     }
 
     if (!selectedRole) {
+      console.log('🏁 PURE LOGIN FORM STEP 2: ❌ Validation failed - no role selected');
       toast.error('נא לבחור תפקיד');
       return;
     }
 
+    console.log('🏁 PURE LOGIN FORM STEP 2: ✅ Validation passed - proceeding with pure login');
+    
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
+      console.log('🏁 PURE LOGIN FORM STEP 3: Calling pure authentication service...');
+      
+      await login(email.trim(), password);
+      
+      console.log('🏁 PURE LOGIN FORM STEP 4: ✅ Pure authentication completed successfully!');
+      console.log('🏁 PURE LOGIN FORM STEP 5: 🎯 PureAuthContext will handle redirect based on role...');
+      
       toast.success('התחברת בהצלחה!');
-      navigate('/dashboard');
+      // Don't navigate manually - let PureAuthContext handle role-based redirect
+      
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('🏁 PURE LOGIN FORM STEP 4: ❌ Pure authentication failed:', {
+        errorCode: error?.code,
+        errorMessage: error?.message,
+        errorType: error?.constructor?.name,
+        email: email?.trim()
+      });
+      
       let errorMessage = 'אירעה שגיאה בהתחברות';
       
-      if (error?.code) {
-        switch (error.code) {
-          case 'auth/user-not-found':
-            errorMessage = 'משתמש לא נמצא';
-            break;
-          case 'auth/wrong-password':
-            errorMessage = 'סיסמה שגויה';
-            break;
-          case 'auth/invalid-email':
-            errorMessage = 'כתובת אימייל לא תקינה';
-            break;
-          case 'auth/too-many-requests':
-            errorMessage = 'יותר מדי ניסיונות, נסה שוב מאוחר יותר';
-            break;
-          case 'auth/network-request-failed':
-            errorMessage = 'בעיית חיבור לאינטרנט';
-            break;
-          default:
-            errorMessage = 'אירעה שגיאה בהתחברות';
+      if (error?.message) {
+        console.log('🏁 PURE LOGIN FORM STEP 4.1: Mapping error message to user message');
+        
+        if (error.message.includes('Invalid email or password')) {
+          errorMessage = 'אימייל או סיסמה שגויים';
+          console.log('🏁 PURE LOGIN FORM STEP 4.2: Invalid credentials');
+        } else if (error.message.includes('Account is disabled')) {
+          errorMessage = 'החשבון מושבת. פנה למנהל המערכת';
+          console.log('🏁 PURE LOGIN FORM STEP 4.2: Account disabled');
+        } else if (error.message.includes('network')) {
+          errorMessage = 'בעיית חיבור לאינטרנט';
+          console.log('🏁 PURE LOGIN FORM STEP 4.2: Network connectivity issue');
+        } else {
+          errorMessage = 'אירעה שגיאה בהתחברות';
+          console.log('🏁 PURE LOGIN FORM STEP 4.2: Unknown error:', error.message);
         }
       }
       
+      console.log('🏁 PURE LOGIN FORM STEP 4.3: Showing error message to user:', errorMessage);
       toast.error(errorMessage);
+      
     } finally {
       setLoading(false);
+      console.log('🏁 PURE LOGIN FORM STEP 5: Login process completed (success or failure)');
     }
   };
 
-
+  // Clear existing session
+  const handleClearSession = async () => {
+    console.log('🚪 LOGIN PAGE: Clearing existing session...');
+    try {
+      await logout();
+      toast.success('Session cleared - you can now login as a different user');
+      console.log('🚪 LOGIN PAGE: ✅ Session cleared successfully');
+    } catch (error) {
+      console.error('🚪 LOGIN PAGE: ❌ Error clearing session:', error);
+      toast.error('Error clearing session');
+    }
+  };
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -462,6 +508,22 @@ const EnhancedLogin = () => {
                 <div className="text-center mb-6">
                   <div className="text-cyan-400 font-mono text-lg mb-2 font-bold tracking-wider">[התחברות_מערכת]</div>
                   <div className="text-cyan-300 font-mono text-sm">גישה אושרה עבור: {selectedRole === 'student' ? 'תלמיד' : selectedRole === 'teacher' ? 'מדריך' : 'מנהל_מערכת'}</div>
+                  
+                  {/* Show current session info if user is logged in */}
+                  {currentUser && (
+                    <div className="mt-4 p-3 bg-yellow-900/50 border border-yellow-500/30 rounded-lg">
+                      <p className="text-yellow-300 text-sm mb-2 font-mono">
+                        [מחובר_כרגע]: {currentUser.email}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleClearSession}
+                        className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded transition-colors font-mono"
+                      >
+                        [נקה_חיבור]
+                      </button>
+                    </div>
+                  )}
                 </div>
                 
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -511,6 +573,13 @@ const EnhancedLogin = () => {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Database Restore Component - Only show in development */}
+          {import.meta.env.DEV && (
+            <div className="mt-8 w-full max-w-lg mx-auto">
+      
             </div>
           )}
 

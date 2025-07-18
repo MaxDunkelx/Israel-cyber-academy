@@ -8,9 +8,9 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, UserPlus, Mail, User, Shield } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../../../firebase/firebase-config';
+// Pure authentication - no Firebase Auth
+import { doc, setDoc, serverTimestamp, collection } from 'firebase/firestore';
+import { db } from '../../../firebase/firebase-config';
 import { logSecurityEvent } from '../../../utils/security';
 import Button from '../../ui/Button';
 
@@ -29,25 +29,16 @@ const CreateTeacherModal = ({ onClose, onSuccess }) => {
     setLoading(true);
 
     try {
-      // Create user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(
-        auth, 
-        formData.email, 
-        formData.password
-      );
-      
-      const user = userCredential.user;
-      
-      // Update display name in Auth
+      // Pure authentication - create user directly in Firestore
       const displayName = formData.displayName || `${formData.firstName} ${formData.lastName}`;
-      await updateProfile(user, { displayName });
       
       // Create comprehensive teacher profile in Firestore
       const teacherProfile = {
-        uid: user.uid,
-        email: user.email,
+        email: formData.email,
+        password: formData.password, // In production, this should be hashed
         displayName: displayName,
         role: 'teacher',
+        hasFirebaseAuth: false, // Important: this user doesn't use Firebase Auth
         // User credentials
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -69,14 +60,15 @@ const CreateTeacherModal = ({ onClose, onSuccess }) => {
         updatedAt: serverTimestamp()
       };
       
-      // Store profile in Firestore
-      await setDoc(doc(db, 'users', user.uid), teacherProfile);
+      // Store profile in Firestore with auto-generated ID
+      const userRef = doc(collection(db, 'users'));
+      await setDoc(userRef, teacherProfile);
       
       // Log security event
       logSecurityEvent('TEACHER_CREATED', {
-        teacherId: user.uid,
+        teacherId: userRef.id,
         teacherEmail: formData.email,
-        createdBy: auth.currentUser?.uid,
+        createdBy: 'system_manager', // Pure auth - no Firebase Auth UID
         timestamp: new Date().toISOString()
       });
       

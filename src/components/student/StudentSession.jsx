@@ -17,7 +17,7 @@ import { toast } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { getSession, joinSession, leaveSession, listenToSession, updateSessionSlide } from '../../firebase/session-service';
 import { getLessonWithSlides } from '../../firebase/content-service';
-import { PresentationSlide, PollSlide, VideoSlide, InteractiveSlide, BreakSlide, ReflectionSlide, QuizSlide } from '../slides';
+import { PresentationSlide, PollSlide, VideoSlide, InteractiveSlide, BreakSlide, ReflectionSlide, QuizSlide, ContentSlide, AssessmentSlide } from '../slides';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
@@ -412,22 +412,30 @@ const StudentSession = () => {
       
       // Use the exact same slide components as the student interface
       switch (slide.type) {
-        case 'presentation':
-          return <PresentationSlide slide={slide} />;
-        case 'poll':
-          return <PollSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
-        case 'quiz':
-          return <QuizSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
+        // New unified slide types
+        case 'content':
+          return <ContentSlide slide={slide} />;
+        case 'assessment':
+          return <AssessmentSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
         case 'video':
           return <VideoSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
         case 'interactive':
           return <InteractiveSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
         case 'break':
           return <BreakSlide slide={slide} />;
+        
+        // Legacy slide types (for backward compatibility)
+        case 'presentation':
+          return <PresentationSlide slide={slide} />;
+        case 'poll':
+          return <PollSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
+        case 'quiz':
+          return <QuizSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
         case 'reflection':
           return <ReflectionSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
+        
         default:
-          return <PresentationSlide slide={slide} />;
+          return <ContentSlide slide={slide} />;
       }
     } catch (error) {
       console.error('❌ Error rendering slide:', error, slide);

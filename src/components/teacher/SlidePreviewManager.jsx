@@ -35,12 +35,13 @@ import {
   Grid,
   List,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Target
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { saveTeacherNotes, getTeacherNotesForLesson } from '../../firebase/teacher-service';
 import { getAllLessons, getAllLessonsWithSlideCounts, getSlidesByLessonId, getLessonWithSlides } from '../../firebase/content-service';
-import { PresentationSlide, PollSlide, VideoSlide, InteractiveSlide, BreakSlide, ReflectionSlide, QuizSlide } from '../slides';
+import { PresentationSlide, PollSlide, VideoSlide, InteractiveSlide, BreakSlide, ReflectionSlide, QuizSlide, ContentSlide, AssessmentSlide } from '../slides';
 import LoadingSpinner from '../common/LoadingSpinner';
 import Card from '../ui/Card';
 import { toast } from 'react-hot-toast';
@@ -323,20 +324,28 @@ const SlidePreviewManager = () => {
 
     try {
       switch (slide.type) {
-        case 'presentation':
-          return <PresentationSlide slide={slide} />;
-        case 'poll':
-          return <PollSlide slide={slide} onSubmit={(answer) => handleAnswer(slide.id, answer)} />;
+        // New unified slide types
+        case 'content':
+          return <ContentSlide slide={slide} />;
+        case 'assessment':
+          return <AssessmentSlide slide={slide} onAnswer={(answer) => handleAnswer(slide.id, answer)} />;
         case 'video':
           return <VideoSlide slide={slide} />;
         case 'interactive':
           return <InteractiveSlide slide={slide} onComplete={(result) => handleAnswer(slide.id, result)} />;
         case 'break':
           return <BreakSlide slide={slide} />;
+        
+        // Legacy slide types (for backward compatibility)
+        case 'presentation':
+          return <PresentationSlide slide={slide} />;
+        case 'poll':
+          return <PollSlide slide={slide} onSubmit={(answer) => handleAnswer(slide.id, answer)} />;
         case 'reflection':
           return <ReflectionSlide slide={slide} onSubmit={(reflection) => handleAnswer(slide.id, reflection)} />;
         case 'quiz':
           return <QuizSlide slide={slide} onSubmit={(answer) => handleAnswer(slide.id, answer)} />;
+        
         default:
           return (
             <div className="text-center py-8">
@@ -370,13 +379,19 @@ const SlidePreviewManager = () => {
   // Get slide type icon
   const getSlideTypeIcon = (type) => {
     switch (type) {
-      case 'presentation': return <FileText className="w-4 h-4" />;
-      case 'poll': return <MessageSquare className="w-4 h-4" />;
+      // New unified slide types
+      case 'content': return <FileText className="w-4 h-4" />;
+      case 'assessment': return <Target className="w-4 h-4" />;
       case 'video': return <Play className="w-4 h-4" />;
       case 'interactive': return <Settings className="w-4 h-4" />;
       case 'break': return <Pause className="w-4 h-4" />;
+      
+      // Legacy slide types
+      case 'presentation': return <FileText className="w-4 h-4" />;
+      case 'poll': return <MessageSquare className="w-4 h-4" />;
       case 'reflection': return <BookOpen className="w-4 h-4" />;
       case 'quiz': return <CheckCircle className="w-4 h-4" />;
+      
       default: return <FileText className="w-4 h-4" />;
     }
   };

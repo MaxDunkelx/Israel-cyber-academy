@@ -1,360 +1,192 @@
 /**
- * App Component - Main Application Router
+ * App Component - UNIFIED ROUTING SYSTEM
  * 
- * Handles routing and authentication state management.
- * Provides protected routes and role-based access control.
- * 
- * Key Features:
- * - Authentication-based routing
- * - Role-based access control (student/teacher)
- * - Protected route handling
- * - Loading state management
- * - Error boundary integration
- * 
- * Component Flow:
- * 1. Check authentication state
- * 2. Route to appropriate component based on auth and role
- * 3. Handle loading and error states
- * 4. Provide navigation context
+ * Now using centralized route protection with comprehensive logging
+ * and unified authentication logic.
  */
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import PureAuthProvider, { usePureAuth } from './contexts/PureAuthContext';
 import ErrorBoundary from './components/common/ErrorBoundary';
-import { StudentRoute, TeacherRoute, SystemManagerRoute } from './components/common/RouteProtection';
 
-// Student Components
+// 🛡️ UNIFIED ROUTING SYSTEM
+import UnifiedRouteProtection, {
+  HomeRedirect,
+  LoginRoute,
+  StudentRoute,
+  TeacherRoute,
+  SystemManagerRoute,
+  PublicRoute
+} from './components/common/UnifiedRouteProtection';
+
+// Components
 import EnhancedLogin from './components/EnhancedLogin';
 import Navigation from './components/Navigation';
 import Roadmap from './components/Roadmap';
 import InteractiveLesson from './components/InteractiveLesson';
 import Profile from './components/Profile';
 import StudentDashboard from './components/student/StudentDashboard';
-import LiveSessionNotification from './components/student/LiveSessionNotification';
-
-// Teacher Components
 import TeacherNavigation from './components/teacher/TeacherNavigation';
 import TeacherDashboard from './components/teacher/TeacherDashboard';
-import SessionHosting from './components/teacher/SessionHosting';
-import SessionCreation from './components/teacher/SessionCreation';
-import LessonController from './components/teacher/LessonController';
-import SlidePreviewManager from './components/teacher/SlidePreviewManager';
-import RealAnalytics from './components/teacher/RealAnalytics';
-import ClassroomInterface from './components/teacher/ClassroomInterface';
-import StudentPool from './components/teacher/StudentPool';
-import StudentSession from './components/student/StudentSession';
-
-// System Manager Components
 import SystemManagerDashboard from './components/system-manager/SystemManagerDashboard';
 import SystemManagerNavigation from './components/system-manager/SystemManagerNavigation';
-import UserManagement from './components/system-manager/UserManagement';
-import SystemSettings from './components/system-manager/SystemSettings';
-import SystemLogs from './components/system-manager/SystemLogs';
-import ExcelImport from './components/system-manager/ExcelImport';
-
-// import './App.css';
-
-/**
- * Protected Route Component (Legacy - for backward compatibility)
- * 
- * @deprecated Use StudentRoute, TeacherRoute, or SystemManagerRoute instead
- */
-const ProtectedRoute = ({ children, requiredRole = null }) => {
-  const { currentUser, loading, role } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (!currentUser) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (requiredRole && role !== requiredRole) {
-    return <Navigate to="/" replace />;
-  }
-
-  return <>{children}</>;
-};
+import FirebaseDiagnostic from './components/FirebaseDiagnostic';
+import DatabaseTest from './components/DatabaseTest';
+import TestLessons from './components/TestLessons';
+import TestLessonsPage from './components/TestLessonsPage';
+import TestTeacherSystem from './components/TestTeacherSystem';
 
 /**
- * Main App Component
- * 
- * Sets up routing and authentication context.
- * Handles the main application structure with separate student and teacher platforms.
- * 
- * @returns {JSX.Element} Main app component
+ * 🎯 MAIN APP CONTENT WITH UNIFIED ROUTING
  */
 const AppContent = () => {
-  const { currentUser, role } = useAuth();
+  const { currentUser, userProfile } = usePureAuth();
 
-  // Memoize login route element to prevent infinite re-renders
-  const loginRouteElement = useMemo(() => {
-    if (currentUser) {
-      if (role === 'system_manager') {
-        return <Navigate to="/system-manager/dashboard" replace />;
-      } else if (role === 'teacher') {
-        return <Navigate to="/teacher/dashboard" replace />;
-      } else {
-        return <Navigate to="/student/roadmap" replace />;
-      }
-    } else {
-      return <EnhancedLogin />;
-    }
-  }, [currentUser, role]);
-
-  // Memoize main route redirect to prevent infinite re-renders
-  const mainRouteRedirect = useMemo(() => {
-    if (!currentUser) {
-      return <Navigate to="/login" replace />;
-    }
-    
-    if (role === 'system_manager') {
-      return <Navigate to="/system-manager/dashboard" replace />;
-    }
-    
-    if (role === 'teacher') {
-      return <Navigate to="/teacher/dashboard" replace />;
-    }
-    
-    return <Navigate to="/student/roadmap" replace />;
-  }, [currentUser, role]);
+  console.log('🚀 APP: Rendering main application', {
+    hasCurrentUser: !!currentUser,
+    currentUserEmail: currentUser?.email || 'None',
+    hasUserProfile: !!userProfile,
+    userRole: userProfile?.role || 'None',
+    timestamp: new Date().toISOString()
+  });
 
   return (
     <Router>
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
-        {/* Live Session Notification - only for students */}
-        {currentUser && role === 'student' && <LiveSessionNotification />}
         
-        {/* Navigation - only show when authenticated */}
-        {currentUser && role === 'student' && <Navigation />}
-        {currentUser && role === 'teacher' && <TeacherNavigation />}
-        {currentUser && role === 'system_manager' && <SystemManagerNavigation />}
+        {/* 🧭 ROLE-BASED NAVIGATION */}
+        {currentUser && userProfile?.role === 'student' && (
+          <Navigation />
+        )}
+        {currentUser && userProfile?.role === 'teacher' && (
+          <TeacherNavigation />
+        )}
+        {currentUser && userProfile?.role === 'system_manager' && (
+          <SystemManagerNavigation />
+        )}
         
-        {/* Main Routes */}
         <Routes>
-          {/* Public Routes */}
+          
+          {/* 🏠 PUBLIC ROUTES */}
           <Route 
             path="/" 
-            element={mainRouteRedirect}
+            element={<HomeRedirect />} 
           />
           
-          <Route
-            path="/login"
-            element={loginRouteElement}
-          />
-          
-          {/* Student Routes */}
-          <Route
-            path="/student"
+          <Route 
+            path="/login" 
             element={
-              <ProtectedRoute>
-                <Navigate to="/student/roadmap" replace />
-              </ProtectedRoute>
-            }
+              <LoginRoute>
+                <EnhancedLogin />
+              </LoginRoute>
+            } 
           />
           
-          <Route
-            path="/student/roadmap"
+          {/* 🔧 TEMPORARY DIAGNOSTIC ROUTES */}
+          <Route 
+            path="/diagnostic" 
+            element={<FirebaseDiagnostic />} 
+          />
+          <Route 
+            path="/database-test" 
+            element={<DatabaseTest />} 
+          />
+          <Route 
+            path="/test-lessons" 
+            element={<TestLessons />} 
+          />
+          <Route 
+            path="/test-lessons-page" 
+            element={<TestLessonsPage />} 
+          />
+          <Route 
+            path="/test-teacher-system" 
+            element={<TestTeacherSystem />} 
+          />
+          
+          {/* 🎓 STUDENT ROUTES */}
+          <Route 
+            path="/student/roadmap" 
             element={
-              <StudentRoute>
+              <StudentRoute routeName="Student Roadmap">
                 <Roadmap />
               </StudentRoute>
-            }
+            } 
           />
           
-          <Route
-            path="/student/lesson/:lessonId"
+          <Route 
+            path="/student/lesson/:lessonId" 
             element={
-              <StudentRoute>
+              <StudentRoute routeName="Student Lesson">
                 <InteractiveLesson />
               </StudentRoute>
-            }
+            } 
           />
           
-          <Route
-            path="/student/session/:sessionId"
+          <Route 
+            path="/student/profile" 
             element={
-              <StudentRoute>
-                <StudentSession />
-              </StudentRoute>
-            }
-          />
-          
-          <Route
-            path="/student/profile"
-            element={
-              <StudentRoute>
+              <StudentRoute routeName="Student Profile">
                 <Profile />
               </StudentRoute>
-            }
+            } 
           />
           
-          <Route
-            path="/student/dashboard"
+          <Route 
+            path="/student/dashboard" 
             element={
-              <StudentRoute>
+              <StudentRoute routeName="Student Dashboard">
                 <StudentDashboard />
               </StudentRoute>
-            }
+            } 
           />
           
-          {/* Teacher Routes */}
-          <Route
-            path="/teacher/dashboard"
+          {/* 👨‍🏫 TEACHER ROUTES */}
+          <Route 
+            path="/teacher/dashboard" 
             element={
-              <TeacherRoute>
+              <TeacherRoute routeName="Teacher Dashboard">
                 <TeacherDashboard />
               </TeacherRoute>
-            }
+            } 
           />
           
-          <Route
-            path="/teacher/session/create"
+          {/* 🔧 SYSTEM MANAGER ROUTES */}
+          <Route 
+            path="/system-manager/dashboard" 
             element={
-              <TeacherRoute>
-                <SessionCreation />
-              </TeacherRoute>
-            }
-          />
-          
-          <Route
-            path="/teacher/session/:sessionId"
-            element={
-              <TeacherRoute>
-                <SessionHosting />
-              </TeacherRoute>
-            }
-          />
-          
-          <Route
-            path="/teacher/controller/:sessionId"
-            element={
-              <TeacherRoute>
-                <LessonController />
-              </TeacherRoute>
-            }
-          />
-          
-          <Route
-            path="/teacher/slides"
-            element={
-              <TeacherRoute>
-                <SlidePreviewManager />
-              </TeacherRoute>
-            }
-          />
-          
-          <Route
-            path="/teacher/profile"
-            element={
-              <TeacherRoute>
-                <Profile />
-              </TeacherRoute>
-            }
-          />
-          
-          <Route
-            path="/teacher/real-analytics"
-            element={
-              <TeacherRoute>
-                <RealAnalytics />
-              </TeacherRoute>
-            }
-          />
-          
-          <Route
-            path="/teacher/classroom-interface"
-            element={
-              <TeacherRoute>
-                <ClassroomInterface />
-              </TeacherRoute>
-            }
-          />
-          
-          <Route
-            path="/teacher/student-pool"
-            element={
-              <TeacherRoute>
-                <StudentPool />
-              </TeacherRoute>
-            }
-          />
-          
-          {/* System Manager Routes */}
-          <Route
-            path="/system-manager"
-            element={
-              <SystemManagerRoute>
-                <Navigate to="/system-manager/dashboard" replace />
-              </SystemManagerRoute>
-            }
-          />
-          
-          <Route
-            path="/system-manager/dashboard"
-            element={
-              <SystemManagerRoute>
+              <SystemManagerRoute routeName="System Manager Dashboard">
                 <SystemManagerDashboard />
               </SystemManagerRoute>
-            }
+            } 
           />
           
-          <Route
-            path="/system-manager/users"
+          {/* 🚫 FALLBACK ROUTE */}
+          <Route 
+            path="*" 
             element={
-              <SystemManagerRoute>
-                <UserManagement />
-              </SystemManagerRoute>
-            }
+              <PublicRoute routeName="404 Fallback">
+                <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+                  <div className="text-center">
+                    <h1 className="text-4xl font-bold text-white mb-4">404 - Page Not Found</h1>
+                    <p className="text-gray-400 mb-8">The page you're looking for doesn't exist.</p>
+                    <Navigate to="/" replace />
+                  </div>
+                </div>
+              </PublicRoute>
+            } 
           />
           
-          <Route
-            path="/system-manager/imports"
-            element={
-              <SystemManagerRoute>
-                <ExcelImport />
-              </SystemManagerRoute>
-            }
-          />
-          
-          <Route
-            path="/system-manager/settings"
-            element={
-              <SystemManagerRoute>
-                <SystemSettings />
-              </SystemManagerRoute>
-            }
-          />
-          
-          <Route
-            path="/system-manager/logs"
-            element={
-              <SystemManagerRoute>
-                <SystemLogs />
-              </SystemManagerRoute>
-            }
-          />
-          
-          {/* Fallback Route */}
-          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         
-        {/* Toast Notifications */}
+        {/* 📢 TOAST NOTIFICATIONS */}
         <Toaster
           position="top-center"
           reverseOrder={false}
           gutter={8}
-          containerClassName=""
-          containerStyle={{}}
           toastOptions={{
-            className: '',
             duration: 4000,
             style: {
               background: '#363636',
@@ -382,18 +214,19 @@ const AppContent = () => {
 };
 
 /**
- * App Component with Error Boundary
- * 
- * Wraps the entire application with error boundary and authentication context.
- * 
- * @returns {JSX.Element} App component with error handling
+ * 🚀 APP WITH ERROR BOUNDARY AND AUTHENTICATION
  */
 const App = () => {
+  console.log('🎯 APP: Application starting up', {
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+
   return (
     <ErrorBoundary>
-      <AuthProvider>
+      <PureAuthProvider>
         <AppContent />
-      </AuthProvider>
+      </PureAuthProvider>
     </ErrorBoundary>
   );
 };

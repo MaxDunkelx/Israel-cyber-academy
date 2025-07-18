@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Users, UserCheck, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { collection, getDocs, query, where, updateDoc, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
-import { db, auth } from '../../../firebase/firebase-config';
+import { db } from '../../../firebase/firebase-config';
 import { logSecurityEvent } from '../../../utils/security';
 import Button from '../../ui/Button';
 
@@ -124,7 +124,7 @@ const AssignStudentsModal = ({ onClose, onSuccess }) => {
       logSecurityEvent('STUDENTS_ASSIGNED_TO_TEACHER', {
         teacherId: teacherDocumentId,
         studentIds: selectedStudents,
-        assignedBy: auth.currentUser?.uid,
+        assignedBy: 'system_manager', // Pure auth - no Firebase Auth UID
         timestamp: new Date().toISOString()
       });
       

@@ -48,15 +48,32 @@ export const getAllLessons = async (forceRefresh = false) => {
 
     // Get lessons from Firestore
     const lessonsRef = collection(db, 'lessons');
-    const lessonsQuery = query(lessonsRef, orderBy('originalId', 'asc'));
+    
+    // Try without ordering first to see if that's causing the issue
+    const lessonsQuery = query(lessonsRef);
+    
     const snapshot = await getDocs(lessonsQuery);
     
-    const dbLessons = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate?.() || new Date(),
-      updatedAt: doc.data().updatedAt?.toDate?.() || new Date()
-    }));
+    const dbLessons = snapshot.docs
+      .map(doc => {
+        const lessonData = {
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate?.() || new Date(),
+          updatedAt: doc.data().updatedAt?.toDate?.() || new Date()
+        };
+        return lessonData;
+      })
+      // Filter out old format lessons (lesson1, lesson2, etc.) - keep only new format (lesson001, lesson002, etc.)
+      .filter(lesson => {
+        const lessonId = lesson.id || lesson.originalId || '';
+        // Keep lessons that match the new format (lesson001, lesson002, etc.)
+        const isNewFormat = /^lesson\d{3}$/.test(lessonId);
+        if (!isNewFormat && lessonId.startsWith('lesson')) {
+          console.log(`🗑️ Filtering out old format lesson: ${lessonId}`);
+        }
+        return isNewFormat;
+      });
 
     // Update cache
     lessonsCache = dbLessons;
@@ -67,24 +84,28 @@ export const getAllLessons = async (forceRefresh = false) => {
   } catch (error) {
     console.warn('Database unavailable, falling back to local lessons:', error.message);
     
-          // Fallback to local lessons when database is unavailable
-      try {
-        const { lessons } = await import('../data/lessons.js');
-      const localLessons = lessons.map((lesson, index) => ({
-        id: `local-${lesson.id || index + 1}`,
-        originalId: lesson.id || index + 1,
-        title: lesson.title,
-        description: lesson.description,
-        difficulty: lesson.difficulty || 'beginner',
-        targetAge: lesson.targetAge || 'all',
-        estimatedDuration: lesson.estimatedDuration || 30,
-        slides: lesson.content?.slides || [],
-        totalSlides: lesson.content?.slides?.length || 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        isActive: true,
-        source: 'local_fallback'
-      }));
+    // Fallback to local lessons when database is unavailable
+    try {
+      const { lessons } = await import('../data/lessons/index.js');
+      
+      const localLessons = lessons.map((lesson, index) => {
+        const lessonData = {
+          id: lesson.id || `lesson${String(index + 1).padStart(3, '0')}`,
+          originalId: lesson.id || `lesson${String(index + 1).padStart(3, '0')}`,
+          title: lesson.title,
+          description: lesson.description,
+          difficulty: lesson.difficulty || 'beginner',
+          targetAge: lesson.targetAge || 'all',
+          estimatedDuration: lesson.estimatedDuration || 30,
+          slides: lesson.content?.slides || [],
+          totalSlides: lesson.content?.slides?.length || 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          isActive: true,
+          source: 'local_fallback'
+        };
+        return lessonData;
+      });
       
       // Update cache with local data
       lessonsCache = localLessons;
@@ -304,8 +325,17 @@ export const getSlidesByLessonId = async (lessonId) => {
         if (aOrder !== bOrder) {
           return aOrder - bOrder;
         }
-        // If order is the same, sort by ID
-        return a.originalId.localeCompare(b.originalId);
+        // If order is the same, sort by ID - handle both numeric and string IDs
+        const aId = a.originalId || a.id || '';
+        const bId = b.originalId || b.id || '';
+        // Extract numeric part from slide IDs (e.g., "slide001" -> 1, "slide1" -> 1)
+        const aNum = parseInt(aId.replace(/\D/g, '')) || 0;
+        const bNum = parseInt(bId.replace(/\D/g, '')) || 0;
+        if (aNum !== bNum) {
+          return aNum - bNum;
+        }
+        // If numeric extraction fails, fall back to string comparison
+        return aId.localeCompare(bId);
       });
       
       if (slides.length > 0) {
@@ -352,8 +382,17 @@ export const getSlidesByLessonId = async (lessonId) => {
         if (aOrder !== bOrder) {
           return aOrder - bOrder;
         }
-        // If order is the same, sort by ID
-        return a.originalId.localeCompare(b.originalId);
+        // If order is the same, sort by ID - handle both numeric and string IDs
+        const aId = a.originalId || a.id || '';
+        const bId = b.originalId || b.id || '';
+        // Extract numeric part from slide IDs (e.g., "slide001" -> 1, "slide1" -> 1)
+        const aNum = parseInt(aId.replace(/\D/g, '')) || 0;
+        const bNum = parseInt(bId.replace(/\D/g, '')) || 0;
+        if (aNum !== bNum) {
+          return aNum - bNum;
+        }
+        // If numeric extraction fails, fall back to string comparison
+        return aId.localeCompare(bId);
       });
       
       if (slides.length > 0) {
@@ -399,10 +438,17 @@ export const getSlidesByLessonId = async (lessonId) => {
         if (aOrder !== bOrder) {
           return aOrder - bOrder;
         }
-        // If order is the same, sort by ID
-        const aNum = parseInt(a.originalId.replace(/\D/g, '')) || 0;
-        const bNum = parseInt(b.originalId.replace(/\D/g, '')) || 0;
-        return aNum - bNum;
+        // If order is the same, sort by ID - handle both numeric and string IDs
+        const aId = a.originalId || a.id || '';
+        const bId = b.originalId || b.id || '';
+        // Extract numeric part from slide IDs (e.g., "slide001" -> 1, "slide1" -> 1)
+        const aNum = parseInt(aId.replace(/\D/g, '')) || 0;
+        const bNum = parseInt(bId.replace(/\D/g, '')) || 0;
+        if (aNum !== bNum) {
+          return aNum - bNum;
+        }
+        // If numeric extraction fails, fall back to string comparison
+        return aId.localeCompare(bId);
       });
       
       if (slides.length > 0) {
@@ -448,10 +494,17 @@ export const getSlidesByLessonId = async (lessonId) => {
         if (aOrder !== bOrder) {
           return aOrder - bOrder;
         }
-        // If order is the same, sort by ID
-        const aNum = parseInt(a.originalId.replace(/\D/g, '')) || 0;
-        const bNum = parseInt(b.originalId.replace(/\D/g, '')) || 0;
-        return aNum - bNum;
+        // If order is the same, sort by ID - handle both numeric and string IDs
+        const aId = a.originalId || a.id || '';
+        const bId = b.originalId || b.id || '';
+        // Extract numeric part from slide IDs (e.g., "slide001" -> 1, "slide1" -> 1)
+        const aNum = parseInt(aId.replace(/\D/g, '')) || 0;
+        const bNum = parseInt(bId.replace(/\D/g, '')) || 0;
+        if (aNum !== bNum) {
+          return aNum - bNum;
+        }
+        // If numeric extraction fails, fall back to string comparison
+        return aId.localeCompare(bId);
       });
       
       if (slides.length > 0) {
@@ -464,7 +517,7 @@ export const getSlidesByLessonId = async (lessonId) => {
     // If no database slides found, try local fallback
     try {
       console.warn('No database slides found, falling back to local slides for lesson:', lessonId);
-      const { lessons } = await import('../data/lessons.js');
+      const { lessons } = await import('../data/lessons/index.js');
       const lessonNumber = parseInt(lessonId);
       const localLesson = lessons.find(l => l.id === lessonNumber);
       
@@ -496,7 +549,7 @@ export const getSlidesByLessonId = async (lessonId) => {
     
     // Try local fallback when database fails completely
     try {
-      const { lessons } = await import('../data/lessons.js');
+      const { lessons } = await import('../data/lessons/index.js');
       const lessonNumber = parseInt(lessonId);
       const localLesson = lessons.find(l => l.id === lessonNumber);
       
@@ -789,7 +842,7 @@ export const getLessonWithSlides = async (lessonId) => {
     
     // Fallback to local lesson when database is unavailable
     try {
-      const { lessons } = await import('../data/lessons.js');
+      const { lessons } = await import('../data/lessons/index.js');
       const lessonNumber = parseInt(lessonId);
       const localLesson = lessons.find(l => l.id === lessonNumber);
       
@@ -909,7 +962,7 @@ export const getNextLesson = async (currentLessonId) => {
       // Try fallback to local lessons
       try {
         console.log('🔄 Trying local fallback for getNextLesson...');
-        const { lessons: localLessons } = await import('../data/lessons.js');
+        const { lessons: localLessons } = await import('../data/lessons/index.js');
         const lessonNumber = parseInt(currentLessonId);
         const currentIndexLocal = localLessons.findIndex(l => l.id === lessonNumber);
         

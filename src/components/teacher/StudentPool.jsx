@@ -62,7 +62,8 @@ const StudentPool = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      console.log('🔄 Loading data for teacher:', currentUser.uid);
+      const teacherId = currentUser?.id || currentUser?.uid;
+      console.log('🔄 Loading data for teacher:', teacherId);
       
       // Load students, classes, and lessons
       console.log('📚 Fetching students...');
@@ -71,7 +72,7 @@ const StudentPool = () => {
       console.log('📋 Students data:', studentsData);
       
       console.log('🏫 Fetching classes...');
-      const classesData = await getTeacherClasses(currentUser.uid);
+      const classesData = await getTeacherClasses(teacherId);
       console.log('✅ Classes fetched:', classesData.length, 'classes');
       console.log('📋 Classes data:', classesData);
       
@@ -127,7 +128,8 @@ const StudentPool = () => {
     }
 
     try {
-      const createdClass = await createClass(newClass, currentUser.uid);
+      const teacherId = currentUser?.id || currentUser?.uid;
+      const createdClass = await createClass(newClass, teacherId);
       setClasses(prev => [createdClass, ...prev]);
       setNewClass({ name: '', description: '', maxStudents: 30, initialLesson: '' });
       setShowCreateClass(false);
@@ -148,11 +150,12 @@ const StudentPool = () => {
     }
 
     try {
+      const teacherId = currentUser?.id || currentUser?.uid;
       await updateClass(editingClass.id, {
         name: editingClass.name,
         description: editingClass.description,
         maxStudents: editingClass.maxStudents
-      }, currentUser.uid);
+      }, teacherId);
       
       setClasses(prev => prev.map(c => 
         c.id === editingClass.id ? { ...c, ...editingClass } : c
@@ -170,7 +173,8 @@ const StudentPool = () => {
     if (!confirm('האם אתה בטוח שברצונך למחוק כיתה זו?')) return;
 
     try {
-      await deleteClass(classId, currentUser.uid);
+      const teacherId = currentUser?.id || currentUser?.uid;
+      await deleteClass(classId, teacherId);
       setClasses(prev => prev.filter(c => c.id !== classId));
       toast.success('הכיתה נמחקה בהצלחה');
     } catch (error) {
@@ -182,13 +186,14 @@ const StudentPool = () => {
   // Handle student assignment
   const handleAssignStudents = async (classId, studentIds) => {
     try {
-      await assignStudentsToClass(classId, studentIds, currentUser.uid);
+      const teacherId = currentUser?.id || currentUser?.uid;
+      await assignStudentsToClass(classId, studentIds, teacherId);
       
       // Update local state
       setStudents(prev => prev.map(student => ({
         ...student,
         classId: studentIds.includes(student.id) ? classId : student.classId,
-        teacherId: studentIds.includes(student.id) ? currentUser.uid : student.teacherId,
+        teacherId: studentIds.includes(student.id) ? teacherId : student.teacherId,
         assignedToClass: studentIds.includes(student.id),
         assignedToTeacher: studentIds.includes(student.id)
       })));

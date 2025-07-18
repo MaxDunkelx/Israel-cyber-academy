@@ -34,7 +34,18 @@ import { getLessonWithSlides } from '../../firebase/content-service';
 import { getClassStudents } from '../../firebase/teacher-service';
 import { listenToMultipleUsersPresence } from '../../firebase/presence-service';
 // Removed local data import - using only Firebase database
-import { PresentationSlide, PollSlide, VideoSlide, InteractiveSlide, BreakSlide, ReflectionSlide, QuizSlide } from '../slides';
+import { 
+  ContentSlide, 
+  AssessmentSlide, 
+  VideoSlide, 
+  InteractiveSlide, 
+  BreakSlide,
+  // Legacy imports for backward compatibility
+  PresentationSlide, 
+  PollSlide, 
+  ReflectionSlide, 
+  QuizSlide 
+} from '../slides';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
@@ -328,24 +339,32 @@ const SessionHosting = () => {
   };
 
   /**
-   * Render slide based on type using proper slide components
+   * Render slide based on type using proper slide components - supports both new unified and legacy types
    */
   const renderSlide = (slide) => {
     switch (slide.type) {
-      case 'presentation':
-        return <PresentationSlide slide={slide} />;
-      case 'poll':
-        return <PollSlide slide={slide} />;
+      // New unified slide types
+      case 'content':
+        return <ContentSlide slide={slide} />;
+      case 'assessment':
+        return <AssessmentSlide slide={slide} onAnswer={() => {}} />;
       case 'video':
         return <VideoSlide slide={slide} />;
       case 'interactive':
         return <InteractiveSlide slide={slide} onAnswer={() => {}} />;
       case 'break':
         return <BreakSlide slide={slide} />;
+      
+      // Legacy slide types (for backward compatibility)
+      case 'presentation':
+        return <PresentationSlide slide={slide} />;
+      case 'poll':
+        return <PollSlide slide={slide} />;
       case 'reflection':
         return <ReflectionSlide slide={slide} />;
       case 'quiz':
         return <QuizSlide slide={slide} />;
+      
       default:
         return <div className="text-white">סוג שקופית לא מוכר: {slide.type}</div>;
     }

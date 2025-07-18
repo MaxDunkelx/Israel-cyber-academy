@@ -7,12 +7,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, LogOut, Settings, User } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { usePureAuth } from '../../contexts/PureAuthContext';
 import Button from '../ui/Button';
 
 const SystemManagerNavigation = () => {
   const navigate = useNavigate();
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout } = usePureAuth();
 
   const handleLogout = async () => {
     try {

@@ -1,10 +1,7 @@
 {
-  "firestore": [
-    {
-      "rules": "firestore.rules",
-      "database": "cyber-campus"
-    }
-  ],
+  "firestore": {
+    "rules": "firestore.rules"
+  },
   "hosting": {
     "public": "dist",
     "ignore": [

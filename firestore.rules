@@ -1,33 +1,94 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Login analytics collection - publicly readable for login page
-    match /login-analytics/{document} {
-      allow read: if true; // Public read access for login page statistics
-      allow write: if true; // Temporary write access to create initial data
-    }
     
-    // Users collection for role lookup
+    // ===== PURE FIRESTORE AUTHENTICATION RULES =====
+    // No Firebase Auth - using pure database authentication
+    
+    // Users collection - allow read for authentication
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Allow reading user profiles for authentication
+      allow read: if true;
+      
+      // Allow writing user profiles (for pure auth system)
+      allow write: if true;
     }
     
-    // Sessions collection
+    // ===== PRESENCE TRACKING RULES =====
+    
+    // UserPresence - allow all operations for pure auth
+    match /userPresence/{userId} {
+      allow read, write: if true;
+    }
+    
+    // ===== LESSON CONTENT RULES =====
+    
+    // Lessons - allow all operations for pure auth
+    match /lessons/{lessonId} {
+      allow read, write: if true;
+    }
+    
+    // Lesson content and slides - allow all operations for pure auth
+    match /lesson-content/{contentId} {
+      allow read, write: if true;
+    }
+    
+    // ===== CLASS AND SESSION RULES =====
+    
+    // Classes - allow all operations for pure auth
+    match /classes/{classId} {
+      allow read, write: if true;
+    }
+    
+    // Sessions - allow all operations for pure auth
     match /sessions/{sessionId} {
-      // Only authenticated users can read sessions
-      allow read: if request.auth != null && (
-        resource.data.teacherId == request.auth.uid ||
-        (resource.data.studentIds != null && resource.data.studentIds.hasAny([request.auth.uid]))
-      );
-      // Only teachers can create sessions
-      allow create: if request.auth != null &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "teacher";
-      // Only the teacher who owns the session can update or delete it
-      allow update, delete: if request.auth != null &&
-        resource.data.teacherId == request.auth.uid;
-      // Students can update their own presence in connectedStudents
-      allow update: if request.auth != null &&
-        request.resource.data.connectedStudents.hasAny([request.auth.uid]);
+      allow read, write: if true;
+    }
+    
+    // Live sessions - real-time updates
+    match /live-sessions/{sessionId} {
+      allow read, write: if true;
+    }
+    
+    // ===== ANALYTICS AND PROGRESS RULES =====
+    
+    // User progress - allow all operations for pure auth
+    match /user-progress/{userId} {
+      allow read, write: if true;
+    }
+    
+    // Session analytics - allow all operations for pure auth
+    match /session-analytics/{analyticsId} {
+      allow read, write: if true;
+    }
+    
+    // Login analytics - allow all operations for pure auth
+    match /login-analytics/{analyticsId} {
+      allow read, write: if true;
+    }
+    
+    // ===== SYSTEM MANAGEMENT RULES =====
+    
+    // System logs - allow all operations for pure auth
+    match /system-logs/{logId} {
+      allow read, write: if true;
+    }
+    
+    // System config - allow all operations for pure auth
+    match /system-config/{configId} {
+      allow read, write: if true;
+    }
+    
+    // Settings - allow all operations for pure auth
+    match /settings/{settingId} {
+      allow read, write: if true;
+    }
+    
+    // ===== PURE AUTHENTICATION RULE =====
+    // Allow all operations for pure Firestore authentication
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 } 

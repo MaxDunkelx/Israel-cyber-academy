@@ -8,9 +8,9 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Trash2, AlertTriangle, User } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { deleteUser } from 'firebase/auth';
+// Pure authentication - no Firebase Auth
 import { doc, deleteDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../../../firebase/firebase-config';
+import { db } from '../../../firebase/firebase-config';
 import { logSecurityEvent } from '../../../utils/security';
 import Button from '../../ui/Button';
 
@@ -42,7 +42,7 @@ const DeleteUserModal = ({ user, onClose, onSuccess }) => {
       logSecurityEvent('USER_DELETED', {
         userId: documentId,
         userEmail: user.email,
-        deletedBy: auth.currentUser?.uid,
+        deletedBy: 'system_manager', // Pure auth - no Firebase Auth UID
         timestamp: new Date().toISOString()
       });
 

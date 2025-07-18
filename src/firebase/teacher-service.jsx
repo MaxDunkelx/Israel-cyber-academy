@@ -709,13 +709,26 @@ export const getTeacherAccessibleLessons = async (teacherId) => {
     const hasAccess = await checkTeacherLessonAccess(teacherId);
     
     if (hasAccess) {
-      // Return all lesson IDs (1-9 based on current lessons)
-      return Array.from({ length: 9 }, (_, i) => (i + 1).toString());
+      // Get all available lessons to determine the count
+      const allLessons = await getAllLessons();
+      const lessonCount = allLessons.length;
+      
+      // Return all lesson IDs (1-16 based on current lessons)
+      return Array.from({ length: lessonCount }, (_, i) => (i + 1).toString());
     }
     
     return [];
   } catch (error) {
+    console.warn('Error getting teacher accessible lessons, falling back to local lessons:', error.message);
+    
+    // Fallback to local lessons
+    try {
+      const { lessons } = await import('../data/lessons/index.js');
+      return Array.from({ length: lessons.length }, (_, i) => (i + 1).toString());
+    } catch (fallbackError) {
+      console.error('Both database and local fallback failed:', fallbackError);
     return [];
+    }
   }
 };
 
@@ -988,25 +1001,35 @@ export const getAllStudents = async () => {
     const students = [];
     
     querySnapshot.forEach((doc) => {
-      const data = doc.data();
+      const userData = doc.data();
       students.push({
         id: doc.id,
-        ...data,
-        assignedToClass: !!data.classId,
-        assignedToTeacher: !!data.teacherId
+        uid: doc.id,
+        displayName: userData.displayName || userData.email,
+        email: userData.email,
+        role: userData.role,
+        classId: userData.classId || null,
+        teacherId: userData.teacherId || null,
+        assignedToClass: !!userData.classId,
+        assignedToTeacher: !!userData.teacherId,
+        createdAt: userData.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        lastLoginAt: userData.lastLoginAt?.toDate?.()?.toISOString() || null,
+        completedLessons: userData.completedLessons || [],
+        totalTimeSpent: userData.totalTimeSpent || 0,
+        profileComplete: userData.profileComplete || false
       });
     });
     
-    // Sort in JavaScript instead of Firestore
+    // Sort in JavaScript instead of Firestore to avoid composite index requirement
     students.sort((a, b) => {
-      const nameA = a.displayName || a.email || '';
-      const nameB = b.displayName || b.email || '';
+      const nameA = (a.displayName || '').toLowerCase();
+      const nameB = (b.displayName || '').toLowerCase();
       return nameA.localeCompare(nameB);
     });
     
     return students;
   } catch (error) {
-    throw error;
+    throw new Error('Failed to fetch students');
   }
 };
 
@@ -1200,7 +1223,36 @@ export const getAllLessons = async () => {
     
     return lessons;
   } catch (error) {
-    throw error;
+    console.warn('Database unavailable, falling back to local lessons:', error.message);
+    
+    // Fallback to local lessons when database is unavailable
+    try {
+      const { lessons } = await import('../data/lessons/index.js');
+      
+      const localLessons = lessons.map((lesson, index) => {
+        const lessonData = {
+          id: lesson.id || `lesson${String(index + 1).padStart(3, '0')}`,
+          originalId: lesson.id || `lesson${String(index + 1).padStart(3, '0')}`,
+          title: lesson.title,
+          description: lesson.description,
+          difficulty: lesson.difficulty || 'beginner',
+          targetAge: lesson.targetAge || 'all',
+          estimatedDuration: lesson.estimatedDuration || 30,
+          slides: lesson.content?.slides || [],
+          totalSlides: lesson.content?.slides?.length || 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          isActive: true,
+          source: 'local_fallback'
+        };
+        return lessonData;
+      });
+      
+      return localLessons;
+    } catch (fallbackError) {
+      console.error('Both database and local fallback failed:', fallbackError);
+      throw new Error('Failed to load lessons. Please check your connection and try again.');
+    }
   }
 };
 

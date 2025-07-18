@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { usePureAuth } from '../contexts/PureAuthContext';
 
 import { getAllLessons } from '../firebase/content-service';
 import { 
@@ -45,7 +45,7 @@ import LiveSessionNotification from './student/LiveSessionNotification';
 const emojiOptions = ['😀','😎','🤓','🦸‍♂️','🦸‍♀️','🧑‍💻','👩‍🏫','👨‍🏫','🧑‍🎓','👽','🤖','🦄','🐱','🐶','🐼','🐧','🐸'];
 
 const Profile = () => {
-  const { userProfile, logout, currentUser, updateDisplayName, changePassword } = useAuth();
+  const { userProfile, logout, currentUser, updateDisplayName, changePassword } = usePureAuth();
 
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedEmoji, setSelectedEmoji] = useState(userProfile?.emoji || '😀');

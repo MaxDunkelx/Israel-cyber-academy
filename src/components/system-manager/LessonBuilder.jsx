@@ -389,20 +389,28 @@ const LessonBuilder = ({ lesson, onSave, onCancel }) => {
         <div className="h-full">
           {(() => {
             switch (selectedSlide.type) {
-              case 'presentation':
-                return <PresentationSlide slide={selectedSlide} />;
-              case 'poll':
-                return <PollSlide slide={selectedSlide} onAnswer={() => {}} answers={{}} />;
+              // New unified slide types
+              case 'content':
+                return <ContentSlide slide={selectedSlide} />;
+              case 'assessment':
+                return <AssessmentSlide slide={selectedSlide} onAnswer={() => {}} answers={{}} />;
               case 'video':
                 return <VideoSlide slide={selectedSlide} onAnswer={() => {}} answers={{}} />;
               case 'interactive':
                 return <InteractiveSlide slide={selectedSlide} onAnswer={() => {}} answers={{}} />;
               case 'break':
                 return <BreakSlide slide={selectedSlide} />;
+              
+              // Legacy slide types (for backward compatibility)
+              case 'presentation':
+                return <PresentationSlide slide={selectedSlide} />;
+              case 'poll':
+                return <PollSlide slide={selectedSlide} onAnswer={() => {}} answers={{}} />;
               case 'reflection':
                 return <ReflectionSlide slide={selectedSlide} onAnswer={() => {}} answers={{}} />;
               case 'quiz':
                 return <QuizSlide slide={selectedSlide} onAnswer={() => {}} answers={{}} />;
+              
               default:
                 return <div className="text-white p-8">סוג שקופית לא מוכר</div>;
             }

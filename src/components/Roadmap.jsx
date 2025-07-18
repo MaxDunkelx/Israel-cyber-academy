@@ -69,6 +69,7 @@ import cyberLogo from '../assets/cyber-logo.png';
 import Confetti from 'react-confetti';
 import LiveSessionNotification from './student/LiveSessionNotification';
 
+
 /**
  * Matrix Code Animation Component
  */
@@ -162,6 +163,8 @@ const Roadmap = () => {
   
 
   
+
+  
   // Component state management
   const [lessons, setLessons] = useState([]);
   const [selectedLesson, setSelectedLesson] = useState(null);
@@ -179,22 +182,23 @@ const Roadmap = () => {
       try {
         const lessonsData = await getAllLessons();
         
-        // Filter to only show lessons with clear IDs (lesson1, lesson2, etc.)
+        // Filter to only show lessons with clear IDs (lesson001, lesson002, etc.)
         const clearIdLessons = lessonsData?.filter(lesson => 
           lesson.id && lesson.id.startsWith('lesson')
         ) || [];
         
-        // Sort lessons by originalId to ensure proper order (1, 2, 3, ..., 19)
+        // Sort lessons by originalId to ensure proper order (lesson001, lesson002, etc.)
         const sortedLessons = clearIdLessons.sort((a, b) => {
-          const aId = a.originalId || parseInt(a.id.replace('lesson', '')) || 0;
-          const bId = b.originalId || parseInt(b.id.replace('lesson', '')) || 0;
-          return aId - bId;
+          const aId = a.originalId || a.id || '';
+          const bId = b.originalId || b.id || '';
+          return aId.localeCompare(bId);
         });
         
         setLessons(sortedLessons);
         if (import.meta.env.DEV) {
           console.log('📚 Roadmap: Lessons loaded:', {
-            lessonsCount: sortedLessons?.length || 0
+            lessonsCount: sortedLessons?.length || 0,
+            lessons: sortedLessons?.map(l => ({ id: l.id, title: l.title }))
           });
         }
       } catch (error) {
@@ -218,7 +222,14 @@ const Roadmap = () => {
         const { doc, getDoc } = await import('firebase/firestore');
         const { db } = await import('../firebase/firebase-config');
         
-        const userRef = doc(db, 'users', currentUser.uid);
+        // Use the correct user ID - for pure auth, currentUser.id is the document ID
+        const userId = currentUser?.id || currentUser?.uid;
+        if (!userId) {
+          console.log('❌ No user ID available for refresh');
+          return;
+        }
+        
+        const userRef = doc(db, 'users', userId);
         const userDoc = await getDoc(userRef);
         
         if (userDoc.exists()) {
@@ -325,7 +336,10 @@ const Roadmap = () => {
       return 'locked';
     }
     
-    const lessonNumber = lesson.originalId || parseInt(lessonId);
+    // Extract lesson number from lesson ID (e.g., "lesson001" -> 1)
+    const lessonNumber = lesson.originalId ? 
+      parseInt(lesson.originalId.replace('lesson', '')) : 
+      parseInt(lessonId.replace('lesson', ''));
     const completedLessons = activeProfile.completedLessons || [];
     const teacherAssignedLesson = activeProfile.currentLesson || 0;
     
@@ -353,7 +367,8 @@ const Roadmap = () => {
     
     // Check for completion using multiple possible ID formats
     const possibleLessonIds = [
-      `lesson-${lessonNumber}`,  // New Firestore format
+      `lesson${String(lessonNumber).padStart(3, '0')}`,  // New format (lesson001)
+      `lesson-${lessonNumber}`,  // Firestore format
       `lesson${lessonNumber}`,   // Old format
       lessonNumber.toString(),   // Number format
       lessonId                   // Original lessonId
@@ -559,7 +574,8 @@ const Roadmap = () => {
     
     // Check for progress using multiple possible ID formats
     const possibleLessonIds = [
-      `lesson-${lessonNumber}`,  // New Firestore format
+      `lesson${String(lessonNumber).padStart(3, '0')}`,  // New format (lesson001)
+      `lesson-${lessonNumber}`,  // Firestore format
       `lesson${lessonNumber}`,   // Old format
       lessonNumber.toString(),   // Number format
       lessonId                   // Original lessonId
@@ -637,62 +653,14 @@ const Roadmap = () => {
   }, [lessons, userProfile, refreshedProfile, getLessonStatus]);
 
   // OPTIMIZATION: Reduce refresh frequency from 10 seconds to 30 seconds
-  useEffect(() => {
-    if (!currentUser || role !== 'student') return;
 
-    const refreshCurrentLesson = async () => {
-      try {
-        if (import.meta.env.DEV) {
-          console.log('🔄 Refreshing currentLesson from database...');
-        }
-        const { doc, getDoc } = await import('firebase/firestore');
-        const { db } = await import('../firebase/firebase-config');
-        
-        const userRef = doc(db, 'users', currentUser.uid);
-        const userDoc = await getDoc(userRef);
-        
-        if (userDoc.exists()) {
-          const freshUserData = userDoc.data();
-          if (import.meta.env.DEV) {
-            console.log('📥 Fresh user data:', {
-              currentLesson: freshUserData.currentLesson,
-              displayName: freshUserData.displayName
-            });
-          }
-          setRefreshedProfile(freshUserData);
-          
-          // Show notification if teacher unlocked new lessons
-          if (userProfile && freshUserData.currentLesson > userProfile.currentLesson) {
-            const newlyUnlocked = freshUserData.currentLesson - userProfile.currentLesson;
-            toast.success(`המורה פתח ${newlyUnlocked} שיעורים חדשים!`);
-          }
-        } else {
-          if (import.meta.env.DEV) {
-            console.log('❌ User document not found');
-          }
-        }
-      } catch (error) {
-        console.error('Error refreshing currentLesson:', error);
-      }
-    };
-
-    // Refresh immediately and then every 30 seconds (instead of 10)
-    refreshCurrentLesson();
-    const interval = setInterval(refreshCurrentLesson, 30000);
-    
-    // Also refresh after 1 second to make sure we get fresh data
-    const immediateRefresh = setTimeout(refreshCurrentLesson, 1000);
-    
-    return () => {
-      clearInterval(interval);
-      clearTimeout(immediateRefresh);
-    };
-  }, [currentUser, role]); // Removed userProfile dependency to prevent re-running
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden">
       {/* Live Session Notification */}
       <LiveSessionNotification />
+      
+
       
       {/* Matrix Code Animation */}
       <MatrixCode />

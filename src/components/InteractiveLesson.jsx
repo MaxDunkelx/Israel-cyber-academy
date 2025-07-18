@@ -25,7 +25,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { usePureAuth } from '../contexts/PureAuthContext';
 import { getLessonWithSlides, getNextLesson } from '../firebase/content-service';
 import { useErrorHandler } from '../hooks/useErrorHandler';
 import { useSafeListener } from '../hooks/useSafeListener';
@@ -48,7 +48,18 @@ import {
   SkipBack,
   Navigation
 } from 'lucide-react';
-import { PresentationSlide, PollSlide, VideoSlide, InteractiveSlide, BreakSlide, ReflectionSlide, QuizSlide } from './slides';
+import { 
+  ContentSlide, 
+  AssessmentSlide, 
+  VideoSlide, 
+  InteractiveSlide, 
+  BreakSlide,
+  // Legacy imports for backward compatibility
+  PresentationSlide, 
+  PollSlide, 
+  ReflectionSlide, 
+  QuizSlide 
+} from './slides';
 import Confetti from 'react-confetti';
 import toast from 'react-hot-toast';
 import { 
@@ -65,7 +76,7 @@ import LiveSessionNotification from './student/LiveSessionNotification';
  * Interactive Lesson Component - Main learning interface
  */
 const InteractiveLesson = () => {
-  const { currentUser, userProfile, updateUserProgress, trackSlideEngagement, setLastLessonSlide, getLastLessonSlide } = useAuth();
+  const { currentUser, userProfile, updateUserProgress, trackSlideEngagement, setLastLessonSlide, getLastLessonSlide } = usePureAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -159,8 +170,9 @@ const InteractiveLesson = () => {
   // Debug: Log current slide position
   useEffect(() => {
     if (import.meta.env.DEV) {
+      const userId = currentUser?.uid || currentUser?.id || userProfile?.id;
       console.log(`🎯 Current slide: ${currentSlide} (Lesson ${lessonId})`);
-      console.log(`🔐 Auth state: currentUser=${currentUser?.uid}, userProfile=${!!userProfile}`);
+      console.log(`🔐 Auth state: currentUser=${userId}, userProfile=${!!userProfile}`);
       if (userProfile && lesson) {
         const savedSlide = getLastLessonSlide(lesson.originalId);
         console.log(`💾 Saved slide position: ${savedSlide}`);
@@ -173,12 +185,15 @@ const InteractiveLesson = () => {
    * Initialize session logging when user and lesson are available
    */
   useEffect(() => {
-    if (currentUser && lessonId && !isInitialized.current) {
+    // Use userProfile.id as fallback if currentUser is undefined
+    const userId = currentUser?.uid || currentUser?.id || userProfile?.id;
+    
+    if (userId && lessonId && !isInitialized.current) {
       // Initialize session logging with proper user and lesson IDs
-      initLessonSession(currentUser.uid, lessonId);
-      console.log('🎯 Session initialized with:', { userId: currentUser.uid, lessonId });
+      initLessonSession(userId, lessonId);
+      console.log('🎯 Session initialized with:', { userId: userId, lessonId });
     }
-  }, [currentUser, lessonId]);
+  }, [currentUser, userProfile, lessonId]);
 
   /**
    * Check teacher access control before loading lesson
@@ -188,10 +203,28 @@ const InteractiveLesson = () => {
     
     const checkTeacherAccess = async () => {
       try {
+        // Use userProfile.id as fallback if currentUser is undefined
+        const userId = currentUser?.uid || currentUser?.id || userProfile?.id;
+        
+        if (!userId) {
+          console.warn('No user ID available for teacher access check, using cached profile');
+          // Fall back to cached profile
+          const teacherAssignedLesson = userProfile.currentLesson || 0;
+          const lessonIdNum = parseInt(lessonId);
+          
+          if (lessonIdNum > teacherAssignedLesson) {
+            setError('השיעור עדיין לא נפתח על ידי המורה');
+            toast.error('השיעור עדיין לא נפתח על ידי המורה');
+            navigate('/student/dashboard');
+            return;
+          }
+          return;
+        }
+        
         const { doc, getDoc } = await import('firebase/firestore');
         const { db } = await import('../firebase/firebase-config');
         
-        const userRef = doc(db, 'users', currentUser.uid);
+        const userRef = doc(db, 'users', userId);
         const userDoc = await getDoc(userRef);
         
         if (userDoc.exists()) {
@@ -240,7 +273,9 @@ const InteractiveLesson = () => {
           if (isMounted) setLesson(lessonData);
           
           // Check if lesson is already completed using Firestore lesson ID
-          const lessonNumber = lessonData.originalId || parseInt(lessonId);
+          const lessonNumber = lessonData.originalId ? 
+            parseInt(lessonData.originalId.replace('lesson', '')) : 
+            parseInt(lessonId.replace('lesson', ''));
           const lessonFirestoreId = `lesson-${lessonNumber}`;
           let lessonCompleted = false;
           
@@ -420,14 +455,20 @@ const InteractiveLesson = () => {
    * Real-time user profile listener for live progress updates - FIXED with proper cleanup
    */
   useEffect(() => {
-    if (!currentUser) return;
+    // Use userProfile.id as fallback if currentUser is undefined
+    const userId = currentUser?.uid || currentUser?.id || userProfile?.id;
+    
+    if (!userId) {
+      console.warn('No user ID available for Firebase listener setup');
+      return;
+    }
     
     const setupListener = async () => {
       try {
         const { doc, onSnapshot } = await import('firebase/firestore');
         const { db } = await import('../firebase/firebase-config');
         
-        const userRef = doc(db, 'users', currentUser.uid);
+        const userRef = doc(db, 'users', userId);
         const unsubscribe = onSnapshot(userRef, (doc) => {
           if (doc.exists()) {
             const freshUserData = doc.data();
@@ -544,8 +585,11 @@ const InteractiveLesson = () => {
       return;
     }
     
-    if (!currentUser) {
-      console.log('❌ No current user, cannot complete lesson');
+    // Use userProfile.id as fallback if currentUser is undefined
+    const userId = currentUser?.uid || currentUser?.id || userProfile?.id;
+    
+    if (!userId) {
+      console.log('❌ No user ID available, cannot complete lesson');
       toast.error('שגיאה בהרשאת המשתמש');
       return;
     }
@@ -553,8 +597,8 @@ const InteractiveLesson = () => {
     // Double-check authentication state before proceeding
     console.log('🔐 Double-checking auth state before lesson completion...');
     const authCheck = {
-      currentUser: currentUser?.uid,
-      userProfile: userProfile?.uid,
+      currentUser: userId,
+      userProfile: userProfile?.id || userProfile?.uid,
       lessonId: lesson?.id,
       lessonOriginalId: lesson?.originalId
     };
@@ -745,24 +789,32 @@ const InteractiveLesson = () => {
   };
 
   /**
-   * Render slide based on type
+   * Render slide based on type - supports both new unified and legacy types
    */
   const renderSlide = (slide) => {
     switch (slide.type) {
-      case 'presentation':
-        return <PresentationSlide slide={slide} />;
-      case 'poll':
-        return <PollSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
+      // New unified slide types
+      case 'content':
+        return <ContentSlide slide={slide} />;
+      case 'assessment':
+        return <AssessmentSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
       case 'video':
         return <VideoSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
       case 'interactive':
         return <InteractiveSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
       case 'break':
         return <BreakSlide slide={slide} />;
+      
+      // Legacy slide types (for backward compatibility)
+      case 'presentation':
+        return <PresentationSlide slide={slide} />;
+      case 'poll':
+        return <PollSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
       case 'reflection':
         return <ReflectionSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
       case 'quiz':
         return <QuizSlide slide={slide} onAnswer={handleAnswer} answers={answers} />;
+      
       default:
         return <div className="text-white">סוג שקופית לא מוכר: {slide.type}</div>;
     }

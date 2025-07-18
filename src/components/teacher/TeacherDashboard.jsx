@@ -143,18 +143,21 @@ const TeacherDashboard = () => {
 
         // Access granted - log security event
         console.log('✅ Teacher access granted!');
+        const teacherId = currentUser?.id || currentUser?.uid;
         await logSecurityEvent('teacher_dashboard_access', {
-          userId: currentUser.uid,
+          userId: teacherId,
           role: role,
           timestamp: new Date().toISOString()
         });
 
         // Load real stats
         setIsLoading(true);
+        console.log('🔍 Teacher Dashboard: Using teacher ID:', teacherId);
+        
         const [classesData, studentsData, activitiesData] = await Promise.all([
-          getTeacherClasses(currentUser.uid),
-          getTeacherStudents(currentUser.uid),
-          getTeacherRecentActivities(currentUser.uid, 5)
+          getTeacherClasses(teacherId),
+          getTeacherStudents(teacherId),
+          getTeacherRecentActivities(teacherId, 5)
         ]);
         setClasses(classesData);
         setStudents(studentsData);
@@ -193,8 +196,9 @@ const TeacherDashboard = () => {
     setActiveTab(tabId);
     
     // Log tab change for analytics
+    const teacherId = currentUser?.id || currentUser?.uid;
     logSecurityEvent('teacher_tab_change', {
-      userId: currentUser?.uid,
+      userId: teacherId,
       fromTab: activeTab,
       toTab: tabId,
       timestamp: new Date().toISOString()

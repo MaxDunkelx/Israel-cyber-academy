@@ -8,10 +8,26 @@ export const APP_CONFIG = {
 // User roles
 export const USER_ROLES = {
   STUDENT: 'student',
-  TEACHER: 'teacher'
+  TEACHER: 'teacher',
+  MANAGER: 'manager'
 };
 
-// Lesson types
+// New unified slide types
+export const SLIDE_TYPES = {
+  CONTENT: 'content',
+  VIDEO: 'video',
+  INTERACTIVE: 'interactive',
+  ASSESSMENT: 'assessment'
+};
+
+// Assessment types for unified assessment slides
+export const ASSESSMENT_TYPES = {
+  POLL: 'poll',
+  QUIZ: 'quiz',
+  REFLECTION: 'reflection'
+};
+
+// Legacy lesson types (for backward compatibility during migration)
 export const LESSON_TYPES = {
   PRESENTATION: 'presentation',
   INTERACTIVE: 'interactive',
@@ -22,11 +38,22 @@ export const LESSON_TYPES = {
   REFLECTION: 'reflection'
 };
 
-// Exercise types
+// Exercise types (keeping all for future amazing interactive lessons)
 export const EXERCISE_TYPES = {
   CLICK_BASED_EXERCISE: 'drag-drop',
   MATCHING: 'matching',
-  MULTIPLE_CHOICE: 'multiple-choice'
+  MULTIPLE_CHOICE: 'multiple-choice',
+  WINDOWS_SIMULATOR: 'windows-simulator',
+  LINUX_SIMULATOR: 'linux-simulator',
+  NETWORK_SIMULATOR: 'network-simulator',
+  PROTOCOL_SIMULATOR: 'protocol-simulator',
+  CODE_EDITOR: 'code-editor',
+  WEBSITE_BUILDER: 'website-builder',
+  DATABASE_SIMULATOR: 'database-simulator',
+  BROWSER_SIMULATOR: 'browser-simulator',
+  COMPUTER_BUILD_SIMULATOR: 'computer-build-simulator',
+  LAB_SIMULATION: 'lab-simulation',
+  PASSWORD_GENERATOR: 'password-generator'
 };
 
 // UI Colors

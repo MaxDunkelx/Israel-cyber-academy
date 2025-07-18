@@ -34,7 +34,7 @@ import {
   Plus,
   RefreshCw
 } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { usePureAuth } from '../../contexts/PureAuthContext';
 import { logSecurityEvent } from '../../utils/security';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/firebase-config';
@@ -49,7 +49,7 @@ import DeleteUserModal from './modals/DeleteUserModal';
 import EditUserModal from './modals/EditUserModal';
 
 const UserManagement = () => {
-  const { currentUser } = useAuth();
+  const { currentUser } = usePureAuth();
   
   // State management
   const [users, setUsers] = useState([]);

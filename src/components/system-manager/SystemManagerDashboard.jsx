@@ -47,7 +47,7 @@ import {
   CheckCircle,
   RefreshCw
 } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { usePureAuth } from '../../contexts/PureAuthContext';
 import { logSecurityEvent } from '../../utils/security';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../firebase/firebase-config';
@@ -198,7 +198,7 @@ const OverviewTab = ({ stats, recentActivities, onRefresh, isRefreshing = false 
 
 const SystemManagerDashboard = () => {
   const navigate = useNavigate();
-  const { currentUser, loading: authLoading, role } = useAuth();
+  const { currentUser, loading: authLoading, userProfile } = usePureAuth();
   
   // UI State Management
   const [activeTab, setActiveTab] = useState('overview');
@@ -292,8 +292,8 @@ const SystemManagerDashboard = () => {
           return;
         }
 
-        if (role !== 'system_manager') {
-          console.log('❌ User is not a system manager, role:', role);
+            if (userProfile?.role !== 'system_manager') {
+      console.log('❌ User is not a system manager, role:', userProfile?.role);
           toast.error('אין לך הרשאות לגשת לאזור מנהל המערכת');
           navigate('/login');
           return;
@@ -303,7 +303,7 @@ const SystemManagerDashboard = () => {
         console.log('✅ System manager access granted!');
         await logSecurityEvent('system_manager_dashboard_access', {
           userId: currentUser.uid,
-          role: role,
+          role: userProfile?.role,
           timestamp: new Date().toISOString()
         });
 
@@ -321,11 +321,11 @@ const SystemManagerDashboard = () => {
     if (!authLoading) {
       checkAccessAndLoadStats();
     }
-  }, [currentUser, role, authLoading, navigate]);
+  }, [currentUser, userProfile?.role, authLoading, navigate]);
 
   // Set up real-time monitoring
   useEffect(() => {
-    if (currentUser && role === 'system_manager') {
+    if (currentUser && userProfile?.role === 'system_manager') {
       console.log('👂 Setting up real-time system monitoring...');
       
       const unsubscribe = subscribeToSystemMonitoring((update) => {
@@ -353,7 +353,7 @@ const SystemManagerDashboard = () => {
         unsubscribe();
       };
     }
-  }, [currentUser, role]);
+  }, [currentUser, userProfile?.role]);
 
   /**
    * Load system statistics from Firebase

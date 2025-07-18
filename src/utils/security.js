@@ -209,10 +209,26 @@ export const logSecurityEvent = async (eventType, eventData = {}, metadata = {})
 
     // Store in Firebase for production
     try {
-      await addDoc(collection(db, 'security_logs'), securityEvent);
+      // Import Firebase services dynamically to avoid initialization issues
+      const { addDoc, collection } = await import('firebase/firestore');
+      const { db } = await import('../firebase/firebase-config');
+      
+      if (db) {
+        await addDoc(collection(db, 'security_logs'), securityEvent);
+      } else {
+        console.warn('⚠️ Firestore database not available for security logging');
+      }
     } catch (firebaseError) {
       // Log to console as fallback only
       console.error('Failed to log security event to Firebase:', firebaseError);
+      
+      // Don't throw the error to prevent app crashes
+      // Just log it and continue
+      if (firebaseError.code === 'permission-denied') {
+        console.warn('Security logging permission denied - this is normal for unauthenticated users');
+      } else if (firebaseError.code === 'unavailable') {
+        console.warn('Firebase temporarily unavailable - security event logged locally only');
+      }
     }
 
     // Send to analytics service if available

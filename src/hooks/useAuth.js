@@ -1,4 +1,4 @@
-import { useAuth as useAuthContext } from '../contexts/AuthContext';
+import { usePureAuth } from '../contexts/PureAuthContext';
 import { useContext } from 'react';
 
 /**
@@ -12,7 +12,7 @@ import { useContext } from 'react';
  * const { currentUser, login, logout, isAuthenticated } = useAuth();
  */
 export const useAuth = () => {
-  const authContext = useAuthContext();
+  const authContext = usePureAuth();
   
   return {
     ...authContext,
@@ -63,7 +63,7 @@ export const useAuthStatus = () => {
  * const { displayName, email, role, progress, uid } = useUserProfile();
  */
 export const useUserProfile = () => {
-  const { currentUser, userProfile } = useAuthContext();
+  const { currentUser, userProfile } = usePureAuth();
   
   // If no current user, return null values
   if (!currentUser) {

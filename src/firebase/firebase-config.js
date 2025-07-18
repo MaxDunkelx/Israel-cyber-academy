@@ -18,7 +18,6 @@
  */
 
 import { initializeApp } from 'firebase/app';
-import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 
 /**
@@ -121,26 +120,37 @@ try {
 }
 
 // Initialize Firebase services with enhanced error handling
-let auth, db;
+let db;
 try {
-  auth = getAuth(app);
-  db = getFirestore(app, 'cyber-campus'); // Use custom database name
+  // Initialize Firestore with error handling
+  console.log('🔗 Initializing Firestore...');
+  try {
+    db = getFirestore(app);
+    console.log('✅ Firestore initialized with default database');
+  } catch (firestoreError) {
+    console.error('❌ Firestore initialization failed:', firestoreError);
+    // Try alternative initialization
+    try {
+      db = getFirestore();
+      console.log('✅ Firestore initialized with fallback method');
+    } catch (fallbackError) {
+      console.error('❌ Firestore fallback initialization failed:', fallbackError);
+      throw fallbackError;
+    }
+  }
   
   // Connect to emulators in development (optional)
   if (isDevelopment && import.meta.env.VITE_ENABLE_FIREBASE_EMULATORS === 'true') {
     try {
-      connectAuthEmulator(auth, 'http://localhost:9099');
       connectFirestoreEmulator(db, 'localhost', 8080);
-      console.log('🔧 Connected to Firebase emulators');
+      console.log('🔧 Connected to Firestore emulator');
     } catch (emulatorError) {
-      console.warn('⚠️ Failed to connect to Firebase emulators:', emulatorError.message);
+      console.warn('⚠️ Failed to connect to Firestore emulator:', emulatorError.message);
     }
   }
   
   console.log('✅ Firebase services initialized:', {
-    auth: !!auth,
     firestore: !!db,
-    database: 'cyber-campus',
     mode: isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION',
     secure: usingEnvVars || isDevelopment,
     emulators: isDevelopment && import.meta.env.VITE_ENABLE_FIREBASE_EMULATORS === 'true'
@@ -160,17 +170,8 @@ try {
   throw error;
 }
 
-// Add error handlers for Firebase services
-if (auth) {
-  auth.onAuthStateChanged((user) => {
-    // This is just to ensure the auth listener is working
-    if (import.meta.env.DEV) {
-      console.log('🔐 Auth state changed:', user ? 'User logged in' : 'User logged out');
-    }
-  }, (error) => {
-    console.error('❌ Auth state change error:', error);
-  });
-}
+// No Firebase Auth - using pure Firestore authentication only
+console.log('🔐 Firebase Auth disabled - using pure Firestore authentication');
 
 /**
  * Enhanced diagnostic function for Firestore connectivity
@@ -217,6 +218,10 @@ service cloud.firestore {
         console.log('💡 Solution: Create Firestore database in Firebase Console');
         console.log('💡 Go to: https://console.firebase.google.com/project/israel-cyber-academy/firestore');
         console.log('💡 Click "Create Database" > "Start in test mode" > Choose location > "Done"');
+      } else if (readError.code === 'unavailable') {
+        console.error('❌ Firestore service unavailable');
+        console.log('💡 Solution: Check your internet connection and Firebase project status');
+        console.log('💡 Go to: https://status.firebase.google.com/');
       } else {
         console.error('❌ Unknown Firestore error:', readError.code, readError.message);
       }
@@ -231,6 +236,10 @@ service cloud.firestore {
     console.log('🔧 Environment:', isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION');
     console.log('🔧 GitHub Pages:', isGitHubPages);
     
+    // Test 4: Check authentication status (Pure Auth)
+    console.log('📋 Test 4: Checking pure authentication status...');
+    console.log('🔐 Pure Auth: No Firebase Auth - using Firestore authentication only');
+    
     return {
       success: true,
       projectId: firebaseConfig.projectId,
@@ -239,7 +248,9 @@ service cloud.firestore {
       usingEnvVars: usingEnvVars,
       secure: usingEnvVars || isDevelopment,
       environment: isDevelopment ? 'development' : 'production',
-      isGitHubPages: isGitHubPages
+      isGitHubPages: isGitHubPages,
+      isAuthenticated: false, // Pure Auth - no Firebase Auth
+      userEmail: null
     };
     
   } catch (error) {
@@ -270,5 +281,5 @@ export const getFirebaseConfigStatus = () => {
   };
 };
 
-// Export the services
-export { auth, db };
+// Export the services (Firestore only)
+export { db };

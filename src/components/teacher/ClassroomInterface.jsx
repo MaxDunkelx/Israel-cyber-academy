@@ -77,6 +77,16 @@ const ClassroomInterface = () => {
   const [error, setError] = useState(null);
   const [expandedClasses, setExpandedClasses] = useState(new Set());
 
+  // Helper function to extract lesson number from lesson ID
+  const getLessonNumber = (lesson) => {
+    const originalId = lesson.originalId || lesson.id || '';
+    if (originalId.startsWith('lesson')) {
+      const numberStr = originalId.replace('lesson', '');
+      return parseInt(numberStr) || 0;
+    }
+    return 0;
+  };
+
   useEffect(() => {
     if (!currentUser) {
       logSecurityEvent('UNAUTHORIZED_ACCESS_ATTEMPT', { role: 'none' }, { component: 'ClassroomInterface' });
@@ -102,16 +112,20 @@ const ClassroomInterface = () => {
       setLoading(true);
       setError(null);
 
+      const teacherId = currentUser?.id || currentUser?.uid;
+      console.log('🔍 ClassroomInterface: Using teacher ID:', teacherId);
+
       // Load teacher's classes and lessons
       const [teacherClasses, lessonsDataRaw] = await Promise.all([
-        getTeacherClasses(currentUser.uid),
+        getTeacherClasses(teacherId),
         getAllLessonsWithSlideCounts()
       ]);
       
-      // Sort lessons by order or originalId
+      // Sort lessons by curriculum order (lesson001, lesson002, etc.)
       const lessonsData = lessonsDataRaw.slice().sort((a, b) => {
-        const orderA = a.order ?? a.originalId ?? 0;
-        const orderB = b.order ?? b.originalId ?? 0;
+        const orderA = getLessonNumber(a);
+        const orderB = getLessonNumber(b);
+        
         if (orderA !== orderB) return orderA - orderB;
         return (a.title || '').localeCompare(b.title || '');
       });
@@ -146,11 +160,11 @@ const ClassroomInterface = () => {
       setStudents(studentsData);
 
       // Load analytics
-      const analyticsData = await getTeacherAnalytics(currentUser.uid);
+      const analyticsData = await getTeacherAnalytics(teacherId);
       setAnalytics(analyticsData);
 
       // Load recent activities
-      const activities = await getTeacherRecentActivities(currentUser.uid, 20);
+      const activities = await getTeacherRecentActivities(teacherId, 20);
       setRecentActivities(activities);
 
       setLoading(false);
@@ -179,15 +193,16 @@ const ClassroomInterface = () => {
   };
 
   const listenToActiveSessions = () => {
-    if (!currentUser?.uid) return null;
+    const teacherId = currentUser?.id || currentUser?.uid;
+    if (!teacherId) return null;
 
-    console.log('🔍 Setting up active sessions listener for teacher:', currentUser.uid);
+    console.log('🔍 Setting up active sessions listener for teacher:', teacherId);
     
     // Get active sessions for this teacher
     const sessionsRef = collection(db, 'sessions');
     const q = query(
       sessionsRef,
-      where('teacherId', '==', currentUser.uid),
+      where('teacherId', '==', teacherId),
       where('status', '==', 'active')
     );
     
@@ -409,6 +424,7 @@ const ClassroomInterface = () => {
         return;
       }
 
+      const teacherId = currentUser?.id || currentUser?.uid;
       const currentDate = new Date().toISOString();
       const classData = classes.find(c => c.id === classId);
       const existingUnlockedLessons = classData?.unlockedLessons || [];
@@ -417,7 +433,7 @@ const ClassroomInterface = () => {
       const newUnlockedLesson = {
         lessonId: lessonId,
         unlockedAt: currentDate,
-        unlockedBy: currentUser.uid,
+        unlockedBy: teacherId,
         unlockedByTeacher: currentUser.displayName || currentUser.email
       };
 
@@ -753,14 +769,15 @@ const ClassroomInterface = () => {
                         >
                           <option value="">בחר שיעור</option>
                           {lessons.map(lesson => {
-                            const lessonId = lesson.originalId || lesson.order;
-                            const isUnlocked = classData.unlockedLessons?.some(ul => ul.lessonId === lessonId);
-                            const isCurrentMax = lessonId === classData.currentLesson;
+                            const lessonNumber = getLessonNumber(lesson);
+                            const lessonId = lesson.originalId || lesson.id;
+                            const isUnlocked = classData.unlockedLessons?.some(ul => ul.lessonId === lessonNumber);
+                            const isCurrentMax = lessonNumber === classData.currentLesson;
                             
                             return (
                               <option 
                                 key={lesson.id} 
-                                value={lessonId}
+                                value={lessonNumber}
                                 className={isUnlocked ? 'text-green-400' : 'text-white'}
                                 style={{ 
                                   maxWidth: '100%',
@@ -769,7 +786,7 @@ const ClassroomInterface = () => {
                                   whiteSpace: 'nowrap'
                                 }}
                               >
-                                {isUnlocked ? '✅ ' : ''}פתח עד שיעור {lessonId} - {lesson.title}
+                                {isUnlocked ? '✅ ' : ''}פתח עד שיעור {lessonNumber} - {lesson.title}
                                 {isUnlocked && !isCurrentMax ? ' (כבר נפתח)' : ''}
                                 {isCurrentMax ? ' (נוכחי)' : ''}
                               </option>
@@ -804,8 +821,8 @@ const ClassroomInterface = () => {
                           </p>
                           <div className="flex flex-wrap gap-1 mt-1">
                             {lessons.map(lesson => {
-                              const lessonId = lesson.originalId || lesson.order;
-                              const isUnlocked = classData.unlockedLessons?.some(ul => ul.lessonId === lessonId);
+                              const lessonNumber = getLessonNumber(lesson);
+                              const isUnlocked = classData.unlockedLessons?.some(ul => ul.lessonId === lessonNumber);
                               return (
                                 <span 
                                   key={lesson.id}
@@ -816,7 +833,7 @@ const ClassroomInterface = () => {
                                   }`}
                                   title={`${lesson.title} (${lesson.totalSlides || lesson.slides?.length || 0} שקופיות)`}
                                 >
-                                  {lessonId}
+                                  {lessonNumber}
                                 </span>
                               );
                             })}
@@ -855,7 +872,7 @@ const ClassroomInterface = () => {
                                 </div>
                                 <div>
                                   <p className="text-white font-medium">
-                                    שיעור {unlockedLesson.lessonId} - {lessons.find(l => (l.originalId || l.order) === unlockedLesson.lessonId)?.title || 'שיעור לא ידוע'}
+                                    שיעור {unlockedLesson.lessonId} - {lessons.find(l => getLessonNumber(l) === unlockedLesson.lessonId)?.title || 'שיעור לא ידוע'}
                                   </p>
                                   <p className="text-xs text-gray-400">
                                     נפתח על ידי {unlockedLesson.unlockedByTeacher}

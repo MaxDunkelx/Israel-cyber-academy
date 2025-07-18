@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "israel-cyber-academy"
-  }
+    "default": "israel-cyber-academy",
+    "y": "israel-cyber-academy"
+  },
+  "targets": {},
+  "etags": {}
 }

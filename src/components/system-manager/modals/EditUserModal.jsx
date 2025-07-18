@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, User, Mail, Calendar, Hash } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '../../../firebase/firebase-config';
+import { db } from '../../../firebase/firebase-config';
 import { logSecurityEvent } from '../../../utils/security';
 import Button from '../../ui/Button';
 
@@ -68,7 +68,7 @@ const EditUserModal = ({ user, onClose, onSuccess }) => {
       logSecurityEvent('USER_UPDATED', {
         userId: documentId,
         userEmail: user.email,
-        updatedBy: auth.currentUser?.uid,
+        updatedBy: 'system_manager', // Pure auth - no Firebase Auth UID
         updatedFields: Object.keys(updateData),
         timestamp: new Date().toISOString()
       });
